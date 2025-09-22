@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/ev-charging-station.iml" filepath="$PROJECT_DIR$/.idea/ev-charging-station.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ev-charging-station/ev-charging-station.iml" filepath="$PROJECT_DIR$/ev-charging-station/ev-charging-station.iml" />
     </modules>
   </component>
 </project>
