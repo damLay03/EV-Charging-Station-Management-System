@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: EV Charging Station Management System
+
+  #datasource:
+    #url: jdbc:mysql://localhost:3306/ev_charging_db?useSSL=false&serverTimezone=UTC
+    #username: root
+    #password: 12345
+
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;databaseName=ev_charging;encrypt=true;trustServerCertificate=true
+    username: sa
+    password: 12345
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect

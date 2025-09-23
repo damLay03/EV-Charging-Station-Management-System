@@ -8,7 +8,6 @@ public class EvChargingStationManagementSystemApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(EvChargingStationManagementSystemApplication.class, args);
-		System.out.println("Hello word");
 	}
 
 }
