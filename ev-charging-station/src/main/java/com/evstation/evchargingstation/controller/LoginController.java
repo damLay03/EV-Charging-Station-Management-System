@@ -12,12 +12,12 @@ public class LoginController {
     @Autowired
     private UserService userService;
 
-    @PostMapping("/login")
-    public String login(@RequestBody User loginRequest) {
-        boolean success = userService.login(loginRequest.getUsername(), loginRequest.getPassword());
-        if (success) {
-            return "Login successful!";
-        }
-        return "Invalid username or password!";
-    }
+//    @PostMapping("/login")
+//    public String login(@RequestBody User loginRequest) {
+//        boolean success = userService.login(loginRequest.getUsername(), loginRequest.getPassword());
+//        if (success) {
+//            return "Login successful!";
+//        }
+//        return "Invalid username or password!";
+//    }
 }
