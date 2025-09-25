@@ -1,14 +1,11 @@
 package com.evstation.evchargingstation.controller;
 
-import com.evstation.evchargingstation.dto.UserCreationRequest;
+import com.evstation.evchargingstation.dto.request.UserCreationRequest;
 import com.evstation.evchargingstation.dto.UserLoginRequest;
-import com.evstation.evchargingstation.dto.UserUpdateRequest;
-import com.evstation.evchargingstation.entity.User;
 import com.evstation.evchargingstation.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/auth") //Khi mình dùng thằng endpoint users nhiều thì mình bế nó lên đây luôn
@@ -25,8 +22,9 @@ public class UserController {
         return "Invalid email or password!";
     }
 
+    //Tại sao lại là String
     @PostMapping("/register")
-    public String register(@RequestBody UserCreationRequest request) {
+    public String register(@RequestBody @Valid UserCreationRequest request) {
         return userService.register(request);
     }
 

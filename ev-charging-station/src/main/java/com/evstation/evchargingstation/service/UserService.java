@@ -1,6 +1,6 @@
 package com.evstation.evchargingstation.service;
-import com.evstation.evchargingstation.dto.UserCreationRequest;
-import com.evstation.evchargingstation.dto.UserUpdateRequest;
+import com.evstation.evchargingstation.dto.request.UserCreationRequest;
+import com.evstation.evchargingstation.dto.request.UserUpdateRequest;
 import com.evstation.evchargingstation.entity.User;
 import com.evstation.evchargingstation.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
