@@ -6,5 +6,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface UserRepository extends JpaRepository<User, String> {
     //Đây là cái nhà kho chứa users, vui lòng không xử lý
+    User findByEmail(String email);
 }
 

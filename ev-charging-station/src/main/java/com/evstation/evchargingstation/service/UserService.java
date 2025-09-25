@@ -15,24 +15,46 @@ public class UserService {
     private UserRepository userRepository;
 
     // Đã thay đổi bên repo, find user bên đây luôn nha!!!!
-    public boolean login(String username, String password) {
-//        User user = userRepository.findByUsername(username);
-//        if (user != null && user.getPassword().equals(password)) {
-//            return true;
-//        }
+    // login user
+    public boolean login(String email, String password) {
+        User user = userRepository.findByEmail(email);
+        if (user != null && user.getPassword().equals(password)) {
+            return true;
+        }
         return false;
     }
 
-    public User createUser(UserCreationRequest request) {
-        User user = new User();
+//    //Cai nay khong can den, vi da co ham register
+//    public User createUser(UserCreationRequest request) {
+//        User user = new User();
+//
+//        user.setEmail(request.getEmail());
+//        user.setPassword(request.getPassword());
+//        user.setPhone(request.getPhone());
+//        user.setFullName(request.getFullName());
+//        user.setRole(request.getRole());
+//
+//        return userRepository.save(user);
+//    }
 
+    // register user
+    public String register(UserCreationRequest request) {
+        if (!request.getPassword().equals(request.getConfirmPassword())) {
+            throw new RuntimeException("Passwords do not match");
+        }
+
+        User existingUser = userRepository.findByEmail(request.getEmail());
+        if (existingUser != null) {
+            throw new RuntimeException("Email already in use");
+        }
+
+        User user = new User();
         user.setEmail(request.getEmail());
         user.setPassword(request.getPassword());
-        user.setPhone(request.getPhone());
-        user.setFullName(request.getFullName());
-        user.setRole(request.getRole());
 
-        return userRepository.save(user);
+        userRepository.save(user);
+
+        return "Registration successful!";
     }
 
     public List<User> getUser() {
