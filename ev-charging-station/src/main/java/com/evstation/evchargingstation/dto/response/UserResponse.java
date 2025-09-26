@@ -1,4 +1,4 @@
-package com.evstation.evchargingstation.entity;
+package com.evstation.evchargingstation.dto.response;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -13,7 +13,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE) // toàn bộ field là private
-public class User {
+public class UserResponse {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     String userId;
@@ -29,4 +29,6 @@ public class User {
     String fullName;
 
     Set<String> roles;
+
+
 }

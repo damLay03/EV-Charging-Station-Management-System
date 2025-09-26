@@ -1,4 +1,4 @@
-package com.evstation.evchargingstation.dto;
+package com.evstation.evchargingstation.dto.request;
 
 public class UserLoginRequest {
     private String email;

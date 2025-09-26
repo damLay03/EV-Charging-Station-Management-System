@@ -1,7 +1,11 @@
 package com.evstation.evchargingstation.service;
 import com.evstation.evchargingstation.dto.request.UserCreationRequest;
 import com.evstation.evchargingstation.dto.request.UserUpdateRequest;
+import com.evstation.evchargingstation.dto.response.UserResponse;
 import com.evstation.evchargingstation.entity.User;
+import com.evstation.evchargingstation.exception.AppException;
+import com.evstation.evchargingstation.exception.ErrorCode;
+import com.evstation.evchargingstation.mapper.UserMapper;
 import com.evstation.evchargingstation.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -13,6 +17,8 @@ import java.util.function.Supplier;
 public class UserService {
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private UserMapper userMapper;
 
     // Đã thay đổi bên repo, find user bên đây luôn nha!!!!
     // login user
@@ -23,19 +29,6 @@ public class UserService {
         }
         return false;
     }
-
-//    //Cai nay khong can den, vi da co ham register
-//    public User createUser(UserCreationRequest request) {
-//        User user = new User();
-//
-//        user.setEmail(request.getEmail());
-//        user.setPassword(request.getPassword());
-//        user.setPhone(request.getPhone());
-//        user.setFullName(request.getFullName());
-//        user.setRole(request.getRole());
-//
-//        return userRepository.save(user);
-//    }
 
     // register user
     public String register(UserCreationRequest request) {
@@ -57,27 +50,48 @@ public class UserService {
         return "Registration successful!";
     }
 
-    public List<User> getUser() {
-        return userRepository.findAll();
-    }
+    public User createUser(UserCreationRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new AppException(ErrorCode.USER_EXISTED);
+        }
 
-    public User getUser(String id) {
-        return userRepository.findById(id).orElseThrow(new Supplier<RuntimeException>() {
-            @Override
-            public RuntimeException get() {
-                return new RuntimeException("User not found");
-            }
-        });
-    }
+        // Map user voi user request
+        User user = userMapper.toUser(request);
 
-    public User updateUser(String userId, UserUpdateRequest updateRequest) {
-        User user = new User();
-
-        user.setEmail(updateRequest.getEmail());
-        user.setPassword(updateRequest.getPassword());
-        user.setPhone(updateRequest.getPhone());
-        user.setFullName(updateRequest.getFullName());
+        // Vi co map roi nen khong can thiet phai set tung thu nhu ben duoi nua (doc xong roi co the xoa luon)
+//        user.setEmail(request.getEmail());
+//        user.setPassword(request.getPassword());
+//        user.setPhone(request.getPhone());
+//        user.setFullName(request.getFullName());
+//        user.setRole(request.getRole());
 
         return userRepository.save(user);
+    }
+
+    public UserResponse updateUser(String userId, UserUpdateRequest request) {
+        // Map user voi user request
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        //
+        userMapper.updateUser(user, request);
+
+        // Vi co map roi nen khong can thiet phai set tung thu nhu ben duoi nua (doc xong roi co the xoa luon)
+//        user.setEmail(updateRequest.getEmail());
+//        user.setPassword(updateRequest.getPassword());
+//        user.setPhone(updateRequest.getPhone());
+//        user.setFullName(updateRequest.getFullName());
+
+        return userMapper.toUserResponse(userRepository.save(user));
+    }
+
+    //moi cap nhat User -> UserResponse
+    public UserResponse getUser(String id) {
+        return userMapper.toUserResponse(userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id)));
+    }
+
+    public List<User> getUser() {
+        return userRepository.findAll();
     }
 }
