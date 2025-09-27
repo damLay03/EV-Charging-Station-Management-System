@@ -21,8 +21,9 @@ public class UserResponse {
     @Column(nullable = false, unique = true)
     String email;
 
-    @Column(nullable = false)
-    String password;
+    //ngoai doi kh ai tra password ve
+//    @Column(nullable = false)
+//    String password;
 
     String phone;
 

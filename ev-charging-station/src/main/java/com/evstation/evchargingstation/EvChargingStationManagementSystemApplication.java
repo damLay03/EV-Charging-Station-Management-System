@@ -9,5 +9,4 @@ public class EvChargingStationManagementSystemApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(EvChargingStationManagementSystemApplication.class, args);
 	}
-
 }
