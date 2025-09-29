@@ -5,7 +5,8 @@ public enum ErrorCode {
     USER_EXISTED(1001,"User Existed"),
     PASSWORD_NOT_MATCH(1002,"Password Not Match"),
     EMAIL_EXISTED(1003,"Email Existed"),
-    USER_NOT_FOUND(1004,"User Not Found");
+    USER_NOT_FOUND(1004,"User Not Found"),
+    UNAUTHENTICATED(1005,"Unauthenticated");
     ;
 
     private int code;
