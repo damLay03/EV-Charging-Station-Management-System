@@ -20,6 +20,7 @@ public class AuthenticationService {
     public boolean authenticate(AuthenticationRequest request) {
         var user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
         return passwordEncoder.matches(request.getPassword(), user.getPassword());
     }

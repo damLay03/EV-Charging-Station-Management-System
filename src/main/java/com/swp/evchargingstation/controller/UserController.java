@@ -1,6 +1,8 @@
 package com.swp.evchargingstation.controller;
 
+import com.swp.evchargingstation.dto.request.ApiResponse;
 import com.swp.evchargingstation.dto.request.UserCreationRequest;
+import com.swp.evchargingstation.dto.response.UserResponse;
 import com.swp.evchargingstation.entity.User;
 import com.swp.evchargingstation.service.UserService;
 import jakarta.validation.Valid;
@@ -19,7 +21,9 @@ public class UserController {
     UserService userService;
 
     @PostMapping
-    public User register(@RequestBody @Valid UserCreationRequest request) {
-        return userService.register(request);
+    ApiResponse<UserResponse> createUser(@RequestBody @Valid UserCreationRequest request) {
+        return ApiResponse.<UserResponse>builder()
+                .result(userService.register(request))
+                .build();
     }
 }

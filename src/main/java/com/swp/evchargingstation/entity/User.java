@@ -47,6 +47,7 @@ public class User {
         return this.firstName + " " + this.lastName;
     }
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     Role role;
 }

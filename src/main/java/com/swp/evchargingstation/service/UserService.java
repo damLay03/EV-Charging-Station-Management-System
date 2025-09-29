@@ -6,6 +6,7 @@ import com.swp.evchargingstation.entity.User;
 import com.swp.evchargingstation.enums.Role;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
+import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.swp.evchargingstation.mapper.UserMapper;
@@ -23,9 +24,14 @@ import java.util.List;
 public class UserService {
     UserRepository userRepository;
     UserMapper userMapper;
-    PasswordEncoder passwordEncoder;
+//    PasswordEncoder passwordEncoder;
+    @Bean
+    public PasswordEncoder passwordEncoder()
+    {
+        return new BCryptPasswordEncoder();
+    }
 
-    public User register(UserCreationRequest request) {
+    public UserResponse register(UserCreationRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
@@ -38,29 +44,36 @@ public class UserService {
         // ma hoa password
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        //set role mac dinh la DRIVER
-        user.setRole(Role.DRIVER);
+        //set role dua vao email
+        String email = request.getEmail().toLowerCase();
+        if (email.endsWith("@admin.ev.com")) {
+            user.setRole(Role.ADMIN);
+        } else if (email.endsWith("@staff.ev.com")) {
+            user.setRole(Role.STAFF);
+        } else {
+            user.setRole(Role.DRIVER);
+        }
         //luu user vao db
-        return userRepository.save(user);
-    }
-
-    public UserResponse updateUser(String userId, UserUpdateRequest request) {
-        // Map user voi user request
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
-        //cap nhat user
-        userMapper.updateUser(user, request);
-        //luu user vao db va tra ve UserResponse
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
-    //moi cap nhat User -> UserResponse
-    public UserResponse getUser(String id) {
-        return userMapper.toUserResponse(userRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND)));
-    }
-
-    public List<User> getUser() {
-        return userRepository.findAll();
-    }
+//    public UserResponse updateUser(String userId, UserUpdateRequest request) {
+//        // Map user voi user request
+//        User user = userRepository.findById(userId)
+//                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+//        //cap nhat user
+//        userMapper.updateUser(user, request);
+//        //luu user vao db va tra ve UserResponse
+//        return userMapper.toUserResponse(userRepository.save(user));
+//    }
+//
+//    //moi cap nhat User -> UserResponse
+//    public UserResponse getUser(String id) {
+//        return userMapper.toUserResponse(userRepository.findById(id)
+//                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND)));
+//    }
+//
+//    public List<User> getUser() {
+//        return userRepository.findAll();
+//    }
 }

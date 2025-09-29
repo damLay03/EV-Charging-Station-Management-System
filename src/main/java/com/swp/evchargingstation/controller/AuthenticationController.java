@@ -4,6 +4,7 @@ import com.swp.evchargingstation.dto.request.ApiResponse;
 import com.swp.evchargingstation.dto.request.AuthenticationRequest;
 import com.swp.evchargingstation.dto.response.AuthenticationResponse;
 import com.swp.evchargingstation.service.AuthenticationService;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthenticationController {
     AuthenticationService authenticationService;
 
