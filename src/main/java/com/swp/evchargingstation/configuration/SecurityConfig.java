@@ -26,10 +26,12 @@ import javax.crypto.spec.SecretKeySpec;
 
 @Configuration
 @EnableWebSecurity
-//@EnableMethodSecurity //khong xai
+@EnableMethodSecurity
 public class SecurityConfig {
+    //cai nao public cho user truy cap thi o day, con cua rieng admin khong duoc bo day
     private final String[] PUBLIC_ENDPOINTS = {
-            "/api/auth/login", "/api/auth/introspect"
+            "/api/auth/login", "/api/auth/introspect", "/api/users/register",
+            "/api/users"
     };
 
     @Value("${jwt.singerKey}")
@@ -42,11 +44,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)  //disable Spring Security, khong co dong nay auto loi 401
                 .authorizeHttpRequests(request ->
                         request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll() //ai cung truy cap duoc
-                                .requestMatchers(HttpMethod.GET, "/api/users") // chi admin moi truy cap dc
-                                .hasAuthority("ROLE_ADMIN")
-
-                                .anyRequest()
-                                .authenticated());
+                                .anyRequest().authenticated());
         httpSecurity.oauth2ResourceServer(oauth2 ->
                 oauth2.jwt(jwtConfigurer ->
                         jwtConfigurer.decoder(jwtDecoder())
@@ -60,6 +58,7 @@ public class SecurityConfig {
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
         grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
+        grantedAuthoritiesConverter.setAuthoritiesClaimName("scope"); // map "scope" claim to authorities
 
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
