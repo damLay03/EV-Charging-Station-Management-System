@@ -57,23 +57,23 @@ public class UserService {
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
-//    public UserResponse updateUser(String userId, UserUpdateRequest request) {
-//        // Map user voi user request
-//        User user = userRepository.findById(userId)
-//                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
-//        //cap nhat user
-//        userMapper.updateUser(user, request);
-//        //luu user vao db va tra ve UserResponse
-//        return userMapper.toUserResponse(userRepository.save(user));
-//    }
-//
-//    //moi cap nhat User -> UserResponse
-//    public UserResponse getUser(String id) {
-//        return userMapper.toUserResponse(userRepository.findById(id)
-//                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND)));
-//    }
-//
-//    public List<User> getUser() {
-//        return userRepository.findAll();
-//    }
+    public UserResponse updateUser(String userId, UserUpdateRequest request) {
+        // Map user voi user request
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        //cap nhat user
+        userMapper.updateUser(user, request);
+        //luu user vao db va tra ve UserResponse
+        return userMapper.toUserResponse(userRepository.save(user));
+    }
+
+    //moi cap nhat User -> UserResponse
+    public UserResponse getUser(String id) {
+        return userMapper.toUserResponse(userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND)));
+    }
+
+    public List<User> getUser() {
+        return userRepository.findAll();
+    }
 }
