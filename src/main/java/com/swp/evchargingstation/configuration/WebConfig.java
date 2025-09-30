@@ -1,4 +1,4 @@
-package com.swp.evchargingstation.config;
+package com.swp.evchargingstation.configuration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

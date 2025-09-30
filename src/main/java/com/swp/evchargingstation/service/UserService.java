@@ -6,6 +6,8 @@ import com.swp.evchargingstation.entity.User;
 import com.swp.evchargingstation.enums.Role;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,14 +24,17 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class UserService {
+    private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class);
     UserRepository userRepository;
     UserMapper userMapper;
-//    PasswordEncoder passwordEncoder;
-    @Bean
-    public PasswordEncoder passwordEncoder()
-    {
-        return new BCryptPasswordEncoder();
-    }
+    PasswordEncoder passwordEncoder; //nhan passwordEncoder tu SecurityConfig
+
+    //encoder đã tạo ở SecurityConfig, khong can dua vao thu vien nua
+//    @Bean
+//    public PasswordEncoder passwordEncoder()
+//    {
+//        return new BCryptPasswordEncoder();
+//    }
 
     public UserResponse register(UserCreationRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -41,8 +46,10 @@ public class UserService {
         }
         // Map user voi user request
         User user = userMapper.toUser(request);
+
+//        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10); BO LUON KHONG CAN NUA
+
         // ma hoa password
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         //set role dua vao email
         String email = request.getEmail().toLowerCase();
@@ -73,7 +80,10 @@ public class UserService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND)));
     }
 
-    public List<User> getUser() {
-        return userRepository.findAll();
+    //lay tat ca user
+    //moi cap nhat (User -> UserResponse, map tung User thanh UserResponse)
+    public List<UserResponse> getUsers() {
+        log.info("In method get Users");
+        return userRepository.findAll().stream().map(userMapper::toUserResponse).toList();
     }
 }

@@ -8,3 +8,6 @@ spring:
     url: jdbc:mysql://root:NhVjxGFWNcSxFtqpTnDYScvjztjaVxpk@switchyard.proxy.rlwy.net:32406/railway
     username: root
     password: NhVjxGFWNcSxFtqpTnDYScvjztjaVxpk
+
+jwt:
+  singerKey: supersecretkey123

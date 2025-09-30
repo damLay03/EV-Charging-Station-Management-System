@@ -29,11 +29,12 @@ import java.util.StringJoiner;
 @RequiredArgsConstructor
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
 public class AuthenticationService {
-    private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class);
+    private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class); //private va final boi @FieldDefaults
     UserRepository userRepository;
     @NonFinal
     protected static final String SIGN_KEY = "0a58c8b134bc3d3e7a853dc8a49bcd3895e02c20d39d29d2d976e87300dc23fa";
 
+    //update lai phuong thuc authenticate (SecurityConfig)
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         var user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -77,7 +78,7 @@ public class AuthenticationService {
             jwsObject.sign(new MACSigner(SIGN_KEY.getBytes()));
             return jwsObject.serialize();
         } catch (JOSEException e) {
-            log.error("Canot sign the token", e);
+            log.error("Cannot sign the token", e);
             throw new RuntimeException(e);
         }
     }
