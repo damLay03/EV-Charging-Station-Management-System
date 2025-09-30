@@ -10,4 +10,4 @@ spring:
     password: NhVjxGFWNcSxFtqpTnDYScvjztjaVxpk
 
 jwt:
-  singerKey: supersecretkey123
+  singerKey: 0a58c8b134bc3d3e7a853dc8a49bcd3895e02c20d39d29d2d976e87300dc23fa

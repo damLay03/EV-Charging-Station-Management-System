@@ -1,5 +1,6 @@
 package com.swp.evchargingstation.configuration;
 
+import com.swp.evchargingstation.enums.Role;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -28,7 +29,7 @@ import javax.crypto.spec.SecretKeySpec;
 //@EnableMethodSecurity //khong xai
 public class SecurityConfig {
     private final String[] PUBLIC_ENDPOINTS = {
-            "/api/users", "/api/auth/login", "/api/auth/introspect"
+            "/api/auth/login", "/api/auth/introspect"
     };
 
     @Value("${jwt.singerKey}")
@@ -42,15 +43,27 @@ public class SecurityConfig {
                 .authorizeHttpRequests(request ->
                         request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll() //ai cung truy cap duoc
                                 .requestMatchers(HttpMethod.GET, "/api/users") // chi admin moi truy cap dc
-                                .hasAuthority("SCOPE_ADMIN")
+                                .hasAuthority("ROLE_ADMIN")
+
                                 .anyRequest()
                                 .authenticated());
-
         httpSecurity.oauth2ResourceServer(oauth2 ->
-                oauth2.jwt(jwtConfigurer -> jwtConfigurer.decoder(jwtDecoder()))
+                oauth2.jwt(jwtConfigurer ->
+                        jwtConfigurer.decoder(jwtDecoder())
+                        .jwtAuthenticationConverter(jwtAuthenticationConverter()))
         );
 
         return httpSecurity.build();
+    }
+
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+        grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
+
+        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
+        return jwtAuthenticationConverter;
     }
 
     @Bean

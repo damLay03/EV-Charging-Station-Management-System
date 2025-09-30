@@ -8,6 +8,7 @@ import com.swp.evchargingstation.entity.User;
 import lombok.experimental.NonFinal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -31,8 +32,14 @@ import java.util.StringJoiner;
 public class AuthenticationService {
     private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class); //private va final boi @FieldDefaults
     UserRepository userRepository;
+
+    //use YAML config instead
+    // protected static final String SIGN_KEY = "0a58c8b134bc3d3e7a853dc8a49bcd3895e02c20d39d29d2d976e87300dc23fa";
+
+    //using YAML configuration
+    @Value("${jwt.singerKey}")
     @NonFinal
-    protected static final String SIGN_KEY = "0a58c8b134bc3d3e7a853dc8a49bcd3895e02c20d39d29d2d976e87300dc23fa";
+    private String singerKey;
 
     //update lai phuong thuc authenticate (SecurityConfig)
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
@@ -75,7 +82,9 @@ public class AuthenticationService {
 
         //ki token bang key
         try {
-            jwsObject.sign(new MACSigner(SIGN_KEY.getBytes()));
+            //jwsObject.sign(new MACSigner(SIGN_KEY.getBytes())); //khong xai sign key (code cung ngat)
+            //use singerKey from YAML
+            jwsObject.sign(new MACSigner(singerKey.getBytes()));
             return jwsObject.serialize();
         } catch (JOSEException e) {
             log.error("Cannot sign the token", e);
