@@ -4,6 +4,7 @@ import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.swp.evchargingstation.dto.response.AuthenticationResponse;
+import com.swp.evchargingstation.entity.User;
 import lombok.experimental.NonFinal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +20,10 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.StringJoiner;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +45,7 @@ public class AuthenticationService {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        var token = generateToken(request.getEmail());
+        var token = generateToken(user);
 
         return AuthenticationResponse.builder()
                 .token(token)
@@ -49,14 +53,17 @@ public class AuthenticationService {
                 .build();
     }
 
-    private String generateToken(String email) {
+    private String generateToken(User user) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .subject(email)
+                .subject(user.getEmail())
                 .issuer("ev-charging-station")
                 .issueTime(new Date())
-                .expirationTime(new Date(new Date().getTime() + 60 * 60 * 1000)) // 1 hour expiration
+                .expirationTime(new Date(//new Date().getTime() + 60 * 60 * 1000)) // 1 hour expiration
+                        Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli()
+                ))
+                .claim("scope", buildScope(user)) //scope chua thong tin ve vai tro cua user
                 .build();
         Payload payload = new Payload(claimsSet.toJSONObject());
         //Cai nay nam trong thu vien nimbus-jose-jwt, de tao va kiem tra JWT
@@ -73,5 +80,14 @@ public class AuthenticationService {
             log.error("Canot sign the token", e);
             throw new RuntimeException(e);
         }
+    }
+
+    //lay thong tin role cua user de dua vao scope
+    private String buildScope(User user){
+        StringJoiner stringJoiner = new StringJoiner(" "); //scope quy dinh phan cach bang dau cach
+        if (user.getRole() != null) {
+            stringJoiner.add(user.getRole().toString());
+        }
+        return stringJoiner.toString();
     }
 }
