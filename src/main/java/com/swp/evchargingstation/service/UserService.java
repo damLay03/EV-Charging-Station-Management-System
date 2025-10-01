@@ -6,7 +6,13 @@ import com.swp.evchargingstation.entity.User;
 import com.swp.evchargingstation.enums.Role;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
+import org.springframework.security.access.prepost.PostAuthorize;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.swp.evchargingstation.mapper.UserMapper;
@@ -17,19 +23,24 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
 public class UserService {
+//    private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class); //da co @Slf4j, khong can nua
     UserRepository userRepository;
     UserMapper userMapper;
-//    PasswordEncoder passwordEncoder;
-    @Bean
-    public PasswordEncoder passwordEncoder()
-    {
-        return new BCryptPasswordEncoder();
-    }
+    PasswordEncoder passwordEncoder; //nhan passwordEncoder tu SecurityConfig
+
+    //encoder đã tạo ở SecurityConfig, khong can dua vao thu vien nua
+//    @Bean
+//    public PasswordEncoder passwordEncoder()
+//    {
+//        return new BCryptPasswordEncoder();
+//    }
 
     public UserResponse register(UserCreationRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -41,8 +52,10 @@ public class UserService {
         }
         // Map user voi user request
         User user = userMapper.toUser(request);
+
+//        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10); BO LUON KHONG CAN NUA
+
         // ma hoa password
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         //set role dua vao email
         String email = request.getEmail().toLowerCase();
@@ -57,6 +70,16 @@ public class UserService {
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
+    public UserResponse getMyInfo() {
+        var context = SecurityContextHolder.getContext();
+        String name = context.getAuthentication().getName();
+
+        User user = userRepository.findByEmail(name)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        return userMapper.toUserResponse(user);
+    }
+
     public UserResponse updateUser(String userId, UserUpdateRequest request) {
         // Map user voi user request
         User user = userRepository.findById(userId)
@@ -67,13 +90,20 @@ public class UserService {
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
-    //moi cap nhat User -> UserResponse
-    public UserResponse getUser(String id) {
-        return userMapper.toUserResponse(userRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND)));
+    //lay tat ca user
+    //moi cap nhat (User -> UserResponse, map tung User thanh UserResponse)
+    @PreAuthorize("hasRole('ADMIN')") //chi co ADMIN moi truy cap duoc
+    public List<UserResponse> getUsers() {
+        log.info("In method get Users");
+        return userRepository.findAll().stream().map(userMapper::toUserResponse).toList();
     }
 
-    public List<User> getUser() {
-        return userRepository.findAll();
+    //lay user theo id
+    //moi cap nhat User -> UserResponse
+    @PostAuthorize("returnObject.email == authentication.name or hasAuthority('ROLE_ADMIN')") //user chi xem duoc thong tin cua minh, hoac admin xem duoc tat ca
+    public UserResponse getUser(String id) {
+        log.info("In method get user by id");
+        return userMapper.toUserResponse(userRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND)));
     }
 }

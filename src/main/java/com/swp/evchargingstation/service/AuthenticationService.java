@@ -4,9 +4,12 @@ import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.swp.evchargingstation.dto.response.AuthenticationResponse;
+import com.swp.evchargingstation.entity.User;
 import lombok.experimental.NonFinal;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -19,17 +22,28 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.StringJoiner;
 
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
 public class AuthenticationService {
-    private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class);
+//    private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class); //da co @Slf4j, khong can nua
     UserRepository userRepository;
-    @NonFinal
-    protected static final String SIGN_KEY = "0a58c8b134bc3d3e7a853dc8a49bcd3895e02c20d39d29d2d976e87300dc23fa";
 
+    //use YAML config instead
+    // protected static final String SIGN_KEY = "0a58c8b134bc3d3e7a853dc8a49bcd3895e02c20d39d29d2d976e87300dc23fa";
+
+    //using YAML configuration
+    @Value("${jwt.singerKey}")
+    @NonFinal
+    private String singerKey;
+
+    //update lai phuong thuc authenticate (SecurityConfig)
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         var user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -41,7 +55,7 @@ public class AuthenticationService {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        var token = generateToken(request.getEmail());
+        var token = generateToken(user);
 
         return AuthenticationResponse.builder()
                 .token(token)
@@ -49,14 +63,17 @@ public class AuthenticationService {
                 .build();
     }
 
-    private String generateToken(String email) {
+    private String generateToken(User user) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .subject(email)
+                .subject(user.getEmail())
                 .issuer("ev-charging-station")
                 .issueTime(new Date())
-                .expirationTime(new Date(new Date().getTime() + 60 * 60 * 1000)) // 1 hour expiration
+                .expirationTime(new Date(//new Date().getTime() + 60 * 60 * 1000)) // 1 hour expiration
+                        Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli()
+                ))
+                .claim("scope", buildScope(user)) //scope chua thong tin ve vai tro cua user
                 .build();
         Payload payload = new Payload(claimsSet.toJSONObject());
         //Cai nay nam trong thu vien nimbus-jose-jwt, de tao va kiem tra JWT
@@ -67,11 +84,22 @@ public class AuthenticationService {
 
         //ki token bang key
         try {
-            jwsObject.sign(new MACSigner(SIGN_KEY.getBytes()));
+            //jwsObject.sign(new MACSigner(SIGN_KEY.getBytes())); //khong xai sign key (code cung ngat)
+            //use singerKey from YAML
+            jwsObject.sign(new MACSigner(singerKey.getBytes()));
             return jwsObject.serialize();
         } catch (JOSEException e) {
-            log.error("Canot sign the token", e);
+            log.error("Cannot sign the token", e);
             throw new RuntimeException(e);
         }
+    }
+
+    //lay thong tin role cua user de dua vao scope
+    private String buildScope(User user){
+        StringJoiner stringJoiner = new StringJoiner(" "); //scope quy dinh phan cach bang dau cach
+        if (user.getRole() != null) {
+            stringJoiner.add(user.getRole().toString());
+        }
+        return stringJoiner.toString();
     }
 }
