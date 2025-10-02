@@ -28,10 +28,22 @@ import javax.crypto.spec.SecretKeySpec;
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
-    //cai nao public cho user truy cap thi o day, con cua rieng admin khong duoc bo day
-    private final String[] PUBLIC_ENDPOINTS = {
-            "/api/auth/login", "/api/auth/introspect", "/api/users/register",
-            "/api/users"
+    // Endpoint công khai (cần xác định lại sau khi phân quyền chuẩn). Các endpoint có @PreAuthorize vẫn sẽ bị chặn ở tầng method.
+    private static final String[] PUBLIC_ENDPOINTS = {
+            // Auth
+            "/api/auth/login",
+            // User (register + các GET user hiện chưa có @PreAuthorize)
+            "/api/users/register",
+            "/api/users",               // GET list users
+            "/api/users/*",             // GET user by id
+            "/api/users/myInfo",        // GET current user info
+            // Station (đang có @PreAuthorize ở controller => vẫn cần token nếu giữ annotation)
+            "/api/stations",
+            "/api/stations/*",
+            "/api/stations/**",
+            // Revenue (cũng có @PreAuthorize => method-level vẫn check)
+            "/api/revenue/*",
+            "/api/revenue/**"
     };
 
     @Value("${jwt.singerKey}")

@@ -80,14 +80,15 @@ public class UserService {
         return userMapper.toUserResponse(user);
     }
 
-    public UserResponse updateUser(String userId, UserUpdateRequest request) {
-        // Map user voi user request
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
-        //cap nhat user
-        userMapper.updateUser(user, request);
-        //luu user vao db va tra ve UserResponse
-        return userMapper.toUserResponse(userRepository.save(user));
+    // SELF UPDATE SAU KHI DANG KY: user bo sung cac thong tin bat buoc (phone, dateOfBirth, gender, firstName, lastName)
+    // Khong cho phep doi email, password, role.
+    public UserResponse updateMyInfo(UserUpdateRequest request) {
+        var context = SecurityContextHolder.getContext();
+        String principalEmail = context.getAuthentication().getName();
+        User currentUser = userRepository.findByEmail(principalEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        userMapper.updateUser(currentUser, request); // chi update field duoc phep
+        return userMapper.toUserResponse(userRepository.save(currentUser));
     }
 
     //lay tat ca user
@@ -100,7 +101,7 @@ public class UserService {
 
     //lay user theo id
     //moi cap nhat User -> UserResponse
-    @PostAuthorize("returnObject.email == authentication.name or hasAuthority('ROLE_ADMIN')") //user chi xem duoc thong tin cua minh, hoac admin xem duoc tat ca
+    @PreAuthorize("returnObject.email == authentication.name or hasAuthority('ROLE_ADMIN')") //user chi xem duoc thong tin cua minh, hoac admin xem duoc tat ca
     public UserResponse getUser(String id) {
         log.info("In method get user by id");
         return userMapper.toUserResponse(userRepository.findById(id)
