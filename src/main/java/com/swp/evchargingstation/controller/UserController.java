@@ -63,4 +63,11 @@ public class UserController {
                 .result(userService.updateMyInfo(request))
                 .build();
     }
+
+    // ADMIN delete user by id (hard delete). Trả về code mặc định 1000 nếu thành công.
+    @DeleteMapping("/{userId}")
+    public ApiResponse<Void> deleteUser(@PathVariable("userId") String userId) {
+        userService.deleteUser(userId);
+        return ApiResponse.<Void>builder().message("Deleted").build();
+    }
 }
