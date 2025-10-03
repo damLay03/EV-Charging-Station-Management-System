@@ -3,6 +3,7 @@ package com.swp.evchargingstation.controller;
 import com.swp.evchargingstation.dto.request.ApiResponse;
 import com.swp.evchargingstation.dto.response.StationOverviewResponse;
 import com.swp.evchargingstation.dto.response.StationResponse;
+import com.swp.evchargingstation.dto.response.StaffSummaryResponse;
 import com.swp.evchargingstation.enums.StationStatus;
 import com.swp.evchargingstation.service.StationService;
 import lombok.AccessLevel;
@@ -81,6 +82,42 @@ public class StationController {
     public ApiResponse<StationResponse> toggle(@PathVariable String stationId) {
         return ApiResponse.<StationResponse>builder()
                 .result(stationService.toggle(stationId))
+                .build();
+    }
+
+    // ========== STAFF ASSIGNMENT ==========
+    // NOTE: Lấy danh sách nhân viên đang thuộc về một trạm
+    @GetMapping("/{stationId}/staff")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<List<StaffSummaryResponse>> getStaffOfStation(@PathVariable String stationId) {
+        return ApiResponse.<List<StaffSummaryResponse>>builder()
+                .result(stationService.getStaffOfStation(stationId))
+                .build();
+    }
+
+    // NOTE: Gán một nhân viên (staffId = userId của staff) vào trạm
+    @PostMapping("/{stationId}/staff/{staffId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<StaffSummaryResponse> assignStaff(@PathVariable String stationId, @PathVariable String staffId) {
+        return ApiResponse.<StaffSummaryResponse>builder()
+                .result(stationService.assignStaff(stationId, staffId))
+                .build();
+    }
+
+    // NOTE: Bỏ gán nhân viên khỏi trạm
+    @DeleteMapping("/{stationId}/staff/{staffId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> unassignStaff(@PathVariable String stationId, @PathVariable String staffId) {
+        stationService.unassignStaff(stationId, staffId);
+        return ApiResponse.<Void>builder().message("Unassigned").build();
+    }
+
+    // NOTE: Danh sách nhân viên chưa được gán vào bất kỳ trạm nào
+    @GetMapping("/staff/unassigned")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<List<StaffSummaryResponse>> getUnassignedStaff() {
+        return ApiResponse.<List<StaffSummaryResponse>>builder()
+                .result(stationService.getUnassignedStaff())
                 .build();
     }
 }

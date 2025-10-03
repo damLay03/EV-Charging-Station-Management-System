@@ -1,12 +1,16 @@
 package com.swp.evchargingstation.service;
 
 import com.swp.evchargingstation.dto.response.StationResponse;
+import com.swp.evchargingstation.dto.response.StaffSummaryResponse;
 import com.swp.evchargingstation.entity.Station;
+import com.swp.evchargingstation.entity.Staff;
 import com.swp.evchargingstation.enums.StationStatus;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
 import com.swp.evchargingstation.mapper.StationMapper;
+import com.swp.evchargingstation.mapper.StaffMapper;
 import com.swp.evchargingstation.repository.StationRepository;
+import com.swp.evchargingstation.repository.StaffRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -23,6 +27,9 @@ import java.util.List;
 public class StationService {
     StationRepository stationRepository;
     StationMapper stationMapper;
+    // NOTE: Thêm repository + mapper cho chức năng phân công nhân viên
+    StaffRepository staffRepository;
+    StaffMapper staffMapper;
 
     /**
      * Lấy danh sách trạm.
@@ -123,6 +130,67 @@ public class StationService {
         log.info("Fetching overview list of all stations");
         return stationRepository.findAll().stream()
                 .map(stationMapper::toStationOverviewResponse)
+                .toList();
+    }
+
+    /**
+     * Danh sách nhân viên đã gán cho một trạm.
+     */
+    @Transactional(readOnly = true)
+    public List<StaffSummaryResponse> getStaffOfStation(String stationId) {
+        // đảm bảo trạm tồn tại
+        stationRepository.findById(stationId)
+                .orElseThrow(() -> new AppException(ErrorCode.STATION_NOT_FOUND));
+        return staffRepository.findByStation_StationId(stationId).stream()
+                .map(staffMapper::toStaffSummaryResponse)
+                .toList();
+    }
+
+    /**
+     * Gán một nhân viên (staff) vào trạm.
+     * Rule: nếu staff đã thuộc 1 trạm khác -> STAFF_ALREADY_ASSIGNED (không tự động chuyển trạm để tránh nhầm lẫn).
+     */
+    @Transactional
+    public StaffSummaryResponse assignStaff(String stationId, String staffId) {
+        Station station = stationRepository.findById(stationId)
+                .orElseThrow(() -> new AppException(ErrorCode.STATION_NOT_FOUND));
+        Staff staff = staffRepository.findById(staffId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+        if (staff.getStation() != null) {
+            if (stationId.equals(staff.getStation().getStationId())) {
+                throw new AppException(ErrorCode.STAFF_ALREADY_ASSIGNED); // đã gán đúng trạm rồi
+            }
+            // đang gán trạm khác -> không cho (business hiện tại)
+            throw new AppException(ErrorCode.STAFF_ALREADY_ASSIGNED);
+        }
+        staff.setStation(station);
+        Staff saved = staffRepository.save(staff);
+        return staffMapper.toStaffSummaryResponse(saved);
+    }
+
+    /**
+     * Bỏ gán nhân viên khỏi trạm.
+     */
+    @Transactional
+    public void unassignStaff(String stationId, String staffId) {
+        stationRepository.findById(stationId)
+                .orElseThrow(() -> new AppException(ErrorCode.STATION_NOT_FOUND));
+        Staff staff = staffRepository.findById(staffId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+        if (staff.getStation() == null || !stationId.equals(staff.getStation().getStationId())) {
+            throw new AppException(ErrorCode.STAFF_NOT_IN_STATION);
+        }
+        staff.setStation(null);
+        staffRepository.save(staff);
+    }
+
+    /**
+     * Danh sách nhân viên chưa được gán vào trạm nào.
+     */
+    @Transactional(readOnly = true)
+    public List<StaffSummaryResponse> getUnassignedStaff() {
+        return staffRepository.findByStationIsNull().stream()
+                .map(staffMapper::toStaffSummaryResponse)
                 .toList();
     }
 }

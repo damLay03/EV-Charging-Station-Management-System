@@ -11,7 +11,11 @@ public enum ErrorCode {
     STATION_NOT_FOUND(2001, "Station Not Found"), // added for station module
     PLAN_NOT_FOUND(3001, "Plan Not Found"),
     PLAN_NAME_EXISTED(3002, "Plan Name Existed"),
-    INVALID_PLAN_CONFIG(3003, "Invalid Plan Configuration")
+    INVALID_PLAN_CONFIG(3003, "Invalid Plan Configuration"),
+    // --- Staff assignment related ---
+    STAFF_NOT_FOUND(4001, "Staff Not Found"),
+    STAFF_ALREADY_ASSIGNED(4002, "Staff Already Assigned"),
+    STAFF_NOT_IN_STATION(4003, "Staff Not In This Station")
     ;
 
     private int code;
