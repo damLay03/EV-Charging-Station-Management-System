@@ -91,6 +91,12 @@ public class UserService {
         return userMapper.toUserResponse(userRepository.save(currentUser));
     }
 
+    // ALIAS (theo yeu cau doi ten updateUser). KHONG thay doi logic: van chi cho phep user tu update ho so cua minh
+    // NOTE gender mapping moi: true = female, false = male (giu nguyen field boolean, UI tu dien giai)
+    public UserResponse updateUser(UserUpdateRequest request) {
+        return updateMyInfo(request); // delegate
+    }
+
     //lay tat ca user
     //moi cap nhat (User -> UserResponse, map tung User thanh UserResponse)
     @PreAuthorize("hasRole('ADMIN')") //chi co ADMIN moi truy cap duoc

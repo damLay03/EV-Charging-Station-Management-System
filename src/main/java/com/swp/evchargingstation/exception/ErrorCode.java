@@ -8,7 +8,10 @@ public enum ErrorCode {
     USER_NOT_FOUND(1004,"User Not Found"),
     UNAUTHENTICATED(1005,"Unauthenticated"),
     VALIDATION_FAILED(1006, "Validation Failed"), // generic validation error
-    STATION_NOT_FOUND(2001, "Station Not Found") // added for station module
+    STATION_NOT_FOUND(2001, "Station Not Found"), // added for station module
+    PLAN_NOT_FOUND(3001, "Plan Not Found"),
+    PLAN_NAME_EXISTED(3002, "Plan Name Existed"),
+    INVALID_PLAN_CONFIG(3003, "Invalid Plan Configuration")
     ;
 
     private int code;
