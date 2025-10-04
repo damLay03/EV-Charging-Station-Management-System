@@ -1,5 +1,6 @@
 package com.swp.evchargingstation.configuration;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,10 +27,14 @@ import java.util.Arrays;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final CustomJwtDecoder customJwtDecoder;
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/auth/login",
+            "/api/auth/logout",
             "/api/users/register"
     };
 
@@ -53,7 +58,7 @@ public class SecurityConfig {
                 .oauth2ResourceServer(oauth2 ->
                         oauth2.jwt(jwtConfigurer ->
                                 jwtConfigurer
-                                        .decoder(jwtDecoder())
+                                        .decoder(customJwtDecoder)
                                         .jwtAuthenticationConverter(jwtAuthenticationConverter())
                         )
                 );
@@ -100,15 +105,6 @@ public class SecurityConfig {
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
         return jwtAuthenticationConverter;
-    }
-
-    @Bean
-    JwtDecoder jwtDecoder() {
-        SecretKeySpec secretKeySpec = new SecretKeySpec(singerKey.getBytes(), "HS512");
-        return NimbusJwtDecoder
-                .withSecretKey(secretKeySpec)
-                .macAlgorithm(MacAlgorithm.HS512)
-                .build();
     }
 
     @Bean

@@ -2,6 +2,7 @@ package com.swp.evchargingstation.controller;
 
 import com.swp.evchargingstation.dto.request.ApiResponse;
 import com.swp.evchargingstation.dto.request.AuthenticationRequest;
+import com.swp.evchargingstation.dto.request.LogoutRequest;
 import com.swp.evchargingstation.dto.response.AuthenticationResponse;
 import com.swp.evchargingstation.service.AuthenticationService;
 import lombok.AccessLevel;
@@ -22,6 +23,14 @@ public class AuthenticationController {
         var result = authenticationService.authenticate(request);
         return ApiResponse.<AuthenticationResponse>builder()
                 .result(result)
+                .build();
+    }
+
+    @PostMapping("/logout")
+    ApiResponse<Void> logout(@RequestBody LogoutRequest request) {
+        authenticationService.logout(request);
+        return ApiResponse.<Void>builder()
+                .message("Logged out successfully")
                 .build();
     }
 }
