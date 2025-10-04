@@ -18,4 +18,7 @@ public interface ChargingPointRepository extends JpaRepository<ChargingPoint, St
     Integer countByStationIdAndStatus(@Param("stationId") String stationId, @Param("status") ChargingPointStatus status);
 
     List<ChargingPoint> findByStation_StationId(String stationId);
+
+    // Đếm số lượng charging point theo status
+    long countByStatus(ChargingPointStatus status);
 }

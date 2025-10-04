@@ -5,6 +5,8 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.GenericGenerator;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @Setter
@@ -20,6 +22,9 @@ public class Driver {
 
     @Column(name = "address")
     String address;
+
+    @Column(name = "join_date")
+    LocalDateTime joinDate; // Mốc thời gian đăng ký
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

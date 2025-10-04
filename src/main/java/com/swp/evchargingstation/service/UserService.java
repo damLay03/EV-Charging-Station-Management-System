@@ -19,6 +19,8 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -104,9 +106,10 @@ public class UserService {
                         .userId(user.getUserId())
                         .user(user)
                         .address(null) // Có thể để null, user sẽ cập nhật sau
+                        .joinDate(LocalDateTime.now()) // Lưu mốc thời gian đăng ký
                         .build();
                 driverRepository.save(driver);
-                log.info("Driver record created for user ID: {}", user.getUserId());
+                log.info("Driver record created for user ID: {} at {}", user.getUserId(), driver.getJoinDate());
                 break;
 
             case STAFF:
@@ -144,12 +147,13 @@ public class UserService {
         log.info("In method get Drivers For Admin");
         return driverRepository.findAllWithUser() // Lay truc tiep tu DriverRepository
                 .stream()
-                .map(driver -> mapToAdminUserResponse(driver.getUser()))
+                .map(driver -> mapToAdminUserResponse(driver))
                 .collect(Collectors.toList());
     }
 
-    // Helper method: map User sang AdminUserResponse
-    private AdminUserResponse mapToAdminUserResponse(User user) {
+    // Helper method: map Driver sang AdminUserResponse
+    private AdminUserResponse mapToAdminUserResponse(Driver driver) {
+        User user = driver.getUser();
         String planName = null;
         Integer sessionCount = 0;
         Double totalSpent = 0.0;
@@ -173,11 +177,17 @@ public class UserService {
             totalSpent = 0.0;
         }
 
+        // Lay joinDate tu Driver entity - chuyen LocalDateTime sang LocalDate
+        LocalDate joinDate = null;
+        if (driver.getJoinDate() != null) {
+            joinDate = driver.getJoinDate().toLocalDate();
+        }
+
         return AdminUserResponse.builder()
                 .fullName(user.getFullName())
                 .email(user.getEmail())
                 .phone(user.getPhone())
-                .joinDate(null) // Chua co field joinDate trong User entity, set null
+                .joinDate(joinDate) // Lay tu Driver entity
                 .planName(planName)
                 .sessionCount(sessionCount)
                 .totalSpent(totalSpent)
