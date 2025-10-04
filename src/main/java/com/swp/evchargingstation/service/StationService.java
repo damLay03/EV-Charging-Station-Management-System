@@ -227,9 +227,9 @@ public class StationService {
 
         // Đếm số lượng charging points theo trạng thái - GIỮ NGUYÊN NULL nếu không có
         Integer totalPoints = chargingPointRepository.countByStationId(stationId);
-        Integer availablePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.ACTIVE);
-        Integer inUsePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.OFFLINE);
-        Integer offlinePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.MAINTENANCE);
+        Integer availablePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.AVAILABLE);
+        Integer inUsePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.OCCUPIED);
+        Integer offlinePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.OUT_OF_SERVICE);
         Integer maintenancePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.MAINTENANCE);
 
         // Tính activePoints - CHỈ tính nếu CÓ dữ liệu, không tự chế

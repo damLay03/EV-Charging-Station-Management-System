@@ -1,7 +1,8 @@
 package com.swp.evchargingstation.enums;
 
 public enum ChargingPointStatus {
-    ACTIVE,
-    OFFLINE,
+    AVAILABLE,
+    OCCUPIED,
+    OUT_OF_SERVICE,
     MAINTENANCE
 }
