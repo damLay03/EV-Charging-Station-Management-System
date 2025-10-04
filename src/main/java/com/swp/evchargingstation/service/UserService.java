@@ -3,20 +3,16 @@ import com.swp.evchargingstation.dto.request.UserCreationRequest;
 import com.swp.evchargingstation.dto.request.UserUpdateRequest;
 import com.swp.evchargingstation.dto.response.AdminUserResponse;
 import com.swp.evchargingstation.dto.response.UserResponse;
-import com.swp.evchargingstation.entity.Subscription;
-import com.swp.evchargingstation.entity.User;
+import com.swp.evchargingstation.entity.*;
 import com.swp.evchargingstation.enums.Role;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
-import com.swp.evchargingstation.repository.ChargingSessionRepository;
-import com.swp.evchargingstation.repository.DriverRepository;
-import com.swp.evchargingstation.repository.SubscriptionRepository;
+import com.swp.evchargingstation.repository.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.swp.evchargingstation.mapper.UserMapper;
-import com.swp.evchargingstation.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -36,9 +32,12 @@ public class UserService {
     UserRepository userRepository;
     UserMapper userMapper;
     PasswordEncoder passwordEncoder; //nhan passwordEncoder tu SecurityConfig
-    DriverRepository driverRepository;
     SubscriptionRepository subscriptionRepository;
     ChargingSessionRepository chargingSessionRepository;
+
+    DriverRepository driverRepository;
+    StaffRepository staffRepository;
+    AdminRepository adminRepository;
 
     //encoder đã tạo ở SecurityConfig, khong can dua vao thu vien nua
 //    @Bean
@@ -53,26 +52,18 @@ public class UserService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
-
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new AppException(ErrorCode.PASSWORD_NOT_MATCH);
         }
         // Map user voi user request
         User user = userMapper.toUser(request);
-
         //PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10); BO LUON KHONG CAN NUA
-
         // ma hoa password
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         //set role dua vao email
         String email = request.getEmail().toLowerCase();
-        if (email.endsWith("@admin.ev.com")) {
-            user.setRole(Role.ADMIN);
-        } else if (email.endsWith("@staff.ev.com")) {
-            user.setRole(Role.STAFF);
-        } else {
-            user.setRole(Role.DRIVER);
-        }
+        user.setRole(Role.DRIVER);
+        createRoleSpecificRecord(user);
         //luu user vao db
         return userMapper.toUserResponse(userRepository.save(user));
     }
@@ -104,6 +95,43 @@ public class UserService {
     // NOTE gender mapping moi: true = female, false = male (giu nguyen field boolean, UI tu dien giai)
     public UserResponse updateUser(UserUpdateRequest request) {
         return updateMyInfo(request); // delegate
+    }
+
+    private void createRoleSpecificRecord(User user) {
+        switch (user.getRole()) {
+            case DRIVER:
+                Driver driver = Driver.builder()
+                        .userId(user.getUserId())
+                        .user(user)
+                        .address(null) // Có thể để null, user sẽ cập nhật sau
+                        .build();
+                driverRepository.save(driver);
+                log.info("Driver record created for user ID: {}", user.getUserId());
+                break;
+
+            case STAFF:
+                Staff staff = Staff.builder()
+                        .userId(user.getUserId())
+                        .user(user)
+                        .employeeNo(null) // Có thể để null hoặc generate mã nhân viên
+                        .position(null) // Có thể để null, admin sẽ cập nhật sau
+                        .build();
+                staffRepository.save(staff);
+                log.info("Staff record created for user ID: {}", user.getUserId());
+                break;
+
+            case ADMIN:
+                Admin admin = Admin.builder()
+                        .userId(user.getUserId())
+                        .user(user)
+                        .build();
+                adminRepository.save(admin);
+                log.info("Admin record created for user ID: {}", user.getUserId());
+                break;
+
+            default:
+                log.warn("Unknown role: {}", user.getRole());
+        }
     }
 
 //=====================================================STAFF============================================================
