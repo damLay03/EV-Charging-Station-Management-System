@@ -2,10 +2,16 @@ package com.swp.evchargingstation.service;
 import com.swp.evchargingstation.dto.request.UserCreationRequest;
 import com.swp.evchargingstation.dto.request.UserUpdateRequest;
 import com.swp.evchargingstation.dto.response.UserResponse;
+import com.swp.evchargingstation.entity.Admin;
+import com.swp.evchargingstation.entity.Driver;
+import com.swp.evchargingstation.entity.Staff;
 import com.swp.evchargingstation.entity.User;
 import com.swp.evchargingstation.enums.Role;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
+import com.swp.evchargingstation.repository.AdminRepository;
+import com.swp.evchargingstation.repository.DriverRepository;
+import com.swp.evchargingstation.repository.StaffRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +42,11 @@ public class UserService {
     UserMapper userMapper;
     PasswordEncoder passwordEncoder; //nhan passwordEncoder tu SecurityConfig
 
+    // Thêm các repository cho Driver, Staff, Admin
+    DriverRepository driverRepository;
+    StaffRepository staffRepository;
+    AdminRepository adminRepository;
+
     //encoder đã tạo ở SecurityConfig, khong can dua vao thu vien nua
 //    @Bean
 //    public PasswordEncoder passwordEncoder()
@@ -60,15 +71,48 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         //set role dua vao email
         String email = request.getEmail().toLowerCase();
-        if (email.endsWith("@admin.ev.com")) {
-            user.setRole(Role.ADMIN);
-        } else if (email.endsWith("@staff.ev.com")) {
-            user.setRole(Role.STAFF);
-        } else {
-            user.setRole(Role.DRIVER);
-        }
+        user.setRole(Role.DRIVER);
+        createRoleSpecificRecord(user);
         //luu user vao db
         return userMapper.toUserResponse(userRepository.save(user));
+    }
+
+    //Tạo bản ghi trong bảng driver/staff/admin tương ứng với role của user
+    private void createRoleSpecificRecord(User user) {
+        switch (user.getRole()) {
+            case DRIVER:
+                Driver driver = Driver.builder()
+                        .userId(user.getUserId())
+                        .user(user)
+                        .address(null) // Có thể để null, user sẽ cập nhật sau
+                        .build();
+                driverRepository.save(driver);
+                log.info("Driver record created for user ID: {}", user.getUserId());
+                break;
+
+            case STAFF:
+                Staff staff = Staff.builder()
+                        .userId(user.getUserId())
+                        .user(user)
+                        .employeeNo(null) // Có thể để null hoặc generate mã nhân viên
+                        .position(null) // Có thể để null, admin sẽ cập nhật sau
+                        .build();
+                staffRepository.save(staff);
+                log.info("Staff record created for user ID: {}", user.getUserId());
+                break;
+
+            case ADMIN:
+                Admin admin = Admin.builder()
+                        .userId(user.getUserId())
+                        .user(user)
+                        .build();
+                adminRepository.save(admin);
+                log.info("Admin record created for user ID: {}", user.getUserId());
+                break;
+
+            default:
+                log.warn("Unknown role: {}", user.getRole());
+        }
     }
 
     public UserResponse getMyInfo() {
