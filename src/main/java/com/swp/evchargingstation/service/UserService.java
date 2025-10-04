@@ -1,19 +1,19 @@
 package com.swp.evchargingstation.service;
 import com.swp.evchargingstation.dto.request.UserCreationRequest;
 import com.swp.evchargingstation.dto.request.UserUpdateRequest;
+import com.swp.evchargingstation.dto.response.AdminUserResponse;
 import com.swp.evchargingstation.dto.response.UserResponse;
+import com.swp.evchargingstation.entity.Subscription;
 import com.swp.evchargingstation.entity.User;
 import com.swp.evchargingstation.enums.Role;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
+import com.swp.evchargingstation.repository.ChargingSessionRepository;
+import com.swp.evchargingstation.repository.DriverRepository;
+import com.swp.evchargingstation.repository.SubscriptionRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.swp.evchargingstation.mapper.UserMapper;
 import com.swp.evchargingstation.repository.UserRepository;
@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +36,9 @@ public class UserService {
     UserRepository userRepository;
     UserMapper userMapper;
     PasswordEncoder passwordEncoder; //nhan passwordEncoder tu SecurityConfig
+    DriverRepository driverRepository;
+    SubscriptionRepository subscriptionRepository;
+    ChargingSessionRepository chargingSessionRepository;
 
     //encoder đã tạo ở SecurityConfig, khong can dua vao thu vien nua
 //    @Bean
@@ -42,6 +46,8 @@ public class UserService {
 //    {
 //        return new BCryptPasswordEncoder();
 //    }
+
+//=====================================================DRIVER===========================================================
 
     public UserResponse register(UserCreationRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -54,7 +60,7 @@ public class UserService {
         // Map user voi user request
         User user = userMapper.toUser(request);
 
-//        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10); BO LUON KHONG CAN NUA
+        //PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10); BO LUON KHONG CAN NUA
 
         // ma hoa password
         user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -71,6 +77,7 @@ public class UserService {
         return userMapper.toUserResponse(userRepository.save(user));
     }
 
+    @PreAuthorize("hasRole('DRIVER')")
     public UserResponse getMyInfo() {
         var context = SecurityContextHolder.getContext();
         String name = context.getAuthentication().getName();
@@ -81,8 +88,9 @@ public class UserService {
         return userMapper.toUserResponse(user);
     }
 
-    // SELF UPDATE SAU KHI DANG KY: user bo sung cac thong tin bat buoc (phone, dateOfBirth, gender, firstName, lastName)
+    // SELF UPDATE SAU KHI DANG KY: user bo sung cac thong tin bat buoc
     // Khong cho phep doi email, password, role.
+    @PreAuthorize("hasRole('DRIVER')")
     public UserResponse updateMyInfo(UserUpdateRequest request) {
         var context = SecurityContextHolder.getContext();
         String principalEmail = context.getAuthentication().getName();
@@ -98,7 +106,59 @@ public class UserService {
         return updateMyInfo(request); // delegate
     }
 
-    //lay tat ca user
+//=====================================================STAFF============================================================
+
+//=====================================================ADMIN============================================================
+
+    //lay tat ca driver cho ADMIN voi day du thong tin (ten, lien he, ngay tham gia, goi dich vu, so phien, tong chi tieu, trang thai)
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<AdminUserResponse> getDriversForAdmin() {
+        log.info("In method get Drivers For Admin");
+        return driverRepository.findAllWithUser() // Lay truc tiep tu DriverRepository
+                .stream()
+                .map(driver -> mapToAdminUserResponse(driver.getUser()))
+                .collect(Collectors.toList());
+    }
+
+    // Helper method: map User sang AdminUserResponse
+    private AdminUserResponse mapToAdminUserResponse(User user) {
+        String planName = null;
+        Integer sessionCount = 0;
+        Double totalSpent = 0.0;
+
+        // Lay thong tin subscription (goi dich vu)
+        Optional<Subscription> activeSubscription = subscriptionRepository
+                .findActiveSubscriptionByDriverId(user.getUserId());
+        if (activeSubscription.isPresent() && activeSubscription.get().getPlan() != null) {
+            planName = activeSubscription.get().getPlan().getName();
+        }
+
+        // Lay so phien sac
+        sessionCount = chargingSessionRepository.countByDriverId(user.getUserId());
+        if (sessionCount == null) {
+            sessionCount = 0;
+        }
+
+        // Lay tong chi tieu
+        totalSpent = chargingSessionRepository.sumTotalSpentByDriverId(user.getUserId());
+        if (totalSpent == null) {
+            totalSpent = 0.0;
+        }
+
+        return AdminUserResponse.builder()
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .joinDate(null) // Chua co field joinDate trong User entity, set null
+                .planName(planName)
+                .sessionCount(sessionCount)
+                .totalSpent(totalSpent)
+                .status("Hoạt động") // Mac dinh "Hoat dong", co the customize sau
+                .isActive(true) // Mac dinh true, co the customize sau
+                .build();
+    }
+
+    //lay tat ca user (legacy method, giu nguyen de khong break existing code)
     //moi cap nhat (User -> UserResponse, map tung User thanh UserResponse)
     @PreAuthorize("hasRole('ADMIN')") //chi co ADMIN moi truy cap duoc
     public List<UserResponse> getUsers() {
