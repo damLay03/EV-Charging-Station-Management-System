@@ -13,4 +13,7 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
 
     @Query("SELECT COALESCE(SUM(cs.costTotal), 0) FROM ChargingSession cs WHERE cs.driver.userId = :driverId")
     Double sumTotalSpentByDriverId(@Param("driverId") String driverId);
+
+    @Query("SELECT COALESCE(SUM(cs.costTotal), 0) FROM ChargingSession cs WHERE cs.chargingPoint.station.stationId = :stationId")
+    Double sumRevenueByStationId(@Param("stationId") String stationId);
 }

@@ -1,14 +1,18 @@
 package com.swp.evchargingstation.service;
 
+import com.swp.evchargingstation.dto.response.StationDetailResponse;
 import com.swp.evchargingstation.dto.response.StationResponse;
 import com.swp.evchargingstation.dto.response.StaffSummaryResponse;
 import com.swp.evchargingstation.entity.Station;
 import com.swp.evchargingstation.entity.Staff;
+import com.swp.evchargingstation.enums.ChargingPointStatus;
 import com.swp.evchargingstation.enums.StationStatus;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
 import com.swp.evchargingstation.mapper.StationMapper;
 import com.swp.evchargingstation.mapper.StaffMapper;
+import com.swp.evchargingstation.repository.ChargingPointRepository;
+import com.swp.evchargingstation.repository.ChargingSessionRepository;
 import com.swp.evchargingstation.repository.StationRepository;
 import com.swp.evchargingstation.repository.StaffRepository;
 import lombok.AccessLevel;
@@ -19,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -27,9 +32,10 @@ import java.util.List;
 public class StationService {
     StationRepository stationRepository;
     StationMapper stationMapper;
-    // NOTE: Thêm repository + mapper cho chức năng phân công nhân viên
     StaffRepository staffRepository;
     StaffMapper staffMapper;
+    ChargingPointRepository chargingPointRepository;
+    ChargingSessionRepository chargingSessionRepository;
 
     /**
      * Lấy danh sách trạm.
@@ -192,5 +198,92 @@ public class StationService {
         return staffRepository.findByStationIsNull().stream()
                 .map(staffMapper::toStaffSummaryResponse)
                 .toList();
+    }
+
+    /**
+     * Lấy danh sách trạm với thông tin chi tiết (bao gồm charging points, revenue, usage, staff).
+     * Có thể lọc theo status nếu cần.
+     * @param status trạng thái cần lọc (có thể null)
+     * @return danh sách StationDetailResponse
+     */
+    @Transactional(readOnly = true)
+    public List<StationDetailResponse> getStationsWithDetail(StationStatus status) {
+        log.info("Fetching stations with detail - status: {}", status);
+        List<Station> stations = (status == null)
+                ? stationRepository.findAll()
+                : stationRepository.findByStatus(status);
+
+        return stations.stream()
+                .map(this::mapToStationDetailResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Helper method: map Station sang StationDetailResponse với thông tin đầy đủ.
+     * Nguyên tắc: Field nào không có dữ liệu thật → NULL, không tự chế!
+     */
+    private StationDetailResponse mapToStationDetailResponse(Station station) {
+        String stationId = station.getStationId();
+
+        // Đếm số lượng charging points theo trạng thái - GIỮ NGUYÊN NULL nếu không có
+        Integer totalPoints = chargingPointRepository.countByStationId(stationId);
+        Integer availablePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.AVAILABLE);
+        Integer inUsePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.OCCUPIED);
+        Integer offlinePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.OUT_OF_SERVICE);
+        Integer maintenancePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.MAINTENANCE);
+
+        // Tính activePoints - CHỈ tính nếu CÓ dữ liệu, không tự chế
+        Integer activePoints = null;
+        if (availablePoints != null && inUsePoints != null) {
+            activePoints = availablePoints + inUsePoints;
+        } else if (availablePoints != null) {
+            activePoints = availablePoints;
+        } else if (inUsePoints != null) {
+            activePoints = inUsePoints;
+        }
+
+        // Tính doanh thu từ charging sessions - GIỮ NULL nếu không có
+        Double revenue = chargingSessionRepository.sumRevenueByStationId(stationId);
+
+        // Tính phần trăm sử dụng - CHỈ tính nếu có dữ liệu đầy đủ
+        Double usagePercent = null;
+        if (totalPoints != null && totalPoints > 0 && inUsePoints != null) {
+            usagePercent = (inUsePoints * 100.0 / totalPoints);
+        }
+
+        // Lấy tên nhân viên - CHỈ lấy nếu CÓ, không có thì NULL
+        List<Staff> staffList = staffRepository.findByStation_StationId(stationId);
+        String staffName = null;
+        if (staffList != null && !staffList.isEmpty()) {
+            Staff firstStaff = staffList.get(0);
+            if (firstStaff != null && firstStaff.getUser() != null) {
+                staffName = firstStaff.getUser().getFullName();
+            }
+        }
+
+        // Tạo summary string - CHỈ tạo nếu có dữ liệu
+        String chargingPointsSummary = null;
+        if (totalPoints != null || activePoints != null || offlinePoints != null || maintenancePoints != null) {
+            chargingPointsSummary = String.format("Tổng: %s | Hoạt động: %s | Offline: %s | Bảo trì: %s",
+                    totalPoints != null ? totalPoints : "-",
+                    activePoints != null ? activePoints : "-",
+                    offlinePoints != null ? offlinePoints : "-",
+                    maintenancePoints != null ? maintenancePoints : "-");
+        }
+
+        return StationDetailResponse.builder()
+                .stationId(stationId)
+                .name(station.getName())
+                .address(station.getAddress())
+                .status(station.getStatus())
+                .totalChargingPoints(totalPoints) // NULL nếu không có
+                .activeChargingPoints(activePoints) // NULL nếu không có
+                .offlineChargingPoints(offlinePoints) // NULL nếu không có
+                .maintenanceChargingPoints(maintenancePoints) // NULL nếu không có
+                .chargingPointsSummary(chargingPointsSummary) // NULL nếu không có dữ liệu
+                .revenue(revenue) // NULL nếu không có
+                .usagePercent(usagePercent) // NULL nếu không có đủ dữ liệu để tính
+                .staffName(staffName) // NULL nếu không có nhân viên
+                .build();
     }
 }

@@ -1,9 +1,10 @@
 package com.swp.evchargingstation.controller;
 
 import com.swp.evchargingstation.dto.request.ApiResponse;
+import com.swp.evchargingstation.dto.response.StationDetailResponse;
 import com.swp.evchargingstation.dto.response.StationOverviewResponse;
-import com.swp.evchargingstation.dto.response.StationResponse;
 import com.swp.evchargingstation.dto.response.StaffSummaryResponse;
+import com.swp.evchargingstation.dto.response.StationResponse;
 import com.swp.evchargingstation.enums.StationStatus;
 import com.swp.evchargingstation.service.StationService;
 import lombok.AccessLevel;
@@ -33,18 +34,14 @@ public class StationController {
                 .build();
     }
 
-    // Danh sách trạm: ưu tiên lọc theo active nếu truyền, nếu không thì lọc theo status
+    // Danh sách trạm với thông tin chi tiết: bao gồm điểm sạc, doanh thu, sử dụng, nhân viên
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<List<StationResponse>> getStations(
-            @RequestParam(value = "status", required = false) StationStatus status,
-            @RequestParam(value = "active", required = false) Boolean active) {
-        log.info("Admin fetching stations - status: {}, active: {}", status, active);
-        List<StationResponse> result = (active != null)
-                ? stationService.getStationsByActive(active)
-                : stationService.getStations(status);
-        return ApiResponse.<List<StationResponse>>builder()
-                .result(result)
+    public ApiResponse<List<StationDetailResponse>> getStations(
+            @RequestParam(value = "status", required = false) StationStatus status) {
+        log.info("Admin fetching stations with detail - status: {}", status);
+        return ApiResponse.<List<StationDetailResponse>>builder()
+                .result(stationService.getStationsWithDetail(status))
                 .build();
     }
 

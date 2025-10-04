@@ -25,4 +25,6 @@ public class Driver {
     @JoinColumn(name = "user_id")
     @MapsId
     User user;
+
+
 }
