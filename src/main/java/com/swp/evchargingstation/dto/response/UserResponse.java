@@ -1,7 +1,6 @@
 package com.swp.evchargingstation.dto.response;
 
 import com.swp.evchargingstation.enums.Role;
-import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -13,13 +12,9 @@ import java.time.LocalDate;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE) // toàn bộ field là private
 public class UserResponse {
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     String userId;
-
-    @Column(nullable = false, unique = true)
     String email;
-    String password;
+    // Đã xóa field password vì lý do bảo mật - không nên trả password về client
     String phone;
     LocalDate dateOfBirth;
     boolean gender;

@@ -34,10 +34,20 @@ Sample successful response:
 ```json
 {
   "code": 1000,
-  "message": null,
   "result": {
-    "token": "eyJhbGciOiJIUzUxMiJ9…",
-    "authenticated": true
+    "token": "eyJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJldi1jaGFyZ2luZy1zdGF0aW9uIiwic3ViIjoiYm9tdGh1QGFkbWluLmV2LmNvbSIsImV4cCI6MTc1OTY1ODkyMCwiaWF0IjoxNzU5NjU1MzIwLCJzY29wZSI6IkFETUlOIn0.QXE9Dsbdc-b41T283x89huoewTMJ7x13_tjuEL-Vkr6X5b2aR45kBtxFM7R8LPdU82WFt7Y40c9SzLEaSEwUZQ",
+    "authenticated": true,
+    "userInfo": {
+      "userId": "1ee30c49-7c50-4b8f-a5f7-40e0646fe742",
+      "email": "user@example.com",
+      "phone": "...",
+      "dateOfBirth": "...",
+      "gender": false,
+      "firstName": "...",
+      "lastName": "...",
+      "fullName": "...",
+      "role": "..."
+    }
   }
 }
 ```
