@@ -1,12 +1,14 @@
 package com.swp.evchargingstation.controller;
 
 import com.swp.evchargingstation.dto.request.ApiResponse;
+import com.swp.evchargingstation.dto.request.StationCreationRequest;
 import com.swp.evchargingstation.dto.response.StationDetailResponse;
 import com.swp.evchargingstation.dto.response.StationOverviewResponse;
 import com.swp.evchargingstation.dto.response.StaffSummaryResponse;
 import com.swp.evchargingstation.dto.response.StationResponse;
 import com.swp.evchargingstation.enums.StationStatus;
 import com.swp.evchargingstation.service.StationService;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -34,14 +36,14 @@ public class StationController {
                 .build();
     }
 
-    // Danh sách trạm với thông tin chi tiết: bao gồm điểm sạc, doanh thu, sử dụng, nhân viên
+    // Danh sách trạm với thông tin cơ bản
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<List<StationDetailResponse>> getStations(
+    public ApiResponse<List<StationResponse>> getStations(
             @RequestParam(value = "status", required = false) StationStatus status) {
-        log.info("Admin fetching stations with detail - status: {}", status);
-        return ApiResponse.<List<StationDetailResponse>>builder()
-                .result(stationService.getStationsWithDetail(status))
+        log.info("Admin fetching stations - status: {}", status);
+        return ApiResponse.<List<StationResponse>>builder()
+                .result(stationService.getStations(status))
                 .build();
     }
 
@@ -115,6 +117,16 @@ public class StationController {
     public ApiResponse<List<StaffSummaryResponse>> getUnassignedStaff() {
         return ApiResponse.<List<StaffSummaryResponse>>builder()
                 .result(stationService.getUnassignedStaff())
+                .build();
+    }
+
+    // Tạo trạm sạc mới
+    @PostMapping("/create")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<StationResponse> createStation(@Valid @RequestBody StationCreationRequest request) {
+        log.info("Admin creating new station: {}", request.getName());
+        return ApiResponse.<StationResponse>builder()
+                .result(stationService.createStation(request))
                 .build();
     }
 }

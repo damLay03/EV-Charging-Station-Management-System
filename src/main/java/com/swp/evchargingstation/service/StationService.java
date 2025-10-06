@@ -1,8 +1,10 @@
 package com.swp.evchargingstation.service;
 
+import com.swp.evchargingstation.dto.request.StationCreationRequest;
 import com.swp.evchargingstation.dto.response.StationDetailResponse;
 import com.swp.evchargingstation.dto.response.StationResponse;
 import com.swp.evchargingstation.dto.response.StaffSummaryResponse;
+import com.swp.evchargingstation.entity.ChargingPoint;
 import com.swp.evchargingstation.entity.Station;
 import com.swp.evchargingstation.entity.Staff;
 import com.swp.evchargingstation.enums.ChargingPointStatus;
@@ -22,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,6 +39,47 @@ public class StationService {
     StaffMapper staffMapper;
     ChargingPointRepository chargingPointRepository;
     ChargingSessionRepository chargingSessionRepository;
+
+    /**
+     * Tạo trạm sạc mới với số lượng điểm sạc và công suất chỉ định.
+     * @param request thông tin trạm cần tạo
+     * @return StationResponse của trạm vừa tạo
+     */
+    @Transactional
+    public StationResponse createStation(StationCreationRequest request) {
+        log.info("Creating new station: {}", request.getName());
+
+        // Tạo station mới với trạng thái OUT_OF_SERVICE (chưa hoạt động)
+        Station station = Station.builder()
+                .name(request.getName())
+                .address(request.getAddress())
+                .operatorName(request.getOperatorName())
+                .contactPhone(request.getContactPhone())
+                .status(StationStatus.OUT_OF_SERVICE)
+                .chargingPoints(new ArrayList<>())
+                .build();
+
+        // Lưu station trước để có ID
+        Station savedStation = stationRepository.save(station);
+
+        // Tạo các charging points cho station
+        List<ChargingPoint> chargingPoints = new ArrayList<>();
+        for (int i = 1; i <= request.getNumberOfChargingPoints(); i++) {
+            ChargingPoint point = ChargingPoint.builder()
+                    .station(savedStation)
+                    .maxPowerKw(request.getPowerOutputKw())
+                    .status(ChargingPointStatus.AVAILABLE)
+                    .build();
+            chargingPoints.add(point);
+        }
+
+        // Lưu tất cả charging points
+        chargingPointRepository.saveAll(chargingPoints);
+        savedStation.setChargingPoints(chargingPoints);
+
+        log.info("Created station {} with {} charging points", savedStation.getStationId(), chargingPoints.size());
+        return stationMapper.toStationResponse(savedStation);
+    }
 
     /**
      * Lấy danh sách trạm.
