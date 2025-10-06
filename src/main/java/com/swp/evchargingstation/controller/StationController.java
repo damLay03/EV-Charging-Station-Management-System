@@ -36,14 +36,14 @@ public class StationController {
                 .build();
     }
 
-    // Danh sách trạm với thông tin chi tiết: bao gồm điểm sạc, doanh thu, sử dụng, nhân viên
+    // Danh sách trạm với thông tin cơ bản
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<List<StationDetailResponse>> getStations(
+    public ApiResponse<List<StationResponse>> getStations(
             @RequestParam(value = "status", required = false) StationStatus status) {
-        log.info("Admin fetching stations with detail - status: {}", status);
-        return ApiResponse.<List<StationDetailResponse>>builder()
-                .result(stationService.getStationsWithDetail(status))
+        log.info("Admin fetching stations - status: {}", status);
+        return ApiResponse.<List<StationResponse>>builder()
+                .result(stationService.getStations(status))
                 .build();
     }
 
