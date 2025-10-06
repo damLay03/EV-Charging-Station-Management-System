@@ -20,6 +20,37 @@ public class RevenueService {
 
     PaymentRepository paymentRepository;
 
+    public List<StationRevenueResponse> getWeeklyRevenue(Integer year, Integer month, Integer week) {
+        // Nếu không truyền tham số, lấy tuần hiện tại
+        if (year == null || month == null || week == null) {
+            LocalDate now = LocalDate.now();
+            year = now.getYear();
+            month = now.getMonthValue();
+            week = (now.getDayOfMonth() - 1) / 7 + 1; // Tính tuần trong tháng
+        }
+
+        log.info("Fetching revenue for year: {}, month: {}, week: {}", year, month, week);
+
+        List<Object[]> results = paymentRepository.findWeeklyRevenueByStation(year, month, week);
+        List<StationRevenueResponse> responses = new ArrayList<>();
+
+        for (Object[] result : results) {
+            StationRevenueResponse response = StationRevenueResponse.builder()
+                    .stationId((String) result[0])
+                    .stationName((String) result[1])
+                    .address((String) result[2])
+                    .month((Integer) result[3])
+                    .year((Integer) result[4])
+                    .week((Integer) result[5])
+                    .totalRevenue(((Number) result[6]).floatValue())
+                    .totalSessions(((Number) result[7]).intValue())
+                    .build();
+            responses.add(response);
+        }
+
+        return responses;
+    }
+
     public List<StationRevenueResponse> getMonthlyRevenue(Integer year, Integer month) {
         // Nếu không truyền tham số, lấy tháng hiện tại
         if (year == null || month == null) {

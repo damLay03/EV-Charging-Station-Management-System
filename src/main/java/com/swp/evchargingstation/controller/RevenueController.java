@@ -21,6 +21,19 @@ public class RevenueController {
 
     RevenueService revenueService;
 
+    @GetMapping("/weekly")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<List<StationRevenueResponse>> getWeeklyRevenue(
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer week
+    ) {
+        log.info("Admin requesting weekly revenue - year: {}, month: {}, week: {}", year, month, week);
+
+        return ApiResponse.<List<StationRevenueResponse>>builder()
+                .result(revenueService.getWeeklyRevenue(year, month, week))
+                .build();
+    }
     /**
      * Lấy thống kê doanh thu theo tháng của từng trạm sạc
      * @param year Năm cần thống kê (mặc định: năm hiện tại)

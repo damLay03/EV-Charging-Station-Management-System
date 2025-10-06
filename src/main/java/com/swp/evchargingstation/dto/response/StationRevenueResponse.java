@@ -14,6 +14,7 @@ public class StationRevenueResponse {
     String address;
     int month;
     int year;
+    int week;
     float totalRevenue;
     int totalSessions;
 }

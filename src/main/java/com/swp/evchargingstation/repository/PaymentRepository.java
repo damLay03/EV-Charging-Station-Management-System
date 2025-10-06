@@ -11,6 +11,22 @@ import java.util.List;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, String> {
 
+    // Query lấy doanh thu theo tuần của từng trạm
+    @Query("SELECT s.stationId, s.name, s.address, " +
+            "MONTH(p.paymentTime), YEAR(p.paymentTime), " +
+            "FLOOR((DAY(p.paymentTime) - 1) / 7) + 1 AS weekOfMonth, " +
+            "SUM(p.amount), COUNT(p.paymentId) " +
+            "FROM Payment p " +
+            "JOIN p.session cs " +
+            "JOIN cs.chargingPoint cp " +
+            "JOIN cp.station s " +
+            "WHERE YEAR(p.paymentTime) = :year " +
+            "AND MONTH(p.paymentTime) = :month " +
+            "AND FLOOR((DAY(p.paymentTime) - 1) / 7) + 1 = :week " +
+            "AND p.status = 'COMPLETED' " +
+            "GROUP BY s.stationId, s.name, s.address, " +
+            "MONTH(p.paymentTime), YEAR(p.paymentTime), weekOfMonth")
+    List<Object[]> findWeeklyRevenueByStation(@Param("year") int year, @Param("month") int month, @Param("week") int week);
     // Query lấy doanh thu theo tháng của từng trạm
     @Query("SELECT s.stationId, s.name, s.address, " +
             "MONTH(p.paymentTime), YEAR(p.paymentTime), " +

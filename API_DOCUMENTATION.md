@@ -247,8 +247,9 @@ Sample `PlanResponse`:
 
 All revenue endpoints require bearer token (ROLE_ADMIN).
 
+### GET /api/revenue/weekly?year={yea}r&week={week}
 ### GET /api/revenue/monthly?year={year}&month={month}  
-### GET /api/revenue/yearly?year={year}  
+### GET /api/revenue/yearly?year={year} 
 
 Sample `StationRevenueResponse` list:
 ```json
