@@ -30,7 +30,8 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/auth/login",
-            "/api/users/register"
+            "/api/users/register",
+            "/api/plans",
     };
 
     @Value("${jwt.singerKey}")
