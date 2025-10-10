@@ -2,6 +2,7 @@ package com.swp.evchargingstation.controller;
 
 import com.swp.evchargingstation.dto.request.ApiResponse;
 import com.swp.evchargingstation.dto.request.PlanCreationRequest;
+import com.swp.evchargingstation.dto.request.PlanUpdateRequest;
 import com.swp.evchargingstation.dto.response.PlanResponse;
 import com.swp.evchargingstation.service.PlanService;
 import jakarta.validation.Valid;
@@ -72,6 +73,25 @@ public class PlanController {
     public ApiResponse<PlanResponse> getById(@PathVariable String planId) {
         return ApiResponse.<PlanResponse>builder()
                 .result(planService.getById(planId))
+                .build();
+    }
+
+    // NOTE: Cập nhật plan theo id. Chỉ ADMIN mới có quyền. Validate name unique và config theo billingType.
+    @PutMapping("/{planId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<PlanResponse> update(@PathVariable String planId, @RequestBody @Valid PlanUpdateRequest request) {
+        return ApiResponse.<PlanResponse>builder()
+                .result(planService.update(planId, request))
+                .build();
+    }
+
+    // NOTE: Xóa plan theo id. Chỉ ADMIN mới có quyền.
+    @DeleteMapping("/{planId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> delete(@PathVariable String planId) {
+        planService.delete(planId);
+        return ApiResponse.<Void>builder()
+                .message("Plan deleted successfully")
                 .build();
     }
 }

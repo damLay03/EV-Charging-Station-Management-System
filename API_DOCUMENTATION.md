@@ -285,6 +285,81 @@ Sample `PlanResponse`:
 Bearer token required (ROLE_ADMIN)  
 Lấy chi tiết 1 plan theo id.
 
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "planId": "uuid-5678-...",
+    "name": "Basic Plan",
+    "billingType": "MONTHLY_SUBSCRIPTION",
+    "pricePerKwh": 0.1,
+    "pricePerMinute": 0.02,
+    "monthlyFee": 9.99,
+    "benefits": "Free parking"
+  }
+}
+```
+
+### PUT /api/plans/{planId}  
+Bearer token required (ROLE_ADMIN)  
+Cập nhật plan theo id. Validate name unique (trừ chính nó) và config theo billingType mới.
+
+Request body (`PlanUpdateRequest`):
+```json
+{
+  "name": "Premium Plan",
+  "billingType": "VIP",
+  "pricePerKwh": 0.08,
+  "pricePerMinute": 0.015,
+  "monthlyFee": 29.99,
+  "benefits": "Free parking + Priority charging"
+}
+```
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "planId": "uuid-5678-...",
+    "name": "Premium Plan",
+    "billingType": "VIP",
+    "pricePerKwh": 0.08,
+    "pricePerMinute": 0.015,
+    "monthlyFee": 29.99,
+    "benefits": "Free parking + Priority charging"
+  }
+}
+```
+
+### DELETE /api/plans/{planId}  
+Bearer token required (ROLE_ADMIN)  
+Xóa plan theo id.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": "Plan deleted successfully",
+  "result": null
+}
+```
+
+**Plan Validation Rules:**
+- **PREPAID**: `monthlyFee` phải = 0, phải có ít nhất một trong `pricePerKwh` hoặc `pricePerMinute` > 0
+- **POSTPAID**: `monthlyFee` phải = 0, phải có ít nhất một trong `pricePerKwh` hoặc `pricePerMinute` > 0
+- **VIP**: `monthlyFee` phải > 0
+- **MONTHLY_SUBSCRIPTION**: `monthlyFee` phải > 0
+- **PAY_AS_YOU_GO**: `monthlyFee` phải = 0
+
+**Error Codes:**
+- `3001`: Plan Not Found
+- `3002`: Plan Name Existed (trùng tên, case-insensitive)
+- `3003`: Invalid Plan Configuration (vi phạm rule validation theo billingType)
+
 ---
 
 ## 5. Revenue
@@ -392,38 +467,23 @@ Request body (`StationCreationRequest`):
 {
   "name": "New Station",
   "address": "456 New St",
+  "numberOfChargingPoints": 10,
+  "powerOutputKw": 50.0,
   "operatorName": "Operator Y",
-  "contactPhone": "0987654321",
-  "status": "OPERATIONAL"
+  "contactPhone": "0987654321"
 }
 ```
 
-### PATCH /api/stations/{stationId}/status?status={StationStatus}  
-Bearer token required (ROLE_ADMIN)  
-Cập nhật trạng thái cụ thể của trạm.
-
-### PATCH /api/stations/{stationId}/activate  
-Bearer token required (ROLE_ADMIN)  
-Đặt trạng thái hoạt động (OPERATIONAL).
-
-### PATCH /api/stations/{stationId}/deactivate  
-Bearer token required (ROLE_ADMIN)  
-Đặt trạng thái ngưng hoạt động (OUT_OF_SERVICE).
-
-### PATCH /api/stations/{stationId}/toggle  
-Bearer token required (ROLE_ADMIN)  
-Toggle giữa OPERATIONAL và OUT_OF_SERVICE.
-
-Each status update returns a single `StationResponse`:
+Sample response:
 ```json
 {
   "code": 1000,
   "message": null,
   "result": {
     "stationId": "uuid-1111-...",
-    "name": "Station A",
-    "address": "123 Main St",
-    "operatorName": "Operator X",
+    "name": "New Station",
+    "address": "456 New St",
+    "operatorName": "Operator Y",
     "contactPhone": "0987654321",
     "status": "OUT_OF_SERVICE",
     "active": false
@@ -431,52 +491,21 @@ Each status update returns a single `StationResponse`:
 }
 ```
 
-### Staff Assignment Endpoints
-
-### GET /api/stations/{stationId}/staff  
+### PUT /api/stations/{stationId}  
 Bearer token required (ROLE_ADMIN)  
-Lấy danh sách nhân viên đang thuộc về một trạm.
+Cập nhật thông tin cơ bản của trạm (name, address, operatorName, contactPhone, status).  
+**Lưu ý:** Không thay đổi số lượng charging points hoặc cấu hình phần cứng.
 
-### POST /api/stations/{stationId}/staff/{staffId}  
-Bearer token required (ROLE_ADMIN)  
-Gán một nhân viên vào trạm.
-
-### DELETE /api/stations/{stationId}/staff/{staffId}  
-Bearer token required (ROLE_ADMIN)  
-Bỏ gán nhân viên khỏi trạm.
-
-Sample `StaffSummaryResponse`:
+Request body (`StationUpdateRequest`):
 ```json
 {
-  "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "staffId": "uuid-2222-...",
-      "employeeNo": "EMP001",
-      "position": "Technician",
-      "email": "tech@example.com",
-      "fullName": "Bob Tran",
-      "stationId": "uuid-1111-...",
-      "stationName": "Station A"
-    }
-  ]
+  "name": "Updated Station Name",
+  "address": "789 Updated St",
+  "operatorName": "New Operator",
+  "contactPhone": "0999888777",
+  "status": "OPERATIONAL"
 }
 ```
-
-### GET /api/stations/staff/unassigned  
-Bearer token required (ROLE_ADMIN)  
-Danh sách nhân viên chưa được gán vào bất kỳ trạm nào. Same `StaffSummaryResponse` shape.
-
----
-
-## 7. Station Usage
-
-Endpoints để theo dõi mức độ sử dụng trạm sạc.
-
-### GET /api/station-usage/{stationId}/today  
-Bearer token required (ROLE_ADMIN or ROLE_STAFF)  
-Lấy mức độ sử dụng của MỘT trạm trong ngày hôm nay.
 
 Sample response:
 ```json
@@ -485,73 +514,29 @@ Sample response:
   "message": null,
   "result": {
     "stationId": "uuid-1111-...",
-    "stationName": "Station A",
-    "date": "2025-10-07",
-    "totalChargingPoints": 10,
-    "occupiedPoints": 7,
-    "availablePoints": 3,
-    "usagePercent": 70.0,
-    "totalSessions": 15,
-    "totalEnergyDelivered": 250.5
+    "name": "Updated Station Name",
+    "address": "789 Updated St",
+    "operatorName": "New Operator",
+    "contactPhone": "0999888777",
+    "status": "OPERATIONAL",
+    "active": true
   }
 }
 ```
 
-### GET /api/station-usage/{stationId}?date={date}  
-Bearer token required (ROLE_ADMIN or ROLE_STAFF)  
-Lấy mức độ sử dụng của MỘT trạm theo ngày cụ thể.
-
-Query parameters:
-- `date` (optional): Ngày cần xem (format: yyyy-MM-dd), mặc định là hôm nay
-
-### GET /api/station-usage/all/today  
+### DELETE /api/stations/{stationId}  
 Bearer token required (ROLE_ADMIN)  
-Lấy mức độ sử dụng của TẤT CẢ trạm trong ngày hôm nay.
+Xóa trạm sạc theo id. **Tất cả charging points liên quan sẽ tự động bị xóa (cascade).**
 
 Sample response:
 ```json
 {
   "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "stationId": "uuid-1111-...",
-      "stationName": "Station A",
-      "date": "2025-10-07",
-      "totalChargingPoints": 10,
-      "occupiedPoints": 7,
-      "availablePoints": 3,
-      "usagePercent": 70.0,
-      "totalSessions": 15,
-      "totalEnergyDelivered": 250.5
-    },
-    {
-      "stationId": "uuid-2222-...",
-      "stationName": "Station B",
-      "date": "2025-10-07",
-      "totalChargingPoints": 8,
-      "occupiedPoints": 5,
-      "availablePoints": 3,
-      "usagePercent": 62.5,
-      "totalSessions": 12,
-      "totalEnergyDelivered": 180.3
-    }
-  ]
+  "message": "Station deleted successfully",
+  "result": null
 }
 ```
 
-### GET /api/station-usage/all?date={date}  
+### PATCH /api/stations/{stationId}/status?status={StationStatus}  
 Bearer token required (ROLE_ADMIN)  
-Lấy mức độ sử dụng của TẤT CẢ trạm theo ngày cụ thể.
-
-Query parameters:
-- `date` (optional): Ngày cần xem (format: yyyy-MM-dd), mặc định là hôm nay
-
----
-
-**Notes on Authentication**  
-- Only `/api/auth/login`, `/api/users/register`, and `/api/plans` (GET) are publicly accessible.  
-- All other endpoints require a valid Bearer JWT in `Authorization: Bearer <token>`.  
-- Sensitive operations (overview, plan management, revenue, station management, drivers listing/deletion) are restricted to **ROLE_ADMIN**.
-- Station usage endpoints for individual stations can be accessed by both **ROLE_ADMIN** and **ROLE_STAFF**.
-- Station usage endpoints for all stations are restricted to **ROLE_ADMIN** only.
+Cập nhật trạng thái của trạm.
