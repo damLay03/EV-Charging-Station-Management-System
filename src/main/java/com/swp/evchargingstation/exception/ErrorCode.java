@@ -15,7 +15,11 @@ public enum ErrorCode {
     // --- Staff assignment related ---
     STAFF_NOT_FOUND(4001, "Staff Not Found"),
     STAFF_ALREADY_ASSIGNED(4002, "Staff Already Assigned"),
-    STAFF_NOT_IN_STATION(4003, "Staff Not In This Station")
+    STAFF_NOT_IN_STATION(4003, "Staff Not In This Station"),
+    // --- Vehicle related ---
+    VEHICLE_NOT_FOUND(5001, "Vehicle Not Found"),
+    LICENSE_PLATE_EXISTED(5002, "License Plate Already Exists"),
+    VEHICLE_NOT_BELONG_TO_DRIVER(5003, "Vehicle Does Not Belong To This Driver")
     ;
 
     private int code;

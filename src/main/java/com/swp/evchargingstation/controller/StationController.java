@@ -48,6 +48,17 @@ public class StationController {
                 .build();
     }
 
+    // NOTE: Danh sách trạm với thông tin đầy đủ cho UI quản lý (bao gồm điểm sạc, doanh thu, % sử dụng, nhân viên)
+    @GetMapping("/detail")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<List<StationDetailResponse>> getStationsDetail(
+            @RequestParam(value = "status", required = false) StationStatus status) {
+        log.info("Admin fetching stations with detail - status: {}", status);
+        return ApiResponse.<List<StationDetailResponse>>builder()
+                .result(stationService.getStationsWithDetail(status))
+                .build();
+    }
+
     // Cập nhật trạng thái cụ thể (truyền enum trực tiếp)
     @PatchMapping("/{stationId}/status")
     @PreAuthorize("hasRole('ADMIN')")

@@ -1,7 +1,9 @@
 package com.swp.evchargingstation.service;
 import com.swp.evchargingstation.dto.request.UserCreationRequest;
 import com.swp.evchargingstation.dto.request.UserUpdateRequest;
+import com.swp.evchargingstation.dto.request.AdminUpdateDriverRequest;
 import com.swp.evchargingstation.dto.response.AdminUserResponse;
+import com.swp.evchargingstation.dto.response.DriverResponse;
 import com.swp.evchargingstation.dto.response.UserResponse;
 import com.swp.evchargingstation.entity.*;
 import com.swp.evchargingstation.enums.Role;
@@ -71,31 +73,61 @@ public class UserService {
     }
 
     @PreAuthorize("hasRole('DRIVER')")
-    public UserResponse getMyInfo() {
+    public DriverResponse getMyInfo() {
         var context = SecurityContextHolder.getContext();
         String name = context.getAuthentication().getName();
 
         User user = userRepository.findByEmail(name)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        return userMapper.toUserResponse(user);
+        // Lấy thông tin Driver entity
+        Driver driver = driverRepository.findById(user.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Map sang DriverResponse với đầy đủ thông tin
+        return DriverResponse.builder()
+                .userId(user.getUserId())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .dateOfBirth(user.getDateOfBirth())
+                .gender(user.isGender())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .fullName(user.getFullName())
+                .role(user.getRole())
+                .address(driver.getAddress())
+                .joinDate(driver.getJoinDate())
+                .build();
     }
 
     // SELF UPDATE SAU KHI DANG KY: user bo sung cac thong tin bat buoc
     // Khong cho phep doi email, password, role.
     @PreAuthorize("hasRole('DRIVER')")
-    public UserResponse updateMyInfo(UserUpdateRequest request) {
+    public DriverResponse updateMyInfo(UserUpdateRequest request) {
         var context = SecurityContextHolder.getContext();
         String principalEmail = context.getAuthentication().getName();
         User currentUser = userRepository.findByEmail(principalEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        userMapper.updateUser(currentUser, request); // chi update field duoc phep
-        return userMapper.toUserResponse(userRepository.save(currentUser));
+
+        // Update User fields
+        userMapper.updateUser(currentUser, request);
+        userRepository.save(currentUser);
+
+        // Update Driver fields (address)
+        if (request.getAddress() != null) {
+            Driver driver = driverRepository.findById(currentUser.getUserId())
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+            driver.setAddress(request.getAddress());
+            driverRepository.save(driver);
+        }
+
+        // Return updated info
+        return getMyInfo();
     }
 
     // ALIAS (theo yeu cau doi ten updateUser). KHONG thay doi logic: van chi cho phep user tu update ho so cua minh
     // NOTE gender mapping moi: true = female, false = male (giu nguyen field boolean, UI tu dien giai)
-    public UserResponse updateUser(UserUpdateRequest request) {
+    public DriverResponse updateUser(UserUpdateRequest request) {
         return updateMyInfo(request); // delegate
     }
 
@@ -149,6 +181,83 @@ public class UserService {
                 .stream()
                 .map(driver -> mapToAdminUserResponse(driver))
                 .collect(Collectors.toList());
+    }
+
+    // NOTE: ADMIN update thông tin driver theo userId. Không được phép sửa email, password, joinDate.
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public DriverResponse updateDriverByAdmin(String driverId, AdminUpdateDriverRequest request) {
+        log.info("Admin updating driver id='{}'", driverId);
+
+        // Tìm user theo id
+        User user = userRepository.findById(driverId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Kiểm tra user có phải là DRIVER không
+        if (user.getRole() != Role.DRIVER) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND); // hoặc tạo error code mới: NOT_A_DRIVER
+        }
+
+        // Update User fields (chỉ update nếu không null)
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone());
+        }
+        if (request.getDateOfBirth() != null) {
+            user.setDateOfBirth(request.getDateOfBirth());
+        }
+        if (request.getGender() != null) {
+            user.setGender(request.getGender());
+        }
+        if (request.getFirstName() != null) {
+            user.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null) {
+            user.setLastName(request.getLastName());
+        }
+
+        userRepository.save(user);
+
+        // Update Driver fields (address)
+        if (request.getAddress() != null) {
+            Driver driver = driverRepository.findById(driverId)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+            driver.setAddress(request.getAddress());
+            driverRepository.save(driver);
+        }
+
+        log.info("Admin updated driver '{}' successfully", driverId);
+
+        // Return updated info
+        return getDriverInfo(driverId);
+    }
+
+    // NOTE: Helper method để lấy thông tin driver theo ID (dùng chung cho admin)
+    @PreAuthorize("hasRole('ADMIN')")
+    public DriverResponse getDriverInfo(String driverId) {
+        User user = userRepository.findById(driverId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Kiểm tra user có phải là DRIVER không
+        if (user.getRole() != Role.DRIVER) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        return DriverResponse.builder()
+                .userId(user.getUserId())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .dateOfBirth(user.getDateOfBirth())
+                .gender(user.isGender())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .fullName(user.getFullName())
+                .role(user.getRole())
+                .address(driver.getAddress())
+                .joinDate(driver.getJoinDate())
+                .build();
     }
 
     // Helper method: map Driver sang AdminUserResponse

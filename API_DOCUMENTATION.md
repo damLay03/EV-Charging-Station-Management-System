@@ -90,9 +90,9 @@ Sample response:
 
 ### GET /api/users/driver/myInfo  
 Bearer token required (ROLE_DRIVER)  
-Get the authenticated driver's profile.
+Get the authenticated driver's profile với đầy đủ thông tin từ User và Driver entity.
 
-Sample response:
+Sample response (`DriverResponse`):
 ```json
 {
   "code": 1000,
@@ -106,14 +106,49 @@ Sample response:
     "firstName": "John",
     "lastName": "Doe",
     "fullName": "John Doe",
-    "role": "DRIVER"
+    "role": "DRIVER",
+    "address": "123 Main Street, Hanoi",
+    "joinDate": "2025-09-15T10:30:00"
   }
 }
 ```
 
 ### PATCH /api/users/driver/myInfo  
 Bearer token required (ROLE_DRIVER)  
-Partially update the authenticated driver's profile. Same response shape as above.
+Partially update the authenticated driver's profile. Có thể cập nhật: phone, dateOfBirth, gender, firstName, lastName, **address**.
+
+Request body (`UserUpdateRequest`) - tất cả fields đều optional:
+```json
+{
+  "phone": "0987654321",
+  "dateOfBirth": "1990-01-01",
+  "gender": true,
+  "firstName": "John",
+  "lastName": "Doe",
+  "address": "456 New Address, HCMC"
+}
+```
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "userId": "uuid-1234-...",
+    "email": "driver@example.com",
+    "phone": "0987654321",
+    "dateOfBirth": "1990-01-01",
+    "gender": true,
+    "firstName": "John",
+    "lastName": "Doe",
+    "fullName": "John Doe",
+    "role": "DRIVER",
+    "address": "456 New Address, HCMC",
+    "joinDate": "2025-09-15T10:30:00"
+  }
+}
+```
 
 ### GET /api/users/{userId}  
 Bearer token required  
@@ -160,6 +195,68 @@ Sample response:
       "isActive": true
     }
   ]
+}
+```
+
+### GET /api/users/driver/{driverId}/info  
+Bearer token required (ROLE_ADMIN)  
+Admin lấy thông tin đầy đủ của một driver (bao gồm address và joinDate).
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "userId": "uuid-1234-...",
+    "email": "driver@example.com",
+    "phone": "0123456789",
+    "dateOfBirth": "1990-01-01",
+    "gender": true,
+    "firstName": "John",
+    "lastName": "Doe",
+    "fullName": "John Doe",
+    "role": "DRIVER",
+    "address": "123 Main Street, Hanoi",
+    "joinDate": "2025-09-15T10:30:00"
+  }
+}
+```
+
+### PUT /api/users/driver/{driverId}  
+Bearer token required (ROLE_ADMIN)  
+Admin cập nhật thông tin driver. **Không thể sửa email, password, joinDate.**
+
+Request body (`AdminUpdateDriverRequest`) - tất cả fields đều optional:
+```json
+{
+  "phone": "0987654321",
+  "dateOfBirth": "1990-01-01",
+  "gender": true,
+  "firstName": "John",
+  "lastName": "Doe",
+  "address": "456 Updated Address, HCMC"
+}
+```
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "userId": "uuid-1234-...",
+    "email": "driver@example.com",
+    "phone": "0987654321",
+    "dateOfBirth": "1990-01-01",
+    "gender": true,
+    "firstName": "John",
+    "lastName": "Doe",
+    "fullName": "John Doe",
+    "role": "DRIVER",
+    "address": "456 Updated Address, HCMC",
+    "joinDate": "2025-09-15T10:30:00"
+  }
 }
 ```
 
@@ -410,11 +507,11 @@ Sample `StationRevenueResponse` list:
 
 ## 6. Stations
 
-All station endpoints require bearer token (ROLE_ADMIN).
+All station endpoints require bearer token (ROLE_ADMIN) unless otherwise specified.
 
 ### GET /api/stations/overview  
 Bearer token required (ROLE_ADMIN)  
-Lấy danh sách overview của tất cả trạm (nhẹ hơn so với full detail).
+Lấy danh sách overview của tất cả trạm (nhẹ hơn so với full detail). Dùng cho FE hiển thị nhanh bảng tổng quan.
 
 Sample `StationOverviewResponse`:
 ```json
@@ -424,9 +521,15 @@ Sample `StationOverviewResponse`:
   "result": [
     {
       "stationId": "uuid-1111-...",
-      "name": "Station A",
+      "name": "Trạm Sạc Quận 1",
       "status": "OPERATIONAL",
       "active": true
+    },
+    {
+      "stationId": "uuid-2222-...",
+      "name": "Trạm Sạc Quận 2",
+      "status": "MAINTENANCE",
+      "active": false
     }
   ]
 }
@@ -437,7 +540,11 @@ Bearer token required (ROLE_ADMIN)
 Lấy danh sách trạm với thông tin cơ bản, có thể filter theo status.
 
 Query parameters:
-- `status` (optional): Filter theo trạng thái (OPERATIONAL, MAINTENANCE, OUT_OF_SERVICE, UNDER_CONSTRUCTION)
+- `status` (optional): Filter theo trạng thái - các giá trị hợp lệ:
+  - `OPERATIONAL` - Đang hoạt động
+  - `MAINTENANCE` - Đang bảo trì
+  - `OUT_OF_SERVICE` - Ngưng hoạt động
+  - `CLOSED` - Đã đóng cửa
 
 Sample `StationResponse`:
 ```json
@@ -447,9 +554,9 @@ Sample `StationResponse`:
   "result": [
     {
       "stationId": "uuid-1111-...",
-      "name": "Station A",
-      "address": "123 Main St",
-      "operatorName": "Operator X",
+      "name": "Trạm Sạc Quận 1",
+      "address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+      "operatorName": "Công ty ABC",
       "contactPhone": "0987654321",
       "status": "OPERATIONAL",
       "active": true
@@ -458,19 +565,59 @@ Sample `StationResponse`:
 }
 ```
 
+### GET /api/stations/detail?status={StationStatus}  
+Bearer token required (ROLE_ADMIN)  
+**Danh sách trạm với thông tin đầy đủ cho UI quản lý** bao gồm:
+- Thông tin cơ bản của trạm
+- Số lượng điểm sạc theo trạng thái (total, available, in-use, offline, maintenance)
+- Doanh thu
+- Phần trăm sử dụng
+- Tên nhân viên phụ trách
+
+Query parameters:
+- `status` (optional): Filter theo trạng thái
+
+Sample `StationDetailResponse`:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "stationId": "uuid-1111-...",
+      "name": "Trạm Sạc Quận 1",
+      "address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+      "operatorName": "Công ty ABC",
+      "contactPhone": "0987654321",
+      "status": "OPERATIONAL",
+      "totalPoints": 10,
+      "availablePoints": 5,
+      "inUsePoints": 3,
+      "offlinePoints": 1,
+      "maintenancePoints": 1,
+      "activePoints": 8,
+      "revenue": 1250.75,
+      "usagePercent": 30.0,
+      "staffName": "Nguyễn Văn A"
+    }
+  ]
+}
+```
+
 ### POST /api/stations/create  
 Bearer token required (ROLE_ADMIN)  
-Tạo trạm sạc mới.
+Tạo trạm sạc mới với số lượng điểm sạc và công suất chỉ định.  
+**Lưu ý:** Trạm mới tạo sẽ có trạng thái mặc định là `OUT_OF_SERVICE` (chưa hoạt động).
 
 Request body (`StationCreationRequest`):
 ```json
 {
-  "name": "New Station",
-  "address": "456 New St",
+  "name": "Trạm Sạc Mới",
+  "address": "456 Lê Lợi, Quận 3, TP.HCM",
   "numberOfChargingPoints": 10,
   "powerOutputKw": 50.0,
-  "operatorName": "Operator Y",
-  "contactPhone": "0987654321"
+  "operatorName": "Công ty XYZ",
+  "contactPhone": "0901234567"
 }
 ```
 
@@ -480,11 +627,11 @@ Sample response:
   "code": 1000,
   "message": null,
   "result": {
-    "stationId": "uuid-1111-...",
-    "name": "New Station",
-    "address": "456 New St",
-    "operatorName": "Operator Y",
-    "contactPhone": "0987654321",
+    "stationId": "uuid-new-...",
+    "name": "Trạm Sạc Mới",
+    "address": "456 Lê Lợi, Quận 3, TP.HCM",
+    "operatorName": "Công ty XYZ",
+    "contactPhone": "0901234567",
     "status": "OUT_OF_SERVICE",
     "active": false
   }
@@ -499,9 +646,9 @@ Cập nhật thông tin cơ bản của trạm (name, address, operatorName, con
 Request body (`StationUpdateRequest`):
 ```json
 {
-  "name": "Updated Station Name",
-  "address": "789 Updated St",
-  "operatorName": "New Operator",
+  "name": "Trạm Sạc Quận 1 - Cập Nhật",
+  "address": "789 Nguyễn Thị Minh Khai, Quận 1, TP.HCM",
+  "operatorName": "Công ty ABC Updated",
   "contactPhone": "0999888777",
   "status": "OPERATIONAL"
 }
@@ -514,9 +661,9 @@ Sample response:
   "message": null,
   "result": {
     "stationId": "uuid-1111-...",
-    "name": "Updated Station Name",
-    "address": "789 Updated St",
-    "operatorName": "New Operator",
+    "name": "Trạm Sạc Quận 1 - Cập Nhật",
+    "address": "789 Nguyễn Thị Minh Khai, Quận 1, TP.HCM",
+    "operatorName": "Công ty ABC Updated",
     "contactPhone": "0999888777",
     "status": "OPERATIONAL",
     "active": true
@@ -539,4 +686,448 @@ Sample response:
 
 ### PATCH /api/stations/{stationId}/status?status={StationStatus}  
 Bearer token required (ROLE_ADMIN)  
-Cập nhật trạng thái của trạm.
+Cập nhật trạng thái cụ thể của trạm (truyền enum trực tiếp).
+
+Query parameters:
+- `status` (required): Trạng thái mới - `OPERATIONAL`, `MAINTENANCE`, `OUT_OF_SERVICE`, hoặc `CLOSED`
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "stationId": "uuid-1111-...",
+    "name": "Trạm Sạc Quận 1",
+    "address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "operatorName": "Công ty ABC",
+    "contactPhone": "0987654321",
+    "status": "MAINTENANCE",
+    "active": false
+  }
+}
+```
+
+### PATCH /api/stations/{stationId}/activate  
+Bearer token required (ROLE_ADMIN)  
+Kích hoạt trạm: set trạng thái về `OPERATIONAL`.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "stationId": "uuid-1111-...",
+    "name": "Trạm Sạc Quận 1",
+    "status": "OPERATIONAL",
+    "active": true
+  }
+}
+```
+
+### PATCH /api/stations/{stationId}/deactivate  
+Bearer token required (ROLE_ADMIN)  
+Ngưng hoạt động trạm: set trạng thái về `OUT_OF_SERVICE`.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "stationId": "uuid-1111-...",
+    "name": "Trạm Sạc Quận 1",
+    "status": "OUT_OF_SERVICE",
+    "active": false
+  }
+}
+```
+
+### PATCH /api/stations/{stationId}/toggle  
+Bearer token required (ROLE_ADMIN)  
+Chuyển đổi trạng thái giữa `OPERATIONAL` ↔ `OUT_OF_SERVICE`.  
+**Lưu ý:** Không tác động tới các trạng thái khác (MAINTENANCE, CLOSED).
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "stationId": "uuid-1111-...",
+    "name": "Trạm Sạc Quận 1",
+    "status": "OPERATIONAL",
+    "active": true
+  }
+}
+```
+
+---
+
+### **Station Staff Assignment Endpoints**
+
+### GET /api/stations/{stationId}/staff  
+Bearer token required (ROLE_ADMIN)  
+Lấy danh sách nhân viên đang thuộc về một trạm.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "staffId": "uuid-staff-1...",
+      "fullName": "Nguyễn Văn A",
+      "email": "staff1@example.com",
+      "phone": "0901234567",
+      "stationId": "uuid-1111-...",
+      "stationName": "Trạm Sạc Quận 1"
+    }
+  ]
+}
+```
+
+### POST /api/stations/{stationId}/staff/{staffId}  
+Bearer token required (ROLE_ADMIN)  
+Gán một nhân viên (staffId = userId của staff) vào trạm.  
+**Business Rule:** Nếu staff đã thuộc 1 trạm khác → Error `STAFF_ALREADY_ASSIGNED` (không tự động chuyển trạm để tránh nhầm lẫn).
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "staffId": "uuid-staff-1...",
+    "fullName": "Nguyễn Văn A",
+    "email": "staff1@example.com",
+    "phone": "0901234567",
+    "stationId": "uuid-1111-...",
+    "stationName": "Trạm Sạc Quận 1"
+  }
+}
+```
+
+### DELETE /api/stations/{stationId}/staff/{staffId}  
+Bearer token required (ROLE_ADMIN)  
+Bỏ gán nhân viên khỏi trạm.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": "Unassigned",
+  "result": null
+}
+```
+
+### GET /api/stations/staff/unassigned  
+Bearer token required (ROLE_ADMIN)  
+Danh sách nhân viên chưa được gán vào bất kỳ trạm nào.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "staffId": "uuid-staff-2...",
+      "fullName": "Trần Thị B",
+      "email": "staff2@example.com",
+      "phone": "0907654321",
+      "stationId": null,
+      "stationName": null
+    }
+  ]
+}
+```
+
+**Station Error Codes:**
+- `2001`: Station Not Found
+- `4001`: Staff Not Found
+- `4002`: Staff Already Assigned (nhân viên đã thuộc trạm khác)
+- `4003`: Staff Not In This Station (khi unassign nhân viên không thuộc trạm này)
+
+---
+
+## 7. Station Usage
+
+### GET /api/stations/{stationId}/usages/realtime  
+Bearer token required (ROLE_ADMIN, ROLE_STAFF)  
+Lấy thông tin phiên sạc đang diễn ra tại một trạm (nếu có).
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "stationId": "uuid-1111-...",
+    "currentUsage": {
+      "sessionId": "uuid-session-...",
+      "vehicleId": "uuid-vehicle-...",
+      "driverId": "uuid-driver-...",
+      "startTime": "2025-09-15T10:30:00",
+      "status": "IN_PROGRESS",
+      "chargingPoint": {
+        "id": "uuid-point-...",
+        "name": "Điểm sạc 1",
+        "powerKw": 50
+      }
+    }
+  }
+}
+```
+
+### GET /api/stations/{stationId}/usages/history  
+Bearer token required (ROLE_ADMIN, ROLE_STAFF)  
+Lịch sử các phiên sạc tại một trạm.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "sessionId": "uuid-session-...",
+      "vehicleId": "uuid-vehicle-...",
+      "driverId": "uuid-driver-...",
+      "startTime": "2025-09-01T08:00:00",
+      "endTime": "2025-09-01T09:00:00",
+      "status": "COMPLETED",
+      "chargingPoint": {
+        "id": "uuid-point-...",
+        "name": "Điểm sạc 1",
+        "powerKw": 50
+      },
+      "revenue": 10.5
+    }
+  ]
+}
+```
+
+### GET /api/stations/{stationId}/usages/analytics/daily  
+Bearer token required (ROLE_ADMIN, ROLE_STAFF)  
+Thống kê sử dụng theo ngày cho một trạm.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "date": "2025-09-01",
+      "totalSessions": 10,
+      "totalRevenue": 105.0,
+      "totalTimeHours": 5.5
+    }
+  ]
+}
+```
+
+### GET /api/stations/{stationId}/usages/analytics/monthly  
+Bearer token required (ROLE_ADMIN, ROLE_STAFF)  
+Thống kê sử dụng theo tháng cho một trạm.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "month": "2025-09",
+      "totalSessions": 50,
+      "totalRevenue": 525.0,
+      "totalTimeHours": 30.5
+    }
+  ]
+}
+```
+
+### GET /api/stations/{stationId}/usages/analytics/yearly  
+Bearer token required (ROLE_ADMIN, ROLE_STAFF)  
+Thống kê sử dụng theo năm cho một trạm.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "year": 2025,
+      "totalSessions": 600,
+      "totalRevenue": 6300.0,
+      "totalTimeHours": 365.0
+    }
+  ]
+}
+```
+
+---
+
+## 8. Vehicles (Thông tin xe điện)
+
+### POST /api/vehicles
+Bearer token required (ROLE_DRIVER)  
+Driver tạo xe mới cho chính mình.
+
+Request body (`VehicleCreationRequest`):
+```json
+{
+  "licensePlate": "30A-12345",
+  "model": "Tesla Model 3",
+  "batteryCapacityKwh": 75.0,
+  "batteryType": "Lithium-ion"
+}
+```
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "vehicleId": "uuid-vehicle-...",
+    "licensePlate": "30A-12345",
+    "model": "Tesla Model 3",
+    "batteryCapacityKwh": 75.0,
+    "batteryType": "Lithium-ion",
+    "ownerId": "uuid-driver-..."
+  }
+}
+```
+
+### GET /api/vehicles/my-vehicles
+Bearer token required (ROLE_DRIVER)  
+Driver lấy danh sách tất cả xe của mình.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "vehicleId": "uuid-vehicle-...",
+      "licensePlate": "30A-12345",
+      "model": "Tesla Model 3",
+      "batteryCapacityKwh": 75.0,
+      "batteryType": "Lithium-ion",
+      "ownerId": "uuid-driver-..."
+    },
+    {
+      "vehicleId": "uuid-vehicle-2...",
+      "licensePlate": "29B-67890",
+      "model": "VinFast VF8",
+      "batteryCapacityKwh": 87.7,
+      "batteryType": "LFP",
+      "ownerId": "uuid-driver-..."
+    }
+  ]
+}
+```
+
+### GET /api/vehicles/my-vehicles/{vehicleId}
+Bearer token required (ROLE_DRIVER)  
+Driver lấy chi tiết một xe của mình.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "vehicleId": "uuid-vehicle-...",
+    "licensePlate": "30A-12345",
+    "model": "Tesla Model 3",
+    "batteryCapacityKwh": 75.0,
+    "batteryType": "Lithium-ion",
+    "ownerId": "uuid-driver-..."
+  }
+}
+```
+
+### PUT /api/vehicles/{vehicleId}
+Bearer token required (ROLE_DRIVER)  
+Driver cập nhật thông tin xe của mình. Tất cả fields đều optional (partial update).
+
+Request body (`VehicleUpdateRequest`):
+```json
+{
+  "licensePlate": "30A-99999",
+  "model": "Tesla Model 3 Long Range",
+  "batteryCapacityKwh": 82.0,
+  "batteryType": "Lithium-ion NCM"
+}
+```
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "vehicleId": "uuid-vehicle-...",
+    "licensePlate": "30A-99999",
+    "model": "Tesla Model 3 Long Range",
+    "batteryCapacityKwh": 82.0,
+    "batteryType": "Lithium-ion NCM",
+    "ownerId": "uuid-driver-..."
+  }
+}
+```
+
+### DELETE /api/vehicles/{vehicleId}
+Bearer token required (ROLE_DRIVER)  
+Driver xóa xe của mình.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": "Vehicle deleted successfully",
+  "result": null
+}
+```
+
+### GET /api/vehicles/driver/{driverId}
+Bearer token required (ROLE_ADMIN)  
+Admin lấy danh sách xe của một driver cụ thể.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "vehicleId": "uuid-vehicle-...",
+      "licensePlate": "30A-12345",
+      "model": "Tesla Model 3",
+      "batteryCapacityKwh": 75.0,
+      "batteryType": "Lithium-ion",
+      "ownerId": "uuid-driver-..."
+    }
+  ]
+}
+```
+
+**Vehicle Validation & Business Rules:**
+- Biển số xe (`licensePlate`) phải unique trong hệ thống
+- Driver chỉ có thể xem/sửa/xóa xe của chính mình
+- Admin có thể xem xe của bất kỳ driver nào
+
+**Error Codes:**
+- `5001`: Vehicle Not Found
+- `5002`: License Plate Already Exists (biển số đã tồn tại)
+- `5003`: Vehicle Does Not Belong To This Driver (xe không thuộc về driver này)
+
+---
+
