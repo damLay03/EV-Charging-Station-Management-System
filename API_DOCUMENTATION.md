@@ -1131,3 +1131,231 @@ Sample response:
 
 ---
 
+## 9. Payment Methods (Phương thức thanh toán)
+
+All payment method endpoints require bearer token (ROLE_DRIVER).
+
+### POST /api/payment-methods
+Bearer token required (ROLE_DRIVER)  
+Driver thêm phương thức thanh toán mới (Credit Card, E-Wallet, ...).
+
+Request body (`PaymentMethodCreationRequest`):
+```json
+{
+  "methodType": "CREDIT_CARD",
+  "provider": "Visa",
+  "token": "4111111111111234"
+}
+```
+
+**Payment Method Types:**
+- `CREDIT_CARD` - Thẻ tín dụng
+- `DEBIT_CARD` - Thẻ ghi nợ
+- `E_WALLET` - Ví điện tử (MoMo, ZaloPay, ...)
+- `BANK_TRANSFER` - Chuyển khoản ngân hàng
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "pmId": "uuid-pm-...",
+    "methodType": "CREDIT_CARD",
+    "provider": "Visa",
+    "maskedToken": "**** **** **** 1234"
+  }
+}
+```
+
+### GET /api/payment-methods
+Bearer token required (ROLE_DRIVER)  
+Driver xem danh sách phương thức thanh toán của mình.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "pmId": "uuid-pm-1...",
+      "methodType": "CREDIT_CARD",
+      "provider": "Visa",
+      "maskedToken": "**** **** **** 1234"
+    },
+    {
+      "pmId": "uuid-pm-2...",
+      "methodType": "E_WALLET",
+      "provider": "MoMo",
+      "maskedToken": "**** **** **** 5678"
+    }
+  ]
+}
+```
+
+### DELETE /api/payment-methods/{pmId}
+Bearer token required (ROLE_DRIVER)  
+Driver xóa phương thức thanh toán.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": "Payment method deleted successfully",
+  "result": null
+}
+```
+
+**Payment Method Business Rules:**
+- Mỗi driver có thể có nhiều phương thức thanh toán
+- Token được mask khi trả về API (chỉ hiển thị 4 số cuối)
+- Driver chỉ có thể xóa phương thức thanh toán của chính mình
+
+**Error Codes:**
+- `8001`: Payment Method Not Found
+- `9001`: Unauthorized Access (khi driver cố xóa payment method không thuộc mình)
+
+---
+
+## 10. Subscriptions (Gói đăng ký)
+
+All subscription endpoints require bearer token (ROLE_DRIVER).
+
+### POST /api/subscriptions
+Bearer token required (ROLE_DRIVER)  
+Driver đăng ký gói subscription (Free, Premium, VIP).  
+**Lưu ý:** Nếu gói có phí monthly (> 0), cần cung cấp `paymentMethodId`.
+
+Request body (`SubscriptionCreationRequest`):
+```json
+{
+  "planId": "uuid-plan-...",
+  "paymentMethodId": "uuid-pm-...",
+  "autoRenew": true
+}
+```
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "subscriptionId": "uuid-sub-...",
+    "driverId": "uuid-driver-...",
+    "plan": {
+      "planId": "uuid-plan-...",
+      "name": "Premium",
+      "billingType": "MONTHLY_SUBSCRIPTION",
+      "pricePerKwh": 0.08,
+      "pricePerMinute": 0.015,
+      "monthlyFee": 199000.0,
+      "benefits": "Giảm 10% mọi phiên sạc, Đặt chỗ trước, Báo cáo chi tiết, Hỗ trợ ưu tiên"
+    },
+    "startDate": "2025-10-11T14:30:00",
+    "endDate": "2025-11-11T14:30:00",
+    "status": "ACTIVE",
+    "autoRenew": true
+  }
+}
+```
+
+### GET /api/subscriptions/active
+Bearer token required (ROLE_DRIVER)  
+Driver xem gói subscription hiện tại đang ACTIVE.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "subscriptionId": "uuid-sub-...",
+    "driverId": "uuid-driver-...",
+    "plan": {
+      "planId": "uuid-plan-...",
+      "name": "Premium",
+      "billingType": "MONTHLY_SUBSCRIPTION",
+      "pricePerKwh": 0.08,
+      "pricePerMinute": 0.015,
+      "monthlyFee": 199000.0,
+      "benefits": "Giảm 10% mọi phiên sạc, Đặt chỗ trước, Báo cáo chi tiết, Hỗ trợ ưu tiên"
+    },
+    "startDate": "2025-10-11T14:30:00",
+    "endDate": "2025-11-11T14:30:00",
+    "status": "ACTIVE",
+    "autoRenew": true
+  }
+}
+```
+
+### DELETE /api/subscriptions/{subscriptionId}
+Bearer token required (ROLE_DRIVER)  
+Driver hủy subscription hiện tại. Subscription sẽ chuyển trạng thái sang `CANCELLED`.
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": "Subscription cancelled successfully",
+  "result": null
+}
+```
+
+### PATCH /api/subscriptions/{subscriptionId}/auto-renew?autoRenew={boolean}
+Bearer token required (ROLE_DRIVER)  
+Driver bật/tắt tự động gia hạn subscription.
+
+Query parameters:
+- `autoRenew` (required): `true` để bật tự động gia hạn, `false` để tắt
+
+Sample response:
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "subscriptionId": "uuid-sub-...",
+    "driverId": "uuid-driver-...",
+    "plan": {
+      "planId": "uuid-plan-...",
+      "name": "Premium",
+      "billingType": "MONTHLY_SUBSCRIPTION",
+      "pricePerKwh": 0.08,
+      "pricePerMinute": 0.015,
+      "monthlyFee": 199000.0,
+      "benefits": "Giảm 10% mọi phiên sạc"
+    },
+    "startDate": "2025-10-11T14:30:00",
+    "endDate": "2025-11-11T14:30:00",
+    "status": "ACTIVE",
+    "autoRenew": false
+  }
+}
+```
+
+**Subscription Business Rules:**
+- Driver chỉ có thể có 1 subscription ACTIVE tại một thời điểm
+- Gói miễn phí (monthlyFee = 0) không cần payment method
+- Gói có phí (monthlyFee > 0) bắt buộc cần payment method
+- Khi subscribe gói có phí, hệ thống tự động tạo payment record
+- Subscription mặc định có thời hạn 1 tháng kể từ ngày đăng ký
+- Khi hủy subscription, autoRenew tự động bị tắt
+
+**Subscription Status:**
+- `ACTIVE` - Đang hoạt động
+- `EXPIRED` - Đã hết hạn
+- `CANCELLED` - Đã hủy
+
+**Error Codes:**
+- `6001`: Driver Not Found
+- `3001`: Plan Not Found
+- `7001`: Subscription Not Found
+- `7002`: Subscription Already Active (driver đã có subscription ACTIVE)
+- `7003`: Subscription Not Active (khi hủy subscription không ở trạng thái ACTIVE)
+- `8001`: Payment Method Not Found
+- `8002`: Payment Method Required (khi subscribe gói có phí mà không cung cấp payment method)
+- `9001`: Unauthorized Access
+
+---

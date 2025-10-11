@@ -19,7 +19,18 @@ public enum ErrorCode {
     // --- Vehicle related ---
     VEHICLE_NOT_FOUND(5001, "Vehicle Not Found"),
     LICENSE_PLATE_EXISTED(5002, "License Plate Already Exists"),
-    VEHICLE_NOT_BELONG_TO_DRIVER(5003, "Vehicle Does Not Belong To This Driver")
+    VEHICLE_NOT_BELONG_TO_DRIVER(5003, "Vehicle Does Not Belong To This Driver"),
+    // --- Driver related ---
+    DRIVER_NOT_FOUND(6001, "Driver Not Found"),
+    // --- Subscription related ---
+    SUBSCRIPTION_NOT_FOUND(7001, "Subscription Not Found"),
+    SUBSCRIPTION_ALREADY_ACTIVE(7002, "Subscription Already Active"),
+    SUBSCRIPTION_NOT_ACTIVE(7003, "Subscription Not Active"),
+    // --- Payment Method related ---
+    PAYMENT_METHOD_NOT_FOUND(8001, "Payment Method Not Found"),
+    PAYMENT_METHOD_REQUIRED(8002, "Payment Method Required For Paid Plan"),
+    // --- General ---
+    UNAUTHORIZED(9001, "Unauthorized Access")
     ;
 
     private int code;
