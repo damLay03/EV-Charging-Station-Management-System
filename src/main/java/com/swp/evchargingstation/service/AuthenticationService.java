@@ -5,7 +5,6 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.swp.evchargingstation.dto.response.AuthenticationResponse;
 import com.swp.evchargingstation.entity.User;
-import com.swp.evchargingstation.mapper.UserMapper;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -35,7 +34,6 @@ import java.util.StringJoiner;
 public class AuthenticationService {
 //    private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class); //da co @Slf4j, khong can nua
     UserRepository userRepository;
-    UserMapper userMapper;
 
     //use YAML config instead
     // protected static final String SIGN_KEY = "0a58c8b134bc3d3e7a853dc8a49bcd3895e02c20d39d29d2d976e87300dc23fa";
@@ -62,7 +60,6 @@ public class AuthenticationService {
         return AuthenticationResponse.builder()
                 .token(token)
                 .authenticated(true)
-                .userInfo(userMapper.toUserResponse(user))
                 .build();
     }
 
