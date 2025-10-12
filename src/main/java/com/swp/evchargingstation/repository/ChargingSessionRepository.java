@@ -18,6 +18,15 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
     @Query("SELECT COALESCE(SUM(cs.costTotal), 0) FROM ChargingSession cs WHERE cs.driver.userId = :driverId")
     Double sumTotalSpentByDriverId(@Param("driverId") String driverId);
 
+    @Query("SELECT COALESCE(SUM(cs.energyKwh), 0) FROM ChargingSession cs WHERE cs.driver.userId = :driverId")
+    Double sumTotalEnergyByDriverId(@Param("driverId") String driverId);
+
+    @Query("SELECT cs FROM ChargingSession cs WHERE cs.driver.userId = :driverId ORDER BY cs.startTime DESC")
+    List<ChargingSession> findByDriverIdOrderByStartTimeDesc(@Param("driverId") String driverId);
+
+    @Query("SELECT cs.endSocPercent FROM ChargingSession cs WHERE cs.driver.userId = :driverId AND cs.endSocPercent IS NOT NULL ORDER BY cs.endTime DESC LIMIT 1")
+    java.util.Optional<Integer> findLatestEndSocByDriverId(@Param("driverId") String driverId);
+
     @Query("SELECT COALESCE(SUM(cs.costTotal), 0) FROM ChargingSession cs WHERE cs.chargingPoint.station.stationId = :stationId")
     Double sumRevenueByStationId(@Param("stationId") String stationId);
 

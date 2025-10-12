@@ -29,8 +29,10 @@ public enum ErrorCode {
     // --- Payment Method related ---
     PAYMENT_METHOD_NOT_FOUND(8001, "Payment Method Not Found"),
     PAYMENT_METHOD_REQUIRED(8002, "Payment Method Required For Paid Plan"),
+    // --- Charging Session related ---
+    SESSION_NOT_FOUND(9001, "Charging Session Not Found"),
     // --- General ---
-    UNAUTHORIZED(9001, "Unauthorized Access")
+    UNAUTHORIZED(9002, "Unauthorized Access")
     ;
 
     private int code;

@@ -1,0 +1,149 @@
+package com.swp.evchargingstation.service;
+
+import com.swp.evchargingstation.dto.response.ChargingSessionResponse;
+import com.swp.evchargingstation.dto.response.DriverDashboardResponse;
+import com.swp.evchargingstation.entity.ChargingSession;
+import com.swp.evchargingstation.entity.Driver;
+import com.swp.evchargingstation.entity.Vehicle;
+import com.swp.evchargingstation.exception.AppException;
+import com.swp.evchargingstation.exception.ErrorCode;
+import com.swp.evchargingstation.repository.ChargingSessionRepository;
+import com.swp.evchargingstation.repository.DriverRepository;
+import com.swp.evchargingstation.repository.VehicleRepository;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
+public class ChargingSessionService {
+
+    ChargingSessionRepository chargingSessionRepository;
+    DriverRepository driverRepository;
+    VehicleRepository vehicleRepository;
+
+    /**
+     * Lấy dashboard overview của driver đang đăng nhập
+     */
+    public DriverDashboardResponse getMyDashboard() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getName();
+
+        log.info("Getting dashboard for driver: {}", userId);
+
+        Driver driver = driverRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        // Lấy thống kê từ charging sessions
+        Integer totalSessions = chargingSessionRepository.countByDriverId(userId);
+        Double totalCost = chargingSessionRepository.sumTotalSpentByDriverId(userId);
+
+        // Tính tổng năng lượng
+        Double totalEnergy = chargingSessionRepository.sumTotalEnergyByDriverId(userId);
+
+        // Tính TB/tháng
+        long monthsSinceJoin = ChronoUnit.MONTHS.between(driver.getJoinDate(), LocalDateTime.now());
+        if (monthsSinceJoin == 0) monthsSinceJoin = 1; // Tránh chia cho 0
+        String avgCostPerMonth = String.format("%.0f", totalCost / monthsSinceJoin);
+
+        // Lấy thông tin xe chính (xe đầu tiên của driver)
+        List<Vehicle> vehicles = vehicleRepository.findByOwner_UserId(userId);
+        String vehicleModel = "";
+        String licensePlate = "";
+        Integer currentBatterySoc = 0;
+
+        if (!vehicles.isEmpty()) {
+            Vehicle primaryVehicle = vehicles.get(0);
+            vehicleModel = primaryVehicle.getModel();
+            licensePlate = primaryVehicle.getLicensePlate();
+
+            // Lấy % pin từ session gần nhất
+            currentBatterySoc = getLatestBatterySoc(userId);
+        }
+
+        return DriverDashboardResponse.builder()
+                .totalCost(totalCost)
+                .totalEnergyKwh(totalEnergy)
+                .totalSessions(totalSessions)
+                .averageCostPerMonth(avgCostPerMonth)
+                .vehicleModel(vehicleModel)
+                .licensePlate(licensePlate)
+                .currentBatterySoc(currentBatterySoc)
+                .build();
+    }
+
+    /**
+     * Lấy danh sách lịch sử phiên sạc của driver
+     */
+    public List<ChargingSessionResponse> getMySessions() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getName();
+
+        log.info("Getting charging sessions for driver: {}", userId);
+
+        List<ChargingSession> sessions = chargingSessionRepository.findByDriverIdOrderByStartTimeDesc(userId);
+
+        return sessions.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy chi tiết một phiên sạc
+     */
+    public ChargingSessionResponse getSessionById(String sessionId) {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getName();
+
+        ChargingSession session = chargingSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new AppException(ErrorCode.SESSION_NOT_FOUND));
+
+        // Kiểm tra quyền truy cập
+        if (!session.getDriver().getUserId().equals(userId)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        return convertToResponse(session);
+    }
+
+    /**
+     * Chuyển đổi ChargingSession entity sang ChargingSessionResponse
+     */
+    private ChargingSessionResponse convertToResponse(ChargingSession session) {
+        return ChargingSessionResponse.builder()
+                .sessionId(session.getSessionId())
+                .startTime(session.getStartTime())
+                .endTime(session.getEndTime())
+                .durationMin(session.getDurationMin())
+                .stationName(session.getChargingPoint().getStation().getName())
+                .stationAddress(session.getChargingPoint().getStation().getAddress())
+                .chargingPointName(session.getChargingPoint().getPointName())
+                .startSocPercent(session.getStartSocPercent())
+                .endSocPercent(session.getEndSocPercent())
+                .energyKwh(session.getEnergyKwh())
+                .costTotal(session.getCostTotal())
+                .status(session.getStatus())
+                .vehicleModel(session.getVehicle() != null ? session.getVehicle().getModel() : "")
+                .licensePlate(session.getVehicle() != null ? session.getVehicle().getLicensePlate() : "")
+                .build();
+    }
+
+    /**
+     * Lấy % pin từ session gần nhất
+     */
+    private Integer getLatestBatterySoc(String driverId) {
+        return chargingSessionRepository.findLatestEndSocByDriverId(driverId)
+                .orElse(0);
+    }
+}
+
