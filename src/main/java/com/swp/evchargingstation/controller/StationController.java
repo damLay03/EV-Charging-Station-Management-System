@@ -2,6 +2,7 @@ package com.swp.evchargingstation.controller;
 
 import com.swp.evchargingstation.dto.request.ApiResponse;
 import com.swp.evchargingstation.dto.request.StationCreationRequest;
+import com.swp.evchargingstation.dto.request.StationUpdateRequest;
 import com.swp.evchargingstation.dto.response.StationDetailResponse;
 import com.swp.evchargingstation.dto.response.StationOverviewResponse;
 import com.swp.evchargingstation.dto.response.StaffSummaryResponse;
@@ -44,6 +45,17 @@ public class StationController {
         log.info("Admin fetching stations - status: {}", status);
         return ApiResponse.<List<StationResponse>>builder()
                 .result(stationService.getStations(status))
+                .build();
+    }
+
+    // NOTE: Danh sách trạm với thông tin đầy đủ cho UI quản lý (bao gồm điểm sạc, doanh thu, % sử dụng, nhân viên)
+    @GetMapping("/detail")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<List<StationDetailResponse>> getStationsDetail(
+            @RequestParam(value = "status", required = false) StationStatus status) {
+        log.info("Admin fetching stations with detail - status: {}", status);
+        return ApiResponse.<List<StationDetailResponse>>builder()
+                .result(stationService.getStationsWithDetail(status))
                 .build();
     }
 
@@ -127,6 +139,27 @@ public class StationController {
         log.info("Admin creating new station: {}", request.getName());
         return ApiResponse.<StationResponse>builder()
                 .result(stationService.createStation(request))
+                .build();
+    }
+
+    // NOTE: Cập nhật thông tin trạm sạc (name, address, operatorName, contactPhone, status)
+    @PutMapping("/{stationId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<StationResponse> updateStation(@PathVariable String stationId, @Valid @RequestBody StationUpdateRequest request) {
+        log.info("Admin updating station: {}", stationId);
+        return ApiResponse.<StationResponse>builder()
+                .result(stationService.updateStation(stationId, request))
+                .build();
+    }
+
+    // NOTE: Xóa trạm sạc theo id. Các charging points liên quan sẽ tự động bị xóa (cascade)
+    @DeleteMapping("/{stationId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> deleteStation(@PathVariable String stationId) {
+        log.info("Admin deleting station: {}", stationId);
+        stationService.deleteStation(stationId);
+        return ApiResponse.<Void>builder()
+                .message("Station deleted successfully")
                 .build();
     }
 }

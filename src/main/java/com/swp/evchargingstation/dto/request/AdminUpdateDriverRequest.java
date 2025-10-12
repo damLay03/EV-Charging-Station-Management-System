@@ -4,13 +4,14 @@ import lombok.Data;
 import java.time.LocalDate;
 
 @Data
-public class UserUpdateRequest {
-    // NOTE: Tất cả field đều OPTIONAL cho partial update.
-    // Null => không đổi. Nếu FE muốn reset giá trị phải gửi giá trị hợp lệ (không hỗ trợ set rỗng hoàn toàn ở đây).
+public class AdminUpdateDriverRequest {
+    // NOTE: Admin có thể update tất cả thông tin của driver (trừ email, password, joinDate)
+    // Tất cả field đều OPTIONAL cho partial update.
     private String phone;      // optional
     private LocalDate dateOfBirth; // optional
     private Boolean gender;    // optional (true = male, false = female)
     private String firstName;  // optional
     private String lastName;   // optional
-    private String address;    // optional - cho driver cập nhật địa chỉ
+    private String address;    // optional - admin có thể sửa địa chỉ driver
 }
+

@@ -2,11 +2,32 @@ package com.swp.evchargingstation.exception;
 
 import com.swp.evchargingstation.dto.request.ApiResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+    // Handle Spring Security Access Denied (when user doesn't have required role)
+    @ExceptionHandler(value = AccessDeniedException.class)
+    ResponseEntity<ApiResponse> handlingAccessDeniedException(AccessDeniedException exception) {
+        ApiResponse apiResponse = new ApiResponse();
+        apiResponse.setCode(403);
+        apiResponse.setMessage("Access Denied: " + exception.getMessage());
+        return ResponseEntity.status(403).body(apiResponse);
+    }
+
+    // Handle Spring Security Authentication failures (invalid/expired token)
+    @ExceptionHandler(value = AuthenticationException.class)
+    ResponseEntity<ApiResponse> handlingAuthenticationException(AuthenticationException exception) {
+        ApiResponse apiResponse = new ApiResponse();
+        apiResponse.setCode(401);
+        apiResponse.setMessage("Authentication Failed: " + exception.getMessage());
+        return ResponseEntity.status(401).body(apiResponse);
+    }
 
     //Bắt exception runtime
     @ExceptionHandler(value = RuntimeException.class)

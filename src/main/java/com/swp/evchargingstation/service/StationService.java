@@ -1,6 +1,7 @@
 package com.swp.evchargingstation.service;
 
 import com.swp.evchargingstation.dto.request.StationCreationRequest;
+import com.swp.evchargingstation.dto.request.StationUpdateRequest;
 import com.swp.evchargingstation.dto.response.StationDetailResponse;
 import com.swp.evchargingstation.dto.response.StationResponse;
 import com.swp.evchargingstation.dto.response.StaffSummaryResponse;
@@ -79,6 +80,49 @@ public class StationService {
 
         log.info("Created station {} with {} charging points", savedStation.getStationId(), chargingPoints.size());
         return stationMapper.toStationResponse(savedStation);
+    }
+
+    /**
+     * Cập nhật thông tin cơ bản của một trạm (name, address, operatorName, contactPhone, status).
+     * Không thay đổi số lượng charging points hoặc cấu hình phần cứng.
+     * @param stationId id của trạm cần cập nhật
+     * @param request thông tin cập nhật
+     * @return StationResponse sau khi cập nhật
+     * @throws AppException nếu không tìm thấy trạm
+     */
+    @Transactional
+    public StationResponse updateStation(String stationId, StationUpdateRequest request) {
+        log.info("Updating station id='{}' with name='{}'", stationId, request.getName());
+        Station station = stationRepository.findById(stationId)
+                .orElseThrow(() -> new AppException(ErrorCode.STATION_NOT_FOUND));
+
+        // Update fields
+        station.setName(request.getName());
+        station.setAddress(request.getAddress());
+        station.setOperatorName(request.getOperatorName());
+        station.setContactPhone(request.getContactPhone());
+        station.setStatus(request.getStatus());
+
+        Station saved = stationRepository.save(station);
+        log.info("Updated station {} successfully", stationId);
+        return stationMapper.toStationResponse(saved);
+    }
+
+    /**
+     * Xóa trạm sạc theo id.
+     * Xóa luôn tất cả charging points liên quan (cascade).
+     * @param stationId id trạm cần xóa
+     * @throws AppException nếu không tìm thấy trạm
+     */
+    @Transactional
+    public void deleteStation(String stationId) {
+        log.info("Deleting station id='{}'", stationId);
+        Station station = stationRepository.findById(stationId)
+                .orElseThrow(() -> new AppException(ErrorCode.STATION_NOT_FOUND));
+
+        // Xóa station (charging points sẽ tự động xóa do cascade = CascadeType.ALL)
+        stationRepository.delete(station);
+        log.info("Deleted station '{}' successfully", stationId);
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.swp.evchargingstation.service;
 
 import com.swp.evchargingstation.dto.request.PlanCreationRequest;
+import com.swp.evchargingstation.dto.request.PlanUpdateRequest;
 import com.swp.evchargingstation.dto.response.PlanResponse;
 import com.swp.evchargingstation.entity.Plan;
 import com.swp.evchargingstation.enums.BillingType;
@@ -78,11 +79,54 @@ public class PlanService {
         return planMapper.toPlanResponse(plan);
     }
 
+    // NOTE: Cập nhật plan theo id. Validate name unique (trừ chính nó), validate config theo billingType mới.
+    @Transactional
+    public PlanResponse update(String planId, PlanUpdateRequest request) {
+        log.info("Updating plan id='{}' with name='{}' type={}", planId, request.getName(), request.getBillingType());
+        Plan plan = planRepository.findById(planId)
+                .orElseThrow(() -> new AppException(ErrorCode.PLAN_NOT_FOUND));
+
+        // Validate name unique (ignore current plan)
+        validateNameUniqueForUpdate(request.getName(), planId);
+
+        // Validate config for new billingType
+        BillingType billingType = request.getBillingType();
+        validateConfigForUpdate(billingType, request);
+
+        // Update fields
+        plan.setName(request.getName());
+        plan.setBillingType(billingType);
+        plan.setPricePerKwh(request.getPricePerKwh());
+        plan.setPricePerMinute(request.getPricePerMinute());
+        plan.setMonthlyFee(request.getMonthlyFee());
+        plan.setBenefits(request.getBenefits());
+
+        return planMapper.toPlanResponse(planRepository.save(plan));
+    }
+
+    // NOTE: Xóa plan theo id. Throw PLAN_NOT_FOUND nếu không tồn tại.
+    @Transactional
+    public void delete(String planId) {
+        log.info("Deleting plan id='{}'", planId);
+        Plan plan = planRepository.findById(planId)
+                .orElseThrow(() -> new AppException(ErrorCode.PLAN_NOT_FOUND));
+        planRepository.delete(plan);
+    }
+
     // NOTE: Kiểm tra name trùng (case-insensitive). Throw PLAN_NAME_EXISTED nếu đã tồn tại.
     private void validateNameUnique(String name) {
         if (planRepository.existsByNameIgnoreCase(name)) {
             throw new AppException(ErrorCode.PLAN_NAME_EXISTED);
         }
+    }
+
+    // NOTE: Kiểm tra name trùng khi update (bỏ qua plan hiện tại). Throw PLAN_NAME_EXISTED nếu có plan khác dùng name này.
+    private void validateNameUniqueForUpdate(String name, String currentPlanId) {
+        planRepository.findByNameIgnoreCase(name).ifPresent(existingPlan -> {
+            if (!existingPlan.getPlanId().equals(currentPlanId)) {
+                throw new AppException(ErrorCode.PLAN_NAME_EXISTED);
+            }
+        });
     }
 
     // NOTE: Rule nghiệp vụ cho từng BillingType (điều kiện monthlyFee / price). Throw INVALID_PLAN_CONFIG nếu sai.
@@ -116,6 +160,41 @@ public class PlanService {
             case PAY_AS_YOU_GO, MONTHLY_SUBSCRIPTION -> {
                 // For completeness if later reused via generic endpoint
                 // MONTHLY_SUBSCRIPTION should have monthlyFee > 0
+                if (billingType == BillingType.MONTHLY_SUBSCRIPTION && r.getMonthlyFee() <= 0) {
+                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
+                }
+                if (billingType == BillingType.PAY_AS_YOU_GO && r.getMonthlyFee() > 0) {
+                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
+                }
+            }
+        }
+    }
+
+    // NOTE: Validate config cho update request (tương tự validateConfig nhưng dùng PlanUpdateRequest)
+    private void validateConfigForUpdate(BillingType billingType, PlanUpdateRequest r) {
+        switch (billingType) {
+            case PREPAID -> {
+                if (r.getMonthlyFee() > 0) {
+                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
+                }
+                if (r.getPricePerKwh() <= 0 && r.getPricePerMinute() <= 0) {
+                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
+                }
+            }
+            case POSTPAID -> {
+                if (r.getMonthlyFee() > 0) {
+                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
+                }
+                if (r.getPricePerKwh() <= 0 && r.getPricePerMinute() <= 0) {
+                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
+                }
+            }
+            case VIP -> {
+                if (r.getMonthlyFee() <= 0) {
+                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
+                }
+            }
+            case PAY_AS_YOU_GO, MONTHLY_SUBSCRIPTION -> {
                 if (billingType == BillingType.MONTHLY_SUBSCRIPTION && r.getMonthlyFee() <= 0) {
                     throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
                 }
