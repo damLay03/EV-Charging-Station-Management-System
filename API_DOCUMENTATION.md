@@ -1359,3 +1359,127 @@ Sample response:
 - `9001`: Unauthorized Access
 
 ---
+
+## 11. Charging Sessions (Phiên Sạc - Driver Dashboard)
+
+All charging session endpoints require bearer token (ROLE_DRIVER).
+
+### GET /api/charging-sessions/my-dashboard
+Bearer token required (ROLE_DRIVER)  
+Lấy thông tin tổng quan dashboard của driver bao gồm:
+- Tổng chi phí đã tiêu
+- Tổng năng lượng đã sạc (kWh)
+- Số phiên sạc
+- Trung bình chi phí/tháng (tính từ ngày join)
+- Thông tin xe chính và % pin hiện tại
+
+Sample response (`DriverDashboardResponse`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "totalCost": 727690.0,
+    "totalEnergyKwh": 212.9,
+    "totalSessions": 5,
+    "averageCostPerMonth": "3418",
+    "vehicleModel": "Tesla Model 3",
+    "licensePlate": "30A-12345",
+    "currentBatterySoc": 75
+  }
+}
+```
+
+### GET /api/charging-sessions/my-sessions
+Bearer token required (ROLE_DRIVER)  
+Lấy danh sách lịch sử phiên sạc của driver đang đăng nhập, sắp xếp theo thời gian mới nhất trước.
+
+Sample response (`List<ChargingSessionResponse>`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "sessionId": "uuid-session-...",
+      "startTime": "2024-10-03T14:30:00",
+      "endTime": "2024-10-03T15:15:00",
+      "durationMin": 45,
+      "stationName": "Vincom Đồng Khởi",
+      "stationAddress": "72 Lê Thánh Tôn, Quận 1, TP.HCM",
+      "chargingPointName": "Point A1",
+      "startSocPercent": 30,
+      "endSocPercent": 75,
+      "energyKwh": 32.5,
+      "costTotal": 113750.0,
+      "status": "COMPLETED",
+      "vehicleModel": "Tesla Model 3",
+      "licensePlate": "30A-12345"
+    },
+    {
+      "sessionId": "uuid-session-2...",
+      "startTime": "2024-10-01T09:15:00",
+      "endTime": "2024-10-01T10:35:00",
+      "durationMin": 80,
+      "stationName": "Landmark 81",
+      "stationAddress": "Vinhomes Central Park, Bình Thạnh, TP.HCM",
+      "chargingPointName": "Point B2",
+      "startSocPercent": 15,
+      "endSocPercent": 85,
+      "energyKwh": 58.2,
+      "costTotal": 186240.0,
+      "status": "COMPLETED",
+      "vehicleModel": "Tesla Model 3",
+      "licensePlate": "30A-12345"
+    }
+  ]
+}
+```
+
+### GET /api/charging-sessions/{sessionId}
+Bearer token required (ROLE_DRIVER)  
+Lấy chi tiết một phiên sạc cụ thể. Driver chỉ có thể xem phiên sạc của chính mình.
+
+Sample response (`ChargingSessionResponse`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "sessionId": "uuid-session-...",
+    "startTime": "2024-10-03T14:30:00",
+    "endTime": "2024-10-03T15:15:00",
+    "durationMin": 45,
+    "stationName": "Vincom Đồng Khởi",
+    "stationAddress": "72 Lê Thánh Tôn, Quận 1, TP.HCM",
+    "chargingPointName": "Point A1",
+    "startSocPercent": 30,
+    "endSocPercent": 75,
+    "energyKwh": 32.5,
+    "costTotal": 113750.0,
+    "status": "COMPLETED",
+    "vehicleModel": "Tesla Model 3",
+    "licensePlate": "30A-12345"
+  }
+}
+```
+
+**Charging Session Status:**
+- `IN_PROGRESS` - Đang sạc
+- `COMPLETED` - Hoàn thành
+- `CANCELLED` - Đã hủy
+- `FAILED` - Thất bại
+
+**Business Rules:**
+- Driver chỉ có thể xem dữ liệu phiên sạc của chính mình
+- Dashboard tính toán tự động dựa trên tất cả các phiên sạc đã hoàn thành
+- Trung bình chi phí/tháng = Tổng chi phí / Số tháng kể từ ngày join
+- % pin hiện tại lấy từ endSocPercent của phiên sạc gần nhất
+- Thông tin xe lấy từ xe đầu tiên trong danh sách xe của driver
+
+**Error Codes:**
+- `9001`: Session Not Found
+- `9002`: Unauthorized Access (driver cố xem phiên sạc không thuộc mình)
+
+---
+
