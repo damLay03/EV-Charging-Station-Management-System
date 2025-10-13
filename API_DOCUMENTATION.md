@@ -1464,6 +1464,69 @@ Sample response (`ChargingSessionResponse`):
 }
 ```
 
+### GET /api/charging-sessions/my-analytics/monthly
+Bearer token required (ROLE_DRIVER)  
+Lấy thống kê phân tích theo tháng cho driver (5 tháng gần nhất).  
+Dùng cho tab **"Phân tích"** với 3 biểu đồ:
+- **Chi phí theo tháng** - Biểu đồ cột
+- **Năng lượng tiêu thụ** - Biểu đồ đường
+- **Số phiên sạc** - Biểu đồ cột
+
+Sample response (`List<MonthlyAnalyticsResponse>`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "month": 6,
+      "year": 2025,
+      "totalCost": 450000.0,
+      "totalEnergyKwh": 150.5,
+      "totalSessions": 8,
+      "monthLabel": "T6"
+    },
+    {
+      "month": 7,
+      "year": 2025,
+      "totalCost": 620000.0,
+      "totalEnergyKwh": 225.3,
+      "totalSessions": 12,
+      "monthLabel": "T7"
+    },
+    {
+      "month": 8,
+      "year": 2025,
+      "totalCost": 580000.0,
+      "totalEnergyKwh": 210.8,
+      "totalSessions": 11,
+      "monthLabel": "T8"
+    },
+    {
+      "month": 9,
+      "year": 2025,
+      "totalCost": 750000.0,
+      "totalEnergyKwh": 295.7,
+      "totalSessions": 15,
+      "monthLabel": "T9"
+    },
+    {
+      "month": 10,
+      "year": 2025,
+      "totalCost": 285000.0,
+      "totalEnergyKwh": 125.4,
+      "totalSessions": 6,
+      "monthLabel": "T10"
+    }
+  ]
+}
+```
+
+**Cách sử dụng dữ liệu cho Frontend:**
+- **Biểu đồ Chi phí theo tháng (cột)**: Dùng `monthLabel` làm trục X, `totalCost` làm trục Y
+- **Biểu đồ Năng lượng tiêu thụ (đường)**: Dùng `monthLabel` làm trục X, `totalEnergyKwh` làm trục Y
+- **Biểu đồ Số phiên sạc (cột)**: Dùng `monthLabel` làm trục X, `totalSessions` làm trục Y
+
 **Charging Session Status:**
 - `IN_PROGRESS` - Đang sạc
 - `COMPLETED` - Hoàn thành
@@ -1476,6 +1539,7 @@ Sample response (`ChargingSessionResponse`):
 - Trung bình chi phí/tháng = Tổng chi phí / Số tháng kể từ ngày join
 - % pin hiện tại lấy từ endSocPercent của phiên sạc gần nhất
 - Thông tin xe lấy từ xe đầu tiên trong danh sách xe của driver
+- Analytics lấy dữ liệu 5 tháng gần nhất (tính từ tháng hiện tại trở về trước)
 
 **Error Codes:**
 - `9001`: Session Not Found

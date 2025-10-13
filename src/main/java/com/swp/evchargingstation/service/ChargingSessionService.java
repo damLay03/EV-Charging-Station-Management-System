@@ -2,6 +2,8 @@ package com.swp.evchargingstation.service;
 
 import com.swp.evchargingstation.dto.response.ChargingSessionResponse;
 import com.swp.evchargingstation.dto.response.DriverDashboardResponse;
+import com.swp.evchargingstation.dto.response.MonthlyAnalyticsResponse;
+import com.swp.evchargingstation.dto.response.MonthlyAnalyticsResponse;
 import com.swp.evchargingstation.entity.ChargingSession;
 import com.swp.evchargingstation.entity.Driver;
 import com.swp.evchargingstation.entity.Vehicle;
@@ -42,7 +44,7 @@ public class ChargingSessionService {
         log.info("Getting dashboard for driver: {}", userId);
 
         Driver driver = driverRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         // Lấy thống kê từ charging sessions
         Integer totalSessions = chargingSessionRepository.countByDriverId(userId);
@@ -145,5 +147,45 @@ public class ChargingSessionService {
         return chargingSessionRepository.findLatestEndSocByDriverId(driverId)
                 .orElse(0);
     }
-}
+    /**
+     * Lấy thống kê analytics theo tháng cho driver (5 tháng gần nhất)
+     * Phục vụ cho tab "Phân tích" với 3 biểu đồ:
+     * - Chi phí theo tháng (cột)
+     * - Năng lượng tiêu thụ (đường)
+     * - Số phiên sạc (cột)
+     */
+    public List<MonthlyAnalyticsResponse> getMyMonthlyAnalytics() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userId = authentication.getName();
 
+        log.info("Getting monthly analytics for driver: {}", userId);
+
+        LocalDateTime now = LocalDateTime.now();
+        int currentYear = now.getYear();
+        int currentMonth = now.getMonthValue();
+
+        List<MonthlyAnalyticsResponse> analytics = new java.util.ArrayList<>();
+
+        // Lấy data 5 tháng gần nhất (từ tháng hiện tại trở về trước)
+        for (int i = 4; i >= 0; i--) {
+            LocalDateTime targetDate = now.minusMonths(i);
+            int year = targetDate.getYear();
+            int month = targetDate.getMonthValue();
+
+            Double totalCost = chargingSessionRepository.sumCostByDriverAndMonth(userId, year, month);
+            Double totalEnergy = chargingSessionRepository.sumEnergyByDriverAndMonth(userId, year, month);
+            Integer totalSessions = chargingSessionRepository.countSessionsByDriverAndMonth(userId, year, month);
+
+            analytics.add(MonthlyAnalyticsResponse.builder()
+                    .month(month)
+                    .year(year)
+                    .totalCost(totalCost)
+                    .totalEnergyKwh(totalEnergy)
+                    .totalSessions(totalSessions)
+                    .monthLabel("T" + month)
+                    .build());
+        }
+
+        return analytics;
+    }
+}

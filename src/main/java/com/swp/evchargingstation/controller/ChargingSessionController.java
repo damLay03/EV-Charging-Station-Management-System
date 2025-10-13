@@ -3,6 +3,7 @@ package com.swp.evchargingstation.controller;
 import com.swp.evchargingstation.dto.request.ApiResponse;
 import com.swp.evchargingstation.dto.response.ChargingSessionResponse;
 import com.swp.evchargingstation.dto.response.DriverDashboardResponse;
+import com.swp.evchargingstation.dto.response.MonthlyAnalyticsResponse;
 import com.swp.evchargingstation.service.ChargingSessionService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -67,5 +68,22 @@ public class ChargingSessionController {
                 .result(chargingSessionService.getSessionById(sessionId))
                 .build();
     }
-}
 
+    /**
+     * Lấy thống kê phân tích theo tháng cho driver (5 tháng gần nhất)
+     * Phục vụ cho tab "Phân tích" với 3 biểu đồ:
+     * - Chi phí theo tháng (biểu đồ cột)
+     * - Năng lượng tiêu thụ (biểu đồ đường)
+     * - Số phiên sạc (biểu đồ cột)
+     *
+     * Endpoint: GET /api/charging-sessions/my-analytics/monthly
+     */
+    @GetMapping("/my-analytics/monthly")
+    @PreAuthorize("hasRole('DRIVER')")
+    public ApiResponse<List<MonthlyAnalyticsResponse>> getMyMonthlyAnalytics() {
+        log.info("Driver requesting monthly analytics");
+        return ApiResponse.<List<MonthlyAnalyticsResponse>>builder()
+                .result(chargingSessionService.getMyMonthlyAnalytics())
+                .build();
+    }
+}

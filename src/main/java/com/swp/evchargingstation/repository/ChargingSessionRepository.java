@@ -27,6 +27,60 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
     @Query("SELECT cs.endSocPercent FROM ChargingSession cs WHERE cs.driver.userId = :driverId AND cs.endSocPercent IS NOT NULL ORDER BY cs.endTime DESC LIMIT 1")
     java.util.Optional<Integer> findLatestEndSocByDriverId(@Param("driverId") String driverId);
 
+    // ========== ANALYTICS QUERIES FOR DRIVER ==========
+
+    /**
+     * Lấy danh sách sessions theo tháng và năm của driver
+     */
+    @Query("SELECT cs FROM ChargingSession cs " +
+            "WHERE cs.driver.userId = :driverId " +
+            "AND YEAR(cs.startTime) = :year " +
+            "AND MONTH(cs.startTime) = :month")
+    List<ChargingSession> findByDriverIdAndYearAndMonth(
+            @Param("driverId") String driverId,
+            @Param("year") Integer year,
+            @Param("month") Integer month
+    );
+
+    /**
+     * Tính tổng chi phí theo tháng của driver
+     */
+    @Query("SELECT COALESCE(SUM(cs.costTotal), 0) FROM ChargingSession cs " +
+            "WHERE cs.driver.userId = :driverId " +
+            "AND YEAR(cs.startTime) = :year " +
+            "AND MONTH(cs.startTime) = :month")
+    Double sumCostByDriverAndMonth(
+            @Param("driverId") String driverId,
+            @Param("year") Integer year,
+            @Param("month") Integer month
+    );
+
+    /**
+     * Tính tổng năng lượng theo tháng của driver
+     */
+    @Query("SELECT COALESCE(SUM(cs.energyKwh), 0) FROM ChargingSession cs " +
+            "WHERE cs.driver.userId = :driverId " +
+            "AND YEAR(cs.startTime) = :year " +
+            "AND MONTH(cs.startTime) = :month")
+    Double sumEnergyByDriverAndMonth(
+            @Param("driverId") String driverId,
+            @Param("year") Integer year,
+            @Param("month") Integer month
+    );
+
+    /**
+     * Đếm số phiên sạc theo tháng của driver
+     */
+    @Query("SELECT COUNT(cs) FROM ChargingSession cs " +
+            "WHERE cs.driver.userId = :driverId " +
+            "AND YEAR(cs.startTime) = :year " +
+            "AND MONTH(cs.startTime) = :month")
+    Integer countSessionsByDriverAndMonth(
+            @Param("driverId") String driverId,
+            @Param("year") Integer year,
+            @Param("month") Integer month
+    );
+
     @Query("SELECT COALESCE(SUM(cs.costTotal), 0) FROM ChargingSession cs WHERE cs.chargingPoint.station.stationId = :stationId")
     Double sumRevenueByStationId(@Param("stationId") String stationId);
 
