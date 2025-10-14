@@ -9,6 +9,7 @@ import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
 import com.swp.evchargingstation.mapper.PlanMapper;
 import com.swp.evchargingstation.repository.PlanRepository;
+import com.swp.evchargingstation.repository.SubscriptionRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -25,6 +26,7 @@ import java.util.List;
 public class PlanService {
     PlanRepository planRepository;
     PlanMapper planMapper;
+    SubscriptionRepository subscriptionRepository;
 
     // NOTE: Tạo plan theo billingType truyền trong request (dùng cho endpoint generic). Áp dụng rule validate theo loại.
     @Transactional
@@ -44,19 +46,19 @@ public class PlanService {
         return planMapper.toPlanResponse(planRepository.save(plan));
     }
 
-    // NOTE: Tạo gói PREPAID (override billingType bất kể body gửi gì)
-    @Transactional
-    public PlanResponse createPrepaid(PlanCreationRequest request) {
-        request.setBillingType(BillingType.PREPAID);
-        return create(request);
-    }
+//    // NOTE: Tạo gói PREPAID (override billingType bất kể body gửi gì)
+//    @Transactional
+//    public PlanResponse createPrepaid(PlanCreationRequest request) {
+//        request.setBillingType(BillingType.PREPAID);
+//        return create(request);
+//    }
 
-    // NOTE: Tạo gói POSTPAID (override billingType)
-    @Transactional
-    public PlanResponse createPostpaid(PlanCreationRequest request) {
-        request.setBillingType(BillingType.POSTPAID);
-        return create(request);
-    }
+//    // NOTE: Tạo gói POSTPAID (override billingType)
+//    @Transactional
+//    public PlanResponse createPostpaid(PlanCreationRequest request) {
+//        request.setBillingType(BillingType.POSTPAID);
+//        return create(request);
+//    }
 
     // NOTE: Tạo gói VIP có monthlyFee > 0 (override billingType)
     @Transactional
@@ -104,13 +106,21 @@ public class PlanService {
         return planMapper.toPlanResponse(planRepository.save(plan));
     }
 
-    // NOTE: Xóa plan theo id. Throw PLAN_NOT_FOUND nếu không tồn tại.
+    // NOTE: Xóa plan theo id. Throw PLAN_NOT_FOUND nếu không tồn tại. Throw PLAN_IN_USE nếu đang được sử dụng.
     @Transactional
     public void delete(String planId) {
         log.info("Deleting plan id='{}'", planId);
         Plan plan = planRepository.findById(planId)
                 .orElseThrow(() -> new AppException(ErrorCode.PLAN_NOT_FOUND));
+
+        // Kiểm tra xem plan có đang được sử dụng bởi subscription nào không
+        if (subscriptionRepository.existsByPlanId(planId)) {
+            log.warn("Cannot delete plan id='{}' because it is being used by subscriptions", planId);
+            throw new AppException(ErrorCode.PLAN_IN_USE);
+        }
+
         planRepository.delete(plan);
+        log.info("Plan id='{}' deleted successfully", planId);
     }
 
     // NOTE: Kiểm tra name trùng (case-insensitive). Throw PLAN_NAME_EXISTED nếu đã tồn tại.
@@ -133,24 +143,24 @@ public class PlanService {
     private void validateConfig(BillingType billingType, PlanCreationRequest r) {
         // Simple business validation rules (adjust later as needed)
         switch (billingType) {
-            case PREPAID -> {
-                // Prepaid: no monthly fee, must have usage price
-                if (r.getMonthlyFee() > 0) {
-                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
-                }
-                if (r.getPricePerKwh() <= 0 && r.getPricePerMinute() <= 0) {
-                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
-                }
-            }
-            case POSTPAID -> {
-                // Postpaid: user is billed later, similar to pay as you go: monthlyFee must be 0
-                if (r.getMonthlyFee() > 0) {
-                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
-                }
-                if (r.getPricePerKwh() <= 0 && r.getPricePerMinute() <= 0) {
-                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
-                }
-            }
+//            case PREPAID -> {
+//                // Prepaid: no monthly fee, must have usage price
+//                if (r.getMonthlyFee() > 0) {
+//                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
+//                }
+//                if (r.getPricePerKwh() <= 0 && r.getPricePerMinute() <= 0) {
+//                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
+//                }
+//            }
+//            case POSTPAID -> {
+//                // Postpaid: user is billed later, similar to pay as you go: monthlyFee must be 0
+//                if (r.getMonthlyFee() > 0) {
+//                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
+//                }
+//                if (r.getPricePerKwh() <= 0 && r.getPricePerMinute() <= 0) {
+//                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
+//                }
+//            }
             case VIP -> {
                 // VIP: must have a monthly fee > 0, usage price can be 0 or discounted
                 if (r.getMonthlyFee() <= 0) {
@@ -173,22 +183,22 @@ public class PlanService {
     // NOTE: Validate config cho update request (tương tự validateConfig nhưng dùng PlanUpdateRequest)
     private void validateConfigForUpdate(BillingType billingType, PlanUpdateRequest r) {
         switch (billingType) {
-            case PREPAID -> {
-                if (r.getMonthlyFee() > 0) {
-                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
-                }
-                if (r.getPricePerKwh() <= 0 && r.getPricePerMinute() <= 0) {
-                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
-                }
-            }
-            case POSTPAID -> {
-                if (r.getMonthlyFee() > 0) {
-                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
-                }
-                if (r.getPricePerKwh() <= 0 && r.getPricePerMinute() <= 0) {
-                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
-                }
-            }
+//            case PREPAID -> {
+//                if (r.getMonthlyFee() > 0) {
+//                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
+//                }
+//                if (r.getPricePerKwh() <= 0 && r.getPricePerMinute() <= 0) {
+//                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
+//                }
+//            }
+//            case POSTPAID -> {
+//                if (r.getMonthlyFee() > 0) {
+//                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
+//                }
+//                if (r.getPricePerKwh() <= 0 && r.getPricePerMinute() <= 0) {
+//                    throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);
+//                }
+//            }
             case VIP -> {
                 if (r.getMonthlyFee() <= 0) {
                     throw new AppException(ErrorCode.INVALID_PLAN_CONFIG);

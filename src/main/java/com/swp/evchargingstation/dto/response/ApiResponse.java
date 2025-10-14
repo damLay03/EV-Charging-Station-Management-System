@@ -1,4 +1,4 @@
-package com.swp.evchargingstation.dto.request;
+package com.swp.evchargingstation.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 

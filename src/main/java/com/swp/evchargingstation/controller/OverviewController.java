@@ -1,6 +1,6 @@
 package com.swp.evchargingstation.controller;
 
-import com.swp.evchargingstation.dto.request.ApiResponse;
+import com.swp.evchargingstation.dto.response.ApiResponse;
 import com.swp.evchargingstation.dto.response.SystemOverviewResponse;
 import com.swp.evchargingstation.service.OverviewService;
 import lombok.AccessLevel;

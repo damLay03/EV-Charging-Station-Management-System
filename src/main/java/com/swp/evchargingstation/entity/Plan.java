@@ -25,7 +25,7 @@ public class Plan {
     String name;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "billing_type")
+    @Column(name = "billing_type", length = 30)
     BillingType billingType;
 
     @Column(name = "price_per_kwh")

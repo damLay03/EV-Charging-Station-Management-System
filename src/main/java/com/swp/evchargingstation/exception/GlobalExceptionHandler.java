@@ -1,6 +1,6 @@
 package com.swp.evchargingstation.exception;
 
-import com.swp.evchargingstation.dto.request.ApiResponse;
+import com.swp.evchargingstation.dto.response.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
@@ -27,17 +27,6 @@ public class GlobalExceptionHandler {
         apiResponse.setCode(401);
         apiResponse.setMessage("Authentication Failed: " + exception.getMessage());
         return ResponseEntity.status(401).body(apiResponse);
-    }
-
-    //Bắt exception runtime
-    @ExceptionHandler(value = RuntimeException.class)
-    ResponseEntity<ApiResponse> handlingRunTimeException(RuntimeException exception) {
-        ApiResponse apiResponse = new ApiResponse();
-
-        apiResponse.setCode(ErrorCode.UNAUTHORIZED_EXCEPTION.getCode()); //Code lỗi đã được quy định trong ApiResponse
-        apiResponse.setMessage(ErrorCode.UNAUTHORIZED_EXCEPTION.getMessage());
-
-        return ResponseEntity.badRequest().body(apiResponse); //nội dung mình mốn trả về cho user
     }
 
     @ExceptionHandler(value = AppException.class)

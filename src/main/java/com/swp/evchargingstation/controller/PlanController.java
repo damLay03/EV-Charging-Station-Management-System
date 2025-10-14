@@ -1,6 +1,6 @@
 package com.swp.evchargingstation.controller;
 
-import com.swp.evchargingstation.dto.request.ApiResponse;
+import com.swp.evchargingstation.dto.response.ApiResponse;
 import com.swp.evchargingstation.dto.request.PlanCreationRequest;
 import com.swp.evchargingstation.dto.request.PlanUpdateRequest;
 import com.swp.evchargingstation.dto.response.PlanResponse;
@@ -32,32 +32,32 @@ public class PlanController {
                 .build();
     }
 
-    // NOTE: Tạo plan PREPAID (override billingType). Không cần gửi billingType hoặc có cũng bị ghi đè.
-    @PostMapping("/prepaid")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<PlanResponse> createPrepaid(@RequestBody @Valid PlanCreationRequest request) {
-        return ApiResponse.<PlanResponse>builder()
-                .result(planService.createPrepaid(request))
-                .build();
-    }
+//    // NOTE: Tạo plan PREPAID (override billingType). Không cần gửi billingType hoặc có cũng bị ghi đè.
+//    @PostMapping("/prepaid")
+//    @PreAuthorize("hasRole('ADMIN')")
+//    public ApiResponse<PlanResponse> createPrepaid(@RequestBody @Valid PlanCreationRequest request) {
+//        return ApiResponse.<PlanResponse>builder()
+//                .result(planService.createPrepaid(request))
+//                .build();
+//    }
 
-    // NOTE: Tạo plan POSTPAID (override billingType).
-    @PostMapping("/postpaid")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<PlanResponse> createPostpaid(@RequestBody @Valid PlanCreationRequest request) {
-        return ApiResponse.<PlanResponse>builder()
-                .result(planService.createPostpaid(request))
-                .build();
-    }
+//    // NOTE: Tạo plan POSTPAID (override billingType).
+//    @PostMapping("/postpaid")
+//    @PreAuthorize("hasRole('ADMIN')")
+//    public ApiResponse<PlanResponse> createPostpaid(@RequestBody @Valid PlanCreationRequest request) {
+//        return ApiResponse.<PlanResponse>builder()
+//                .result(planService.createPostpaid(request))
+//                .build();
+//    }
 
-    // NOTE: Tạo plan VIP (override billingType) yêu cầu monthlyFee > 0.
-    @PostMapping("/vip")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<PlanResponse> createVip(@RequestBody @Valid PlanCreationRequest request) {
-        return ApiResponse.<PlanResponse>builder()
-                .result(planService.createVip(request))
-                .build();
-    }
+//    // NOTE: Tạo plan VIP (override billingType) yêu cầu monthlyFee > 0.
+//    @PostMapping("/vip")
+//    @PreAuthorize("hasRole('ADMIN')")
+//    public ApiResponse<PlanResponse> createVip(@RequestBody @Valid PlanCreationRequest request) {
+//        return ApiResponse.<PlanResponse>builder()
+//                .result(planService.createVip(request))
+//                .build();
+//    }
 
     // NOTE: Lấy tất cả plan (hiện cho user luôn)
     @GetMapping

@@ -12,6 +12,7 @@ public enum ErrorCode {
     PLAN_NOT_FOUND(3001, "Plan Not Found"),
     PLAN_NAME_EXISTED(3002, "Plan Name Existed"),
     INVALID_PLAN_CONFIG(3003, "Invalid Plan Configuration"),
+    PLAN_IN_USE(3004, "Plan Is Being Used And Cannot Be Deleted"),
     // --- Staff assignment related ---
     STAFF_NOT_FOUND(4001, "Staff Not Found"),
     STAFF_ALREADY_ASSIGNED(4002, "Staff Already Assigned"),

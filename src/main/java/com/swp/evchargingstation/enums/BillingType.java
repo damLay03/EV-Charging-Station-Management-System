@@ -26,7 +26,7 @@ package com.swp.evchargingstation.enums;
 public enum BillingType {
     PAY_AS_YOU_GO,          // monthlyFee=0
     MONTHLY_SUBSCRIPTION,   // monthlyFee>0
-    PREPAID,                // monthlyFee=0 & >=1 usage price>0
-    POSTPAID,               // monthlyFee=0 & >=1 usage price>0
+//    PREPAID,                // monthlyFee=0 & >=1 usage price>0
+//    POSTPAID,               // monthlyFee=0 & >=1 usage price>0
     VIP                     // monthlyFee>0
 }

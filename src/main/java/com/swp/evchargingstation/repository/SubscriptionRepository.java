@@ -12,5 +12,7 @@ import java.util.Optional;
 public interface SubscriptionRepository extends JpaRepository<Subscription, String> {
     @Query("SELECT s FROM Subscription s WHERE s.driver.userId = :driverId AND s.status = 'ACTIVE' ORDER BY s.endDate DESC")
     Optional<Subscription> findActiveSubscriptionByDriverId(@Param("driverId") String driverId);
-}
 
+    @Query("SELECT COUNT(s) > 0 FROM Subscription s WHERE s.plan.planId = :planId")
+    boolean existsByPlanId(@Param("planId") String planId);
+}
