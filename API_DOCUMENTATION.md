@@ -1,17 +1,14 @@
 # EV Charging Station Management System – API Reference
 
-Below is the full list of all HTTP endpoints in the system, organized by resource. For each endpoint you'll find:
+**Base URL:** `http://localhost:8080/evchargingstation`  
+**Current Date:** October 15, 2025
 
-- HTTP method and URL  
-- Authentication requirement (`Public` or `Bearer token required`)  
-- A minimal sample JSON response  
-
-All responses are wrapped in the common `ApiResponse<T>` envelope:  
+All responses are wrapped in the common `ApiResponse<T>` envelope:
 ```json
 {
   "code": 1000,
   "message": null,
-  "result": {  }
+  "result": { }
 }
 ```
 
@@ -19,35 +16,59 @@ All responses are wrapped in the common `ApiResponse<T>` envelope:
 
 ## 1. Authentication
 
-### POST /api/auth/login  
-Public (no token required)
+### POST /api/auth/login
+**Public** (no token required)
 
-Request body:
+Login to get JWT token.
+
+**Request:**
 ```json
 {
   "email": "user@example.com",
-  "password": "secret"
+  "password": "secret123"
 }
 ```
 
-Sample successful response:
+**Response:**
 ```json
 {
   "code": 1000,
   "result": {
-    "token": "eyJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJldi1jaGFyZ2luZy1zdGF0aW9uIiwic3ViIjoiYm9tdGh1QGFkbWluLmV2LmNvbSIsImV4cCI6MTc1OTY1ODkyMCwiaWF0IjoxNzU5NjU1MzIwLCJzY29wZSI6IkFETUlOIn0.QXE9Dsbdc-b41T283x89huoewTMJ7x13_tjuEL-Vkr6X5b2aR45kBtxFM7R8LPdU82WFt7Y40c9SzLEaSEwUZQ",
+    "token": "eyJhbGciOiJIUzUxMiJ9...",
     "authenticated": true,
     "userInfo": {
-      "userId": "1ee30c49-7c50-4b8f-a5f7-40e0646fe742",
+      "userId": "uuid-...",
       "email": "user@example.com",
-      "phone": "...",
-      "dateOfBirth": "...",
-      "gender": false,
-      "firstName": "...",
-      "lastName": "...",
-      "fullName": "...",
-      "role": "..."
+      "phone": "0123456789",
+      "dateOfBirth": "1990-01-01",
+      "gender": true,
+      "firstName": "John",
+      "lastName": "Doe",
+      "fullName": "John Doe",
+      "role": "DRIVER"
     }
+  }
+}
+```
+
+### POST /api/auth/introspect
+**Bearer token required**
+
+Verify if a token is valid.
+
+**Request:**
+```json
+{
+  "token": "eyJhbGciOiJIUzUxMiJ9..."
+}
+```
+
+**Response:**
+```json
+{
+  "code": 1000,
+  "result": {
+    "valid": true
   }
 }
 ```
@@ -56,11 +77,12 @@ Sample successful response:
 
 ## 2. Users
 
-### POST /api/users/register  
-Public (no token required)  
-Register a new **driver**.
+### POST /api/users/register
+**Public** (no token required)
 
-Request body:
+Register a new driver account.
+
+**Request:**
 ```json
 {
   "email": "newdriver@example.com",
@@ -69,13 +91,12 @@ Request body:
 }
 ```
 
-Sample response:
+**Response:**
 ```json
 {
   "code": 1000,
-  "message": null,
   "result": {
-    "userId": "uuid-1234-...",
+    "userId": "uuid-...",
     "email": "newdriver@example.com",
     "phone": null,
     "dateOfBirth": null,
@@ -88,17 +109,17 @@ Sample response:
 }
 ```
 
-### GET /api/users/driver/myInfo  
-Bearer token required (ROLE_DRIVER)  
-Get the authenticated driver's profile với đầy đủ thông tin từ User và Driver entity.
+### GET /api/users/driver/myInfo
+**Bearer token required** (ROLE_DRIVER)
 
-Sample response (`DriverResponse`):
+Get authenticated driver's profile.
+
+**Response:**
 ```json
 {
   "code": 1000,
-  "message": null,
   "result": {
-    "userId": "uuid-1234-...",
+    "userId": "uuid-...",
     "email": "driver@example.com",
     "phone": "0123456789",
     "dateOfBirth": "1990-01-01",
@@ -113,11 +134,12 @@ Sample response (`DriverResponse`):
 }
 ```
 
-### PATCH /api/users/driver/myInfo  
-Bearer token required (ROLE_DRIVER)  
-Partially update the authenticated driver's profile. Có thể cập nhật: phone, dateOfBirth, gender, firstName, lastName, **address**.
+### PATCH /api/users/driver/myInfo
+**Bearer token required** (ROLE_DRIVER)
 
-Request body (`UserUpdateRequest`) - tất cả fields đều optional:
+Update authenticated driver's profile.
+
+**Request (all fields optional):**
 ```json
 {
   "phone": "0987654321",
@@ -129,59 +151,20 @@ Request body (`UserUpdateRequest`) - tất cả fields đều optional:
 }
 ```
 
-Sample response:
+### GET /api/users/{userId}
+**Bearer token required**
+
+Get user details by ID.
+
+### GET /api/users
+**Bearer token required** (ROLE_ADMIN)
+
+List all drivers (admin view).
+
+**Response:**
 ```json
 {
   "code": 1000,
-  "message": null,
-  "result": {
-    "userId": "uuid-1234-...",
-    "email": "driver@example.com",
-    "phone": "0987654321",
-    "dateOfBirth": "1990-01-01",
-    "gender": true,
-    "firstName": "John",
-    "lastName": "Doe",
-    "fullName": "John Doe",
-    "role": "DRIVER",
-    "address": "456 New Address, HCMC",
-    "joinDate": "2025-09-15T10:30:00"
-  }
-}
-```
-
-### GET /api/users/{userId}  
-Bearer token required  
-Retrieve any one user's details (for driver self or admin).
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "userId": "uuid-1234-...",
-    "email": "someone@example.com",
-    "phone": "0123456789",
-    "dateOfBirth": "1990-01-01",
-    "gender": false,
-    "firstName": "Jane",
-    "lastName": "Smith",
-    "fullName": "Jane Smith",
-    "role": "DRIVER"
-  }
-}
-```
-
-### GET /api/users  
-Bearer token required (ROLE_ADMIN)  
-List all drivers with admin view (`AdminUserResponse`).
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
   "result": [
     {
       "fullName": "John Doe",
@@ -198,140 +181,99 @@ Sample response:
 }
 ```
 
-### GET /api/users/driver/{driverId}/info  
-Bearer token required (ROLE_ADMIN)  
-Admin lấy thông tin đầy đủ của một driver (bao gồm address và joinDate).
+### GET /api/users/driver/{driverId}/info
+**Bearer token required** (ROLE_ADMIN)
 
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "userId": "uuid-1234-...",
-    "email": "driver@example.com",
-    "phone": "0123456789",
-    "dateOfBirth": "1990-01-01",
-    "gender": true,
-    "firstName": "John",
-    "lastName": "Doe",
-    "fullName": "John Doe",
-    "role": "DRIVER",
-    "address": "123 Main Street, Hanoi",
-    "joinDate": "2025-09-15T10:30:00"
-  }
-}
-```
+Admin gets full driver information.
 
-### PUT /api/users/driver/{driverId}  
-Bearer token required (ROLE_ADMIN)  
-Admin cập nhật thông tin driver. **Không thể sửa email, password, joinDate.**
+### PUT /api/users/driver/{driverId}
+**Bearer token required** (ROLE_ADMIN)
 
-Request body (`AdminUpdateDriverRequest`) - tất cả fields đều optional:
-```json
-{
-  "phone": "0987654321",
-  "dateOfBirth": "1990-01-01",
-  "gender": true,
-  "firstName": "John",
-  "lastName": "Doe",
-  "address": "456 Updated Address, HCMC"
-}
-```
+Admin updates driver information.
 
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "userId": "uuid-1234-...",
-    "email": "driver@example.com",
-    "phone": "0987654321",
-    "dateOfBirth": "1990-01-01",
-    "gender": true,
-    "firstName": "John",
-    "lastName": "Doe",
-    "fullName": "John Doe",
-    "role": "DRIVER",
-    "address": "456 Updated Address, HCMC",
-    "joinDate": "2025-09-15T10:30:00"
-  }
-}
-```
+### DELETE /api/users/{userId}
+**Bearer token required** (ROLE_ADMIN)
 
-### DELETE /api/users/{userId}  
-Bearer token required (ROLE_ADMIN)  
-Hard delete a user. Returns default success code and message:
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": "Deleted",
-  "result": null
-}
-```
+Delete a user.
 
 ---
 
-## 3. System Overview
+## 3. Vehicles
 
-### GET /api/overview  
-Bearer token required (ROLE_ADMIN)  
-Lấy dữ liệu tổng quan hệ thống bao gồm: tổng số trạm sạc, điểm sạc đang hoạt động, tổng số driver, doanh thu tháng hiện tại.
+### POST /api/vehicles
+**Bearer token required** (ROLE_DRIVER)
 
-Sample response:
+Register a new vehicle.
+
+**Request:**
+```json
+{
+  "licensePlate": "29A-12345",
+  "model": "Tesla Model 3",
+  "batteryCapacityKwh": 75.0,
+  "batteryType": "Lithium-ion"
+}
+```
+
+**Response:**
 ```json
 {
   "code": 1000,
-  "message": null,
   "result": {
-    "totalStations": 12,
-    "activeChargingPoints": 8,
-    "totalDrivers": 42,
-    "currentMonthRevenue": 3210.50
+    "vehicleId": "uuid-...",
+    "licensePlate": "29A-12345",
+    "model": "Tesla Model 3",
+    "batteryCapacityKwh": 75.0,
+    "batteryType": "Lithium-ion",
+    "ownerId": "uuid-driver-..."
   }
 }
 ```
 
-### GET /api/overview/total-stations  
-Bearer token required (ROLE_ADMIN)  
-Lấy tổng số trạm sạc trong hệ thống.
+### GET /api/vehicles/my-vehicles
+**Bearer token required** (ROLE_DRIVER)
 
-Sample response:
+Get all vehicles of authenticated driver.
+
+### GET /api/vehicles/my-vehicles/{vehicleId}
+**Bearer token required** (ROLE_DRIVER)
+
+Get vehicle details by ID.
+
+### PUT /api/vehicles/{vehicleId}
+**Bearer token required** (ROLE_DRIVER)
+
+Update vehicle information.
+
+**Request:**
 ```json
 {
-  "code": 1000,
-  "message": null,
-  "result": 12
+  "model": "Tesla Model 3 LR",
+  "batteryCapacityKwh": 82.0,
+  "batteryType": "Lithium-ion"
 }
 ```
 
-### GET /api/overview/total-drivers  
-Bearer token required (ROLE_ADMIN)  
-Lấy tổng số driver trong hệ thống.
+### DELETE /api/vehicles/{vehicleId}
+**Bearer token required** (ROLE_DRIVER)
 
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": 42
-}
-```
+Delete a vehicle.
+
+### GET /api/vehicles/driver/{driverId}
+**Bearer token required** (ROLE_ADMIN)
+
+Admin gets all vehicles of a specific driver.
 
 ---
 
 ## 4. Plans
 
-All plan endpoints require bearer token (ROLE_ADMIN for create operations, GET endpoints are public).
+### POST /api/plans
+**Bearer token required** (ROLE_ADMIN)
 
-### POST /api/plans  
-Bearer token required (ROLE_ADMIN)  
-Tạo plan generic theo billingType trong body.
+Create a new plan.
 
-Request body (`PlanCreationRequest`):
+**Request:**
 ```json
 {
   "name": "Basic Plan",
@@ -343,30 +285,28 @@ Request body (`PlanCreationRequest`):
 }
 ```
 
-### POST /api/plans/prepaid  
-Bearer token required (ROLE_ADMIN)  
-Tạo plan PREPAID (override billingType).
+**Billing Types:**
+- `PAY_AS_YOU_GO` - monthlyFee = 0
+- `MONTHLY_SUBSCRIPTION` - monthlyFee > 0
+- `VIP` - monthlyFee > 0
 
-### POST /api/plans/postpaid  
-Bearer token required (ROLE_ADMIN)  
-Tạo plan POSTPAID (override billingType).
+### POST /api/plans/vip
+**Bearer token required** (ROLE_ADMIN)
 
-### POST /api/plans/vip  
-Bearer token required (ROLE_ADMIN)  
-Tạo plan VIP (override billingType, yêu cầu monthlyFee > 0).
+Create a VIP plan (billingType auto-set to VIP).
 
-### GET /api/plans  
-Public access  
-Lấy tất cả plan.
+### GET /api/plans
+**Public**
 
-Sample `PlanResponse`:
+Get all plans.
+
+**Response:**
 ```json
 {
   "code": 1000,
-  "message": null,
   "result": [
     {
-      "planId": "uuid-5678-...",
+      "planId": "uuid-...",
       "name": "Basic Plan",
       "billingType": "MONTHLY_SUBSCRIPTION",
       "pricePerKwh": 0.1,
@@ -378,120 +318,436 @@ Sample `PlanResponse`:
 }
 ```
 
-### GET /api/plans/{planId}  
-Bearer token required (ROLE_ADMIN)  
-Lấy chi tiết 1 plan theo id.
+### GET /api/plans/{planId}
+**Bearer token required** (ROLE_ADMIN)
 
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "planId": "uuid-5678-...",
-    "name": "Basic Plan",
-    "billingType": "MONTHLY_SUBSCRIPTION",
-    "pricePerKwh": 0.1,
-    "pricePerMinute": 0.02,
-    "monthlyFee": 9.99,
-    "benefits": "Free parking"
-  }
-}
-```
+Get plan details by ID.
 
-### PUT /api/plans/{planId}  
-Bearer token required (ROLE_ADMIN)  
-Cập nhật plan theo id. Validate name unique (trừ chính nó) và config theo billingType mới.
+### PUT /api/plans/{planId}
+**Bearer token required** (ROLE_ADMIN)
 
-Request body (`PlanUpdateRequest`):
-```json
-{
-  "name": "Premium Plan",
-  "billingType": "VIP",
-  "pricePerKwh": 0.08,
-  "pricePerMinute": 0.015,
-  "monthlyFee": 29.99,
-  "benefits": "Free parking + Priority charging"
-}
-```
+Update a plan.
 
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "planId": "uuid-5678-...",
-    "name": "Premium Plan",
-    "billingType": "VIP",
-    "pricePerKwh": 0.08,
-    "pricePerMinute": 0.015,
-    "monthlyFee": 29.99,
-    "benefits": "Free parking + Priority charging"
-  }
-}
-```
+### DELETE /api/plans/{planId}
+**Bearer token required** (ROLE_ADMIN)
 
-### DELETE /api/plans/{planId}  
-Bearer token required (ROLE_ADMIN)  
-Xóa plan theo id.
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": "Plan deleted successfully",
-  "result": null
-}
-```
-
-**Plan Validation Rules:**
-- **PREPAID**: `monthlyFee` phải = 0, phải có ít nhất một trong `pricePerKwh` hoặc `pricePerMinute` > 0
-- **POSTPAID**: `monthlyFee` phải = 0, phải có ít nhất một trong `pricePerKwh` hoặc `pricePerMinute` > 0
-- **VIP**: `monthlyFee` phải > 0
-- **MONTHLY_SUBSCRIPTION**: `monthlyFee` phải > 0
-- **PAY_AS_YOU_GO**: `monthlyFee` phải = 0
+Delete a plan.
 
 **Error Codes:**
 - `3001`: Plan Not Found
-- `3002`: Plan Name Existed (trùng tên, case-insensitive)
-- `3003`: Invalid Plan Configuration (vi phạm rule validation theo billingType)
+- `3002`: Plan Name Existed
+- `3003`: Invalid Plan Configuration
+- `3004`: Plan In Use (cannot delete)
 
 ---
 
-## 5. Revenue
+## 5. Subscriptions
 
-All revenue endpoints require bearer token (ROLE_ADMIN).
+### POST /api/subscriptions
+**Bearer token required** (ROLE_DRIVER)
 
-### GET /api/revenue/weekly?year={year}&month={month}&week={week}  
-Lấy thống kê doanh thu theo tuần của từng trạm sạc.
+Subscribe to a plan.
 
-Query parameters:
-- `year` (optional): Năm cần thống kê (mặc định: năm hiện tại)
-- `month` (optional): Tháng cần thống kê (mặc định: tháng hiện tại)
-- `week` (optional): Tuần cần thống kê (mặc định: tuần hiện tại)
+**Request:**
+```json
+{
+  "planId": "uuid-..."
+}
+```
 
-### GET /api/revenue/monthly?year={year}&month={month}  
-Lấy thống kê doanh thu theo tháng của từng trạm sạc.
-
-Query parameters:
-- `year` (optional): Năm cần thống kê (mặc định: năm hiện tại)
-- `month` (optional): Tháng cần thống kê (mặc định: tháng hiện tại)
-
-### GET /api/revenue/yearly?year={year}  
-Lấy thống kê doanh thu theo năm của từng trạm sạc (tất cả các tháng).
-
-Query parameters:
-- `year` (optional): Năm cần thống kê (mặc định: năm hiện tại)
-
-Sample `StationRevenueResponse` list:
+**Response:**
 ```json
 {
   "code": 1000,
-  "message": null,
+  "result": {
+    "subscriptionId": "uuid-...",
+    "planName": "Premium Plan",
+    "startDate": "2025-10-01",
+    "endDate": "2025-11-01",
+    "status": "ACTIVE",
+    "autoRenew": true
+  }
+}
+```
+
+### GET /api/subscriptions/active
+**Bearer token required** (ROLE_DRIVER)
+
+Get active subscription.
+
+### DELETE /api/subscriptions/{subscriptionId}
+**Bearer token required** (ROLE_DRIVER)
+
+Cancel a subscription.
+
+### PATCH /api/subscriptions/{subscriptionId}/auto-renew?autoRenew={true|false}
+**Bearer token required** (ROLE_DRIVER)
+
+Enable/disable auto-renewal.
+
+**Query Parameter:**
+- `autoRenew`: boolean (true or false)
+
+---
+
+## 6. Charging Sessions
+
+### GET /api/charging-sessions/driver/dashboard
+**Bearer token required** (ROLE_DRIVER)
+
+Get driver dashboard with statistics.
+
+**Response:**
+```json
+{
+  "code": 1000,
+  "result": {
+    "memberSince": "2025-01-15",
+    "currentPlanName": "Premium",
+    "totalSessions": 25,
+    "totalEnergyConsumed": 150.5,
+    "totalSpent": 500.75,
+    "vehicleModel": "Tesla Model 3",
+    "vehiclePlate": "29A-12345"
+  }
+}
+```
+
+### GET /api/charging-sessions/driver/sessions
+**Bearer token required** (ROLE_DRIVER)
+
+Get all charging sessions.
+
+**Response:**
+```json
+{
+  "code": 1000,
   "result": [
     {
-      "stationId": "uuid-1111-...",
+      "sessionId": "uuid-...",
+      "startTime": "2025-10-14T08:30:00",
+      "endTime": "2025-10-14T10:00:00",
+      "durationMin": 90,
+      "stationName": "Station A",
+      "chargingPointName": "CP-01",
+      "pointType": "AC",
+      "startSocPercent": 20.0,
+      "endSocPercent": 80.0,
+      "energyKwh": 45.5,
+      "costTotal": 150.0,
+      "status": "COMPLETED",
+      "vehicleModel": "Tesla Model 3",
+      "vehiclePlate": "29A-12345"
+    }
+  ]
+}
+```
+
+### GET /api/charging-sessions/driver/sessions/{sessionId}
+**Bearer token required** (ROLE_DRIVER)
+
+Get session details by ID.
+
+### GET /api/charging-sessions/driver/monthly-analytics?year={year}&month={month}
+**Bearer token required** (ROLE_DRIVER)
+
+Get monthly analytics.
+
+**Query Parameters:**
+- `year` (optional): default current year
+- `month` (optional): 1-12, default current month
+
+---
+
+## 7. Dashboard (Staff/Admin)
+
+### GET /api/dashboard/summary?startDate={date}&endDate={date}
+**Bearer token required** (ROLE_STAFF or ROLE_ADMIN)
+
+Get dashboard summary.
+
+**Query Parameters:**
+- `startDate` (optional): YYYY-MM-DD
+- `endDate` (optional): YYYY-MM-DD
+
+### GET /api/dashboard/hourly-charging?date={date}
+**Bearer token required** (ROLE_STAFF or ROLE_ADMIN)
+
+Get hourly charging distribution.
+
+**Query Parameter:**
+- `date` (optional): YYYY-MM-DD, default today
+
+### GET /api/dashboard/favorite-stations?limit={limit}
+**Bearer token required** (ROLE_STAFF or ROLE_ADMIN)
+
+Get top favorite stations.
+
+**Query Parameter:**
+- `limit` (optional): default 5
+
+### GET /api/dashboard/charging-statistics?startDate={date}&endDate={date}
+**Bearer token required** (ROLE_STAFF or ROLE_ADMIN)
+
+Get charging statistics for date range.
+
+---
+
+## 8. Notification Settings ⭐ NEW
+
+### GET /api/notification-settings/my-settings
+**Bearer token required**
+
+Get all notification settings for authenticated user.
+
+**Response:**
+```json
+{
+  "code": 1000,
+  "result": [
+    {
+      "settingId": "uuid-1",
+      "notificationType": "CHARGING_COMPLETE",
+      "channel": "EMAIL",
+      "isEnabled": true
+    },
+    {
+      "settingId": "uuid-2",
+      "notificationType": "LOW_BATTERY",
+      "channel": "SMS",
+      "isEnabled": true
+    },
+    {
+      "settingId": "uuid-3",
+      "notificationType": "PROMOTIONAL",
+      "channel": "EMAIL",
+      "isEnabled": false
+    },
+    {
+      "settingId": "uuid-4",
+      "notificationType": "MAINTENANCE",
+      "channel": "EMAIL",
+      "isEnabled": true
+    }
+  ]
+}
+```
+
+**Notification Types:**
+- `CHARGING_COMPLETE` - Thông báo khi xe đã sạc đầy (Hoàn thành sạc)
+- `LOW_BATTERY` - Cảnh báo khi pin dưới 20% (Pin yếu)
+- `PROMOTIONAL` - Nhận thông báo về ưu đãi đặc biệt (Khuyến mãi)
+- `MAINTENANCE` - Thông báo về lịch bảo trì trạm sạc (Bảo trì trạm)
+
+**Notification Channels:**
+- `EMAIL` - Gửi thông báo qua email
+- `SMS` - Gửi thông báo qua tin nhắn
+
+### PUT /api/notification-settings/my-settings
+**Bearer token required**
+
+Update multiple notification settings (batch update).  
+**Use case:** When user clicks "Lưu cài đặt" button.
+
+**Request:**
+```json
+{
+  "settings": [
+    {
+      "notificationType": "CHARGING_COMPLETE",
+      "channel": "EMAIL",
+      "isEnabled": true
+    },
+    {
+      "notificationType": "CHARGING_COMPLETE",
+      "channel": "SMS",
+      "isEnabled": false
+    },
+    {
+      "notificationType": "LOW_BATTERY",
+      "channel": "EMAIL",
+      "isEnabled": true
+    },
+    {
+      "notificationType": "LOW_BATTERY",
+      "channel": "SMS",
+      "isEnabled": true
+    },
+    {
+      "notificationType": "PROMOTIONAL",
+      "channel": "EMAIL",
+      "isEnabled": false
+    },
+    {
+      "notificationType": "PROMOTIONAL",
+      "channel": "SMS",
+      "isEnabled": false
+    },
+    {
+      "notificationType": "MAINTENANCE",
+      "channel": "EMAIL",
+      "isEnabled": true
+    },
+    {
+      "notificationType": "MAINTENANCE",
+      "channel": "SMS",
+      "isEnabled": false
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "code": 1000,
+  "result": [
+    {
+      "settingId": "uuid-1",
+      "notificationType": "CHARGING_COMPLETE",
+      "channel": "EMAIL",
+      "isEnabled": true
+    }
+    // ... other settings
+  ]
+}
+```
+
+### PATCH /api/notification-settings/my-settings/single
+**Bearer token required**
+
+Update a single notification setting.  
+**Use case:** When user toggles a single switch.
+
+**Request:**
+```json
+{
+  "notificationType": "LOW_BATTERY",
+  "channel": "SMS",
+  "isEnabled": true
+}
+```
+
+**Response:**
+```json
+{
+  "code": 1000,
+  "result": {
+    "settingId": "uuid-4",
+    "notificationType": "LOW_BATTERY",
+    "channel": "SMS",
+    "isEnabled": true
+  }
+}
+```
+
+---
+
+## 9. Overview (Admin)
+
+### GET /api/overview
+**Bearer token required** (ROLE_ADMIN)
+
+Get system overview.
+
+**Response:**
+```json
+{
+  "code": 1000,
+  "result": {
+    "totalStations": 12,
+    "activeChargingPoints": 8,
+    "totalDrivers": 42,
+    "currentMonthRevenue": 3210.50
+  }
+}
+```
+
+### GET /api/overview/total-stations
+**Bearer token required** (ROLE_ADMIN)
+
+Get total number of stations.
+
+### GET /api/overview/total-drivers
+**Bearer token required** (ROLE_ADMIN)
+
+Get total number of drivers.
+
+---
+
+## 10. Payment Methods
+
+### POST /api/payment-methods
+**Bearer token required** (ROLE_DRIVER)
+
+Add a payment method.
+
+**Request:**
+```json
+{
+  "methodType": "CREDIT_CARD",
+  "provider": "Visa",
+  "token": "tok_xxxxxxxxxx"
+}
+```
+
+### GET /api/payment-methods
+**Bearer token required** (ROLE_DRIVER)
+
+Get all payment methods.
+
+**Response:**
+```json
+{
+  "code": 1000,
+  "result": [
+    {
+      "pmId": "uuid-...",
+      "methodType": "CREDIT_CARD",
+      "provider": "Visa",
+      "lastFourDigits": "1234",
+      "isDefault": true
+    }
+  ]
+}
+```
+
+### DELETE /api/payment-methods/{pmId}
+**Bearer token required** (ROLE_DRIVER)
+
+Delete a payment method.
+
+---
+
+## 11. Revenue (Admin)
+
+### GET /api/revenue/weekly?year={year}&month={month}&week={week}
+**Bearer token required** (ROLE_ADMIN)
+
+Get weekly revenue by station.
+
+**Query Parameters:**
+- `year` (optional): default current year
+- `month` (optional): default current month
+- `week` (optional): default current week
+
+### GET /api/revenue/monthly?year={year}&month={month}
+**Bearer token required** (ROLE_ADMIN)
+
+Get monthly revenue by station.
+
+### GET /api/revenue/yearly?year={year}
+**Bearer token required** (ROLE_ADMIN)
+
+Get yearly revenue by station.
+
+**Response:**
+```json
+{
+  "code": 1000,
+  "result": [
+    {
+      "stationId": "uuid-...",
       "stationName": "Station A",
       "address": "123 Main St",
       "month": 10,
@@ -505,1201 +761,181 @@ Sample `StationRevenueResponse` list:
 
 ---
 
-## 6. Stations
+## 12. Stations
 
-All station endpoints require bearer token (ROLE_ADMIN) unless otherwise specified.
+### POST /api/stations
+**Bearer token required** (ROLE_ADMIN)
 
-### GET /api/stations/overview  
-Bearer token required (ROLE_ADMIN)  
-Lấy danh sách overview của tất cả trạm (nhẹ hơn so với full detail). Dùng cho FE hiển thị nhanh bảng tổng quan.
+Create a charging station.
 
-Sample `StationOverviewResponse`:
+**Request:**
+```json
+{
+  "name": "Station A",
+  "address": "123 Main Street",
+  "latitude": 21.0285,
+  "longitude": 105.8542
+}
+```
+
+### GET /api/stations
+**Public**
+
+Get all stations.
+
+**Response:**
 ```json
 {
   "code": 1000,
-  "message": null,
   "result": [
     {
-      "stationId": "uuid-1111-...",
-      "name": "Trạm Sạc Quận 1",
-      "status": "OPERATIONAL",
-      "active": true
-    },
-    {
-      "stationId": "uuid-2222-...",
-      "name": "Trạm Sạc Quận 2",
-      "status": "MAINTENANCE",
-      "active": false
+      "stationId": "uuid-...",
+      "name": "Station A",
+      "address": "123 Main Street",
+      "latitude": 21.0285,
+      "longitude": 105.8542,
+      "totalChargingPoints": 5,
+      "availablePoints": 3,
+      "status": "OPERATIONAL"
     }
   ]
 }
 ```
 
-### GET /api/stations?status={StationStatus}  
-Bearer token required (ROLE_ADMIN)  
-Lấy danh sách trạm với thông tin cơ bản, có thể filter theo status.
+### GET /api/stations/{stationId}
+**Public**
 
-Query parameters:
-- `status` (optional): Filter theo trạng thái - các giá trị hợp lệ:
-  - `OPERATIONAL` - Đang hoạt động
-  - `MAINTENANCE` - Đang bảo trì
-  - `OUT_OF_SERVICE` - Ngưng hoạt động
-  - `CLOSED` - Đã đóng cửa
+Get station details.
 
-Sample `StationResponse`:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "stationId": "uuid-1111-...",
-      "name": "Trạm Sạc Quận 1",
-      "address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
-      "operatorName": "Công ty ABC",
-      "contactPhone": "0987654321",
-      "status": "OPERATIONAL",
-      "active": true
-    }
-  ]
-}
-```
+### PUT /api/stations/{stationId}
+**Bearer token required** (ROLE_ADMIN)
 
-### GET /api/stations/detail?status={StationStatus}  
-Bearer token required (ROLE_ADMIN)  
-**Danh sách trạm với thông tin đầy đủ cho UI quản lý** bao gồm:
-- Thông tin cơ bản của trạm
-- Số lượng điểm sạc theo trạng thái (total, available, in-use, offline, maintenance)
-- Doanh thu
-- Phần trăm sử dụng
-- Tên nhân viên phụ trách
+Update a station.
 
-Query parameters:
-- `status` (optional): Filter theo trạng thái
+### DELETE /api/stations/{stationId}
+**Bearer token required** (ROLE_ADMIN)
 
-Sample `StationDetailResponse`:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "stationId": "uuid-1111-...",
-      "name": "Trạm Sạc Quận 1",
-      "address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
-      "operatorName": "Công ty ABC",
-      "contactPhone": "0987654321",
-      "status": "OPERATIONAL",
-      "totalPoints": 10,
-      "availablePoints": 5,
-      "inUsePoints": 3,
-      "offlinePoints": 1,
-      "maintenancePoints": 1,
-      "activePoints": 8,
-      "revenue": 1250.75,
-      "usagePercent": 30.0,
-      "staffName": "Nguyễn Văn A"
-    }
-  ]
-}
-```
-
-### POST /api/stations/create  
-Bearer token required (ROLE_ADMIN)  
-Tạo trạm sạc mới với số lượng điểm sạc và công suất chỉ định.  
-**Lưu ý:** Trạm mới tạo sẽ có trạng thái mặc định là `OUT_OF_SERVICE` (chưa hoạt động).
-
-Request body (`StationCreationRequest`):
-```json
-{
-  "name": "Trạm Sạc Mới",
-  "address": "456 Lê Lợi, Quận 3, TP.HCM",
-  "numberOfChargingPoints": 10,
-  "powerOutputKw": 50.0,
-  "operatorName": "Công ty XYZ",
-  "contactPhone": "0901234567"
-}
-```
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "stationId": "uuid-new-...",
-    "name": "Trạm Sạc Mới",
-    "address": "456 Lê Lợi, Quận 3, TP.HCM",
-    "operatorName": "Công ty XYZ",
-    "contactPhone": "0901234567",
-    "status": "OUT_OF_SERVICE",
-    "active": false
-  }
-}
-```
-
-### PUT /api/stations/{stationId}  
-Bearer token required (ROLE_ADMIN)  
-Cập nhật thông tin cơ bản của trạm (name, address, operatorName, contactPhone, status).  
-**Lưu ý:** Không thay đổi số lượng charging points hoặc cấu hình phần cứng.
-
-Request body (`StationUpdateRequest`):
-```json
-{
-  "name": "Trạm Sạc Quận 1 - Cập Nhật",
-  "address": "789 Nguyễn Thị Minh Khai, Quận 1, TP.HCM",
-  "operatorName": "Công ty ABC Updated",
-  "contactPhone": "0999888777",
-  "status": "OPERATIONAL"
-}
-```
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "stationId": "uuid-1111-...",
-    "name": "Trạm Sạc Quận 1 - Cập Nhật",
-    "address": "789 Nguyễn Thị Minh Khai, Quận 1, TP.HCM",
-    "operatorName": "Công ty ABC Updated",
-    "contactPhone": "0999888777",
-    "status": "OPERATIONAL",
-    "active": true
-  }
-}
-```
-
-### DELETE /api/stations/{stationId}  
-Bearer token required (ROLE_ADMIN)  
-Xóa trạm sạc theo id. **Tất cả charging points liên quan sẽ tự động bị xóa (cascade).**
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": "Station deleted successfully",
-  "result": null
-}
-```
-
-### PATCH /api/stations/{stationId}/status?status={StationStatus}  
-Bearer token required (ROLE_ADMIN)  
-Cập nhật trạng thái cụ thể của trạm (truyền enum trực tiếp).
-
-Query parameters:
-- `status` (required): Trạng thái mới - `OPERATIONAL`, `MAINTENANCE`, `OUT_OF_SERVICE`, hoặc `CLOSED`
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "stationId": "uuid-1111-...",
-    "name": "Trạm Sạc Quận 1",
-    "address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
-    "operatorName": "Công ty ABC",
-    "contactPhone": "0987654321",
-    "status": "MAINTENANCE",
-    "active": false
-  }
-}
-```
-
-### PATCH /api/stations/{stationId}/activate  
-Bearer token required (ROLE_ADMIN)  
-Kích hoạt trạm: set trạng thái về `OPERATIONAL`.
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "stationId": "uuid-1111-...",
-    "name": "Trạm Sạc Quận 1",
-    "status": "OPERATIONAL",
-    "active": true
-  }
-}
-```
-
-### PATCH /api/stations/{stationId}/deactivate  
-Bearer token required (ROLE_ADMIN)  
-Ngưng hoạt động trạm: set trạng thái về `OUT_OF_SERVICE`.
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "stationId": "uuid-1111-...",
-    "name": "Trạm Sạc Quận 1",
-    "status": "OUT_OF_SERVICE",
-    "active": false
-  }
-}
-```
-
-### PATCH /api/stations/{stationId}/toggle  
-Bearer token required (ROLE_ADMIN)  
-Chuyển đổi trạng thái giữa `OPERATIONAL` ↔ `OUT_OF_SERVICE`.  
-**Lưu ý:** Không tác động tới các trạng thái khác (MAINTENANCE, CLOSED).
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "stationId": "uuid-1111-...",
-    "name": "Trạm Sạc Quận 1",
-    "status": "OPERATIONAL",
-    "active": true
-  }
-}
-```
+Delete a station.
 
 ---
 
-### **Station Staff Assignment Endpoints**
+## 13. Station Usage (Staff/Admin)
 
-### GET /api/stations/{stationId}/staff  
-Bearer token required (ROLE_ADMIN)  
-Lấy danh sách nhân viên đang thuộc về một trạm.
+### GET /api/station-usage/{stationId}/today
+**Bearer token required** (ROLE_STAFF or ROLE_ADMIN)
 
-Sample response:
+Get station usage for today.
+
+**Response:**
 ```json
 {
   "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "staffId": "uuid-staff-1...",
-      "fullName": "Nguyễn Văn A",
-      "email": "staff1@example.com",
-      "phone": "0901234567",
-      "stationId": "uuid-1111-...",
-      "stationName": "Trạm Sạc Quận 1"
-    }
-  ]
-}
-```
-
-### POST /api/stations/{stationId}/staff/{staffId}  
-Bearer token required (ROLE_ADMIN)  
-Gán một nhân viên (staffId = userId của staff) vào trạm.  
-**Business Rule:** Nếu staff đã thuộc 1 trạm khác → Error `STAFF_ALREADY_ASSIGNED` (không tự động chuyển trạm để tránh nhầm lẫn).
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
   "result": {
-    "staffId": "uuid-staff-1...",
-    "fullName": "Nguyễn Văn A",
-    "email": "staff1@example.com",
-    "phone": "0901234567",
-    "stationId": "uuid-1111-...",
-    "stationName": "Trạm Sạc Quận 1"
+    "stationId": "uuid-...",
+    "stationName": "Station A",
+    "address": "123 Main St",
+    "date": "2025-10-15",
+    "totalChargingPoints": 5,
+    "currentInUsePoints": 2,
+    "currentAvailablePoints": 3,
+    "currentUsagePercent": 40.0,
+    "totalSessionsToday": 15,
+    "completedSessionsToday": 12,
+    "activeSessionsToday": 2,
+    "totalEnergyToday": 125.5,
+    "totalRevenueToday": 450.0,
+    "peakHour": 14,
+    "peakUsagePercent": 80.0
   }
 }
 ```
 
-### DELETE /api/stations/{stationId}/staff/{staffId}  
-Bearer token required (ROLE_ADMIN)  
-Bỏ gán nhân viên khỏi trạm.
+### GET /api/station-usage/{stationId}/date?date={date}
+**Bearer token required** (ROLE_STAFF or ROLE_ADMIN)
 
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": "Unassigned",
-  "result": null
-}
-```
+Get station usage for specific date.
 
-### GET /api/stations/staff/unassigned  
-Bearer token required (ROLE_ADMIN)  
-Danh sách nhân viên chưa được gán vào bất kỳ trạm nào.
+**Query Parameter:**
+- `date` (required): YYYY-MM-DD
 
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "staffId": "uuid-staff-2...",
-      "fullName": "Trần Thị B",
-      "email": "staff2@example.com",
-      "phone": "0907654321",
-      "stationId": null,
-      "stationName": null
-    }
-  ]
-}
-```
+### GET /api/station-usage/all/today
+**Bearer token required** (ROLE_STAFF or ROLE_ADMIN)
 
-**Station Error Codes:**
-- `2001`: Station Not Found
-- `4001`: Staff Not Found
-- `4002`: Staff Already Assigned (nhân viên đã thuộc trạm khác)
-- `4003`: Staff Not In This Station (khi unassign nhân viên không thuộc trạm này)
+Get usage for all stations today.
+
+### GET /api/station-usage/all/date?date={date}
+**Bearer token required** (ROLE_STAFF or ROLE_ADMIN)
+
+Get usage for all stations on specific date.
 
 ---
 
-## 7. Station Usage
+## Common Error Codes
 
-### GET /api/stations/{stationId}/usages/realtime  
-Bearer token required (ROLE_ADMIN, ROLE_STAFF)  
-Lấy thông tin phiên sạc đang diễn ra tại một trạm (nếu có).
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "stationId": "uuid-1111-...",
-    "currentUsage": {
-      "sessionId": "uuid-session-...",
-      "vehicleId": "uuid-vehicle-...",
-      "driverId": "uuid-driver-...",
-      "startTime": "2025-09-15T10:30:00",
-      "status": "IN_PROGRESS",
-      "chargingPoint": {
-        "id": "uuid-point-...",
-        "name": "Điểm sạc 1",
-        "powerKw": 50
-      }
-    }
-  }
-}
-```
-
-### GET /api/stations/{stationId}/usages/history  
-Bearer token required (ROLE_ADMIN, ROLE_STAFF)  
-Lịch sử các phiên sạc tại một trạm.
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "sessionId": "uuid-session-...",
-      "vehicleId": "uuid-vehicle-...",
-      "driverId": "uuid-driver-...",
-      "startTime": "2025-09-01T08:00:00",
-      "endTime": "2025-09-01T09:00:00",
-      "status": "COMPLETED",
-      "chargingPoint": {
-        "id": "uuid-point-...",
-        "name": "Điểm sạc 1",
-        "powerKw": 50
-      },
-      "revenue": 10.5
-    }
-  ]
-}
-```
-
-### GET /api/stations/{stationId}/usages/analytics/daily  
-Bearer token required (ROLE_ADMIN, ROLE_STAFF)  
-Thống kê sử dụng theo ngày cho một trạm.
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "date": "2025-09-01",
-      "totalSessions": 10,
-      "totalRevenue": 105.0,
-      "totalTimeHours": 5.5
-    }
-  ]
-}
-```
-
-### GET /api/stations/{stationId}/usages/analytics/monthly  
-Bearer token required (ROLE_ADMIN, ROLE_STAFF)  
-Thống kê sử dụng theo tháng cho một trạm.
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "month": "2025-09",
-      "totalSessions": 50,
-      "totalRevenue": 525.0,
-      "totalTimeHours": 30.5
-    }
-  ]
-}
-```
-
-### GET /api/stations/{stationId}/usages/analytics/yearly  
-Bearer token required (ROLE_ADMIN, ROLE_STAFF)  
-Thống kê sử dụng theo năm cho một trạm.
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "year": 2025,
-      "totalSessions": 600,
-      "totalRevenue": 6300.0,
-      "totalTimeHours": 365.0
-    }
-  ]
-}
-```
+| Code | Message | Description |
+|------|---------|-------------|
+| 1000 | Success | Request successful |
+| 1001 | Uncategorized error | Unknown error |
+| 1002 | Invalid key | Invalid request parameter |
+| 1003 | User existed | Email already registered |
+| 1004 | User not existed | User not found |
+| 1005 | User not found | User not found |
+| 1006 | Unauthenticated | Not logged in or invalid token |
+| 1007 | Unauthorized | No permission to access |
+| 1008 | Invalid DOB | Date of birth is invalid |
+| 2001 | License plate existed | License plate already registered |
+| 2002 | Vehicle not found | Vehicle not found |
+| 3001 | Plan not found | Plan not found |
+| 3002 | Plan name existed | Plan name already exists |
+| 3003 | Invalid plan config | Plan configuration violates rules |
+| 3004 | Plan in use | Cannot delete plan that is in use |
+| 4001 | Station not found | Station not found |
+| 5001 | Subscription not found | Subscription not found |
 
 ---
 
-## 8. Vehicles (Thông tin xe điện)
+## Authentication
 
-### POST /api/vehicles
-Bearer token required (ROLE_DRIVER)  
-Driver tạo xe mới cho chính mình.
+Most endpoints require a Bearer token in the Authorization header:
 
-Request body (`VehicleCreationRequest`):
-```json
-{
-  "licensePlate": "30A-12345",
-  "model": "Tesla Model 3",
-  "batteryCapacityKwh": 75.0,
-  "batteryType": "Lithium-ion"
-}
+```
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9...
 ```
 
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "vehicleId": "uuid-vehicle-...",
-    "licensePlate": "30A-12345",
-    "model": "Tesla Model 3",
-    "batteryCapacityKwh": 75.0,
-    "batteryType": "Lithium-ion",
-    "ownerId": "uuid-driver-..."
-  }
-}
-```
-
-### GET /api/vehicles/my-vehicles
-Bearer token required (ROLE_DRIVER)  
-Driver lấy danh sách tất cả xe của mình.
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "vehicleId": "uuid-vehicle-...",
-      "licensePlate": "30A-12345",
-      "model": "Tesla Model 3",
-      "batteryCapacityKwh": 75.0,
-      "batteryType": "Lithium-ion",
-      "ownerId": "uuid-driver-..."
-    },
-    {
-      "vehicleId": "uuid-vehicle-2...",
-      "licensePlate": "29B-67890",
-      "model": "VinFast VF8",
-      "batteryCapacityKwh": 87.7,
-      "batteryType": "LFP",
-      "ownerId": "uuid-driver-..."
-    }
-  ]
-}
-```
-
-### GET /api/vehicles/my-vehicles/{vehicleId}
-Bearer token required (ROLE_DRIVER)  
-Driver lấy chi tiết một xe của mình.
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "vehicleId": "uuid-vehicle-...",
-    "licensePlate": "30A-12345",
-    "model": "Tesla Model 3",
-    "batteryCapacityKwh": 75.0,
-    "batteryType": "Lithium-ion",
-    "ownerId": "uuid-driver-..."
-  }
-}
-```
-
-### PUT /api/vehicles/{vehicleId}
-Bearer token required (ROLE_DRIVER)  
-Driver cập nhật thông tin xe của mình. Tất cả fields đều optional (partial update).
-
-Request body (`VehicleUpdateRequest`):
-```json
-{
-  "licensePlate": "30A-99999",
-  "model": "Tesla Model 3 Long Range",
-  "batteryCapacityKwh": 82.0,
-  "batteryType": "Lithium-ion NCM"
-}
-```
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "vehicleId": "uuid-vehicle-...",
-    "licensePlate": "30A-99999",
-    "model": "Tesla Model 3 Long Range",
-    "batteryCapacityKwh": 82.0,
-    "batteryType": "Lithium-ion NCM",
-    "ownerId": "uuid-driver-..."
-  }
-}
-```
-
-### DELETE /api/vehicles/{vehicleId}
-Bearer token required (ROLE_DRIVER)  
-Driver xóa xe của mình.
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": "Vehicle deleted successfully",
-  "result": null
-}
-```
-
-### GET /api/vehicles/driver/{driverId}
-Bearer token required (ROLE_ADMIN)  
-Admin lấy danh sách xe của một driver cụ thể.
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "vehicleId": "uuid-vehicle-...",
-      "licensePlate": "30A-12345",
-      "model": "Tesla Model 3",
-      "batteryCapacityKwh": 75.0,
-      "batteryType": "Lithium-ion",
-      "ownerId": "uuid-driver-..."
-    }
-  ]
-}
-```
-
-**Vehicle Validation & Business Rules:**
-- Biển số xe (`licensePlate`) phải unique trong hệ thống
-- Driver chỉ có thể xem/sửa/xóa xe của chính mình
-- Admin có thể xem xe của bất kỳ driver nào
-
-**Error Codes:**
-- `5001`: Vehicle Not Found
-- `5002`: License Plate Already Exists (biển số đã tồn tại)
-- `5003`: Vehicle Does Not Belong To This Driver (xe không thuộc về driver này)
+To obtain a token, use `/api/auth/login` endpoint.
 
 ---
 
-## 9. Payment Methods (Phương thức thanh toán)
+## Notes
 
-All payment method endpoints require bearer token (ROLE_DRIVER).
-
-### POST /api/payment-methods
-Bearer token required (ROLE_DRIVER)  
-Driver thêm phương thức thanh toán mới (Credit Card, E-Wallet, ...).
-
-Request body (`PaymentMethodCreationRequest`):
-```json
-{
-  "methodType": "CREDIT_CARD",
-  "provider": "Visa",
-  "token": "4111111111111234"
-}
-```
-
-**Payment Method Types:**
-- `CREDIT_CARD` - Thẻ tín dụng
-- `DEBIT_CARD` - Thẻ ghi nợ
-- `E_WALLET` - Ví điện tử (MoMo, ZaloPay, ...)
-- `BANK_TRANSFER` - Chuyển khoản ngân hàng
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "pmId": "uuid-pm-...",
-    "methodType": "CREDIT_CARD",
-    "provider": "Visa",
-    "maskedToken": "**** **** **** 1234"
-  }
-}
-```
-
-### GET /api/payment-methods
-Bearer token required (ROLE_DRIVER)  
-Driver xem danh sách phương thức thanh toán của mình.
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "pmId": "uuid-pm-1...",
-      "methodType": "CREDIT_CARD",
-      "provider": "Visa",
-      "maskedToken": "**** **** **** 1234"
-    },
-    {
-      "pmId": "uuid-pm-2...",
-      "methodType": "E_WALLET",
-      "provider": "MoMo",
-      "maskedToken": "**** **** **** 5678"
-    }
-  ]
-}
-```
-
-### DELETE /api/payment-methods/{pmId}
-Bearer token required (ROLE_DRIVER)  
-Driver xóa phương thức thanh toán.
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": "Payment method deleted successfully",
-  "result": null
-}
-```
-
-**Payment Method Business Rules:**
-- Mỗi driver có thể có nhiều phương thức thanh toán
-- Token được mask khi trả về API (chỉ hiển thị 4 số cuối)
-- Driver chỉ có thể xóa phương thức thanh toán của chính mình
-
-**Error Codes:**
-- `8001`: Payment Method Not Found
-- `9001`: Unauthorized Access (khi driver cố xóa payment method không thuộc mình)
+- All datetime fields are in ISO 8601 format: `2025-10-15T10:30:00`
+- All date fields are in format: `YYYY-MM-DD`
+- Monetary values are in VND (Vietnamese Dong)
+- Energy values are in kWh (kilowatt-hours)
+- Percentage values range: 0.0 - 100.0
+- Base URL: `http://localhost:8080/evchargingstation`
 
 ---
 
-## 10. Subscriptions (Gói đăng ký)
+## Frontend Integration Tips
 
-All subscription endpoints require bearer token (ROLE_DRIVER).
+### Notification Settings UI Mapping
 
-### POST /api/subscriptions
-Bearer token required (ROLE_DRIVER)  
-Driver đăng ký gói subscription (Free, Premium, VIP).  
-**Lưu ý:** Nếu gói có phí monthly (> 0), cần cung cấp `paymentMethodId`.
+Based on the UI screenshot provided:
 
-Request body (`SubscriptionCreationRequest`):
-```json
-{
-  "planId": "uuid-plan-...",
-  "paymentMethodId": "uuid-pm-...",
-  "autoRenew": true
-}
-```
+| UI Label | Backend Enum | Channels Available |
+|----------|-------------|-------------------|
+| **Hoàn thành sạc** (Thông báo khi xe đã sạc đầy) | `CHARGING_COMPLETE` | EMAIL, SMS |
+| **Pin yếu** (Cảnh báo khi pin dưới 20%) | `LOW_BATTERY` | EMAIL, SMS |
+| **Khuyến mãi** (Nhận thông báo về ưu đãi đặc biệt) | `PROMOTIONAL` | EMAIL, SMS |
+| **Bảo trì trạm** (Thông báo về lịch bảo trì trạm sạc) | `MAINTENANCE` | EMAIL, SMS |
 
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "subscriptionId": "uuid-sub-...",
-    "driverId": "uuid-driver-...",
-    "plan": {
-      "planId": "uuid-plan-...",
-      "name": "Premium",
-      "billingType": "MONTHLY_SUBSCRIPTION",
-      "pricePerKwh": 0.08,
-      "pricePerMinute": 0.015,
-      "monthlyFee": 199000.0,
-      "benefits": "Giảm 10% mọi phiên sạc, Đặt chỗ trước, Báo cáo chi tiết, Hỗ trợ ưu tiên"
-    },
-    "startDate": "2025-10-11T14:30:00",
-    "endDate": "2025-11-11T14:30:00",
-    "status": "ACTIVE",
-    "autoRenew": true
-  }
-}
-```
+**Total: 4 notification types × 2 channels = 8 toggle switches**
 
-### GET /api/subscriptions/active
-Bearer token required (ROLE_DRIVER)  
-Driver xem gói subscription hiện tại đang ACTIVE.
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "subscriptionId": "uuid-sub-...",
-    "driverId": "uuid-driver-...",
-    "plan": {
-      "planId": "uuid-plan-...",
-      "name": "Premium",
-      "billingType": "MONTHLY_SUBSCRIPTION",
-      "pricePerKwh": 0.08,
-      "pricePerMinute": 0.015,
-      "monthlyFee": 199000.0,
-      "benefits": "Giảm 10% mọi phiên sạc, Đặt chỗ trước, Báo cáo chi tiết, Hỗ trợ ưu tiên"
-    },
-    "startDate": "2025-10-11T14:30:00",
-    "endDate": "2025-11-11T14:30:00",
-    "status": "ACTIVE",
-    "autoRenew": true
-  }
-}
-```
-
-### DELETE /api/subscriptions/{subscriptionId}
-Bearer token required (ROLE_DRIVER)  
-Driver hủy subscription hiện tại. Subscription sẽ chuyển trạng thái sang `CANCELLED`.
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": "Subscription cancelled successfully",
-  "result": null
-}
-```
-
-### PATCH /api/subscriptions/{subscriptionId}/auto-renew?autoRenew={boolean}
-Bearer token required (ROLE_DRIVER)  
-Driver bật/tắt tự động gia hạn subscription.
-
-Query parameters:
-- `autoRenew` (required): `true` để bật tự động gia hạn, `false` để tắt
-
-Sample response:
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "subscriptionId": "uuid-sub-...",
-    "driverId": "uuid-driver-...",
-    "plan": {
-      "planId": "uuid-plan-...",
-      "name": "Premium",
-      "billingType": "MONTHLY_SUBSCRIPTION",
-      "pricePerKwh": 0.08,
-      "pricePerMinute": 0.015,
-      "monthlyFee": 199000.0,
-      "benefits": "Giảm 10% mọi phiên sạc"
-    },
-    "startDate": "2025-10-11T14:30:00",
-    "endDate": "2025-11-11T14:30:00",
-    "status": "ACTIVE",
-    "autoRenew": false
-  }
-}
-```
-
-**Subscription Business Rules:**
-- Driver chỉ có thể có 1 subscription ACTIVE tại một thời điểm
-- Gói miễn phí (monthlyFee = 0) không cần payment method
-- Gói có phí (monthlyFee > 0) bắt buộc cần payment method
-- Khi subscribe gói có phí, hệ thống tự động tạo payment record
-- Subscription mặc định có thời hạn 1 tháng kể từ ngày đăng ký
-- Khi hủy subscription, autoRenew tự động bị tắt
-
-**Subscription Status:**
-- `ACTIVE` - Đang hoạt động
-- `EXPIRED` - Đã hết hạn
-- `CANCELLED` - Đã hủy
-
-**Error Codes:**
-- `6001`: Driver Not Found
-- `3001`: Plan Not Found
-- `7001`: Subscription Not Found
-- `7002`: Subscription Already Active (driver đã có subscription ACTIVE)
-- `7003`: Subscription Not Active (khi hủy subscription không ở trạng thái ACTIVE)
-- `8001`: Payment Method Not Found
-- `8002`: Payment Method Required (khi subscribe gói có phí mà không cung cấp payment method)
-- `9001`: Unauthorized Access
+**Implementation:**
+- Each toggle switch → Call `PATCH /api/notification-settings/my-settings/single`
+- "Lưu cài đặt" button → Call `PUT /api/notification-settings/my-settings` with all 8 settings
 
 ---
 
-## 11. Dashboard (Thống Kê Sử Dụng - Driver)
-
-All dashboard endpoints require bearer token (ROLE_DRIVER).
-
-### GET /api/dashboard/summary?period={period}
-Bearer token required (ROLE_DRIVER)  
-Lấy thống kê tổng quan cho driver: tổng chi phí, tổng năng lượng sử dụng, số phiên sạc, giá trung bình/kWh.
-
-Query parameters:
-- `period` (optional): Khoảng thời gian thống kê
-  - `today` - Hôm nay
-  - `week` - 7 ngày qua
-  - `month` - 30 ngày qua (mặc định)
-
-Sample response (`DashboardSummaryResponse`):
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "totalRevenue": 727690,
-    "totalEnergyUsed": 212.9,
-    "totalSessions": 5,
-    "averagePricePerKwh": 3418
-  }
-}
-```
-
-### GET /api/dashboard/hourly-sessions?date={date}
-Bearer token required (ROLE_DRIVER)  
-Lấy thống kê số phiên sạc và năng lượng theo từng giờ trong ngày (dùng cho biểu đồ "Thói quen sạc xe").
-
-Query parameters:
-- `date` (optional): Ngày cần thống kê (format: `YYYY-MM-DD`, mặc định: hôm nay)
-
-Sample response (`List<HourlyChargingResponse>`):
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "hour": "00:00",
-      "sessionCount": 0,
-      "totalEnergy": 0.0
-    },
-    {
-      "hour": "06:00",
-      "sessionCount": 2,
-      "totalEnergy": 15.5
-    },
-    {
-      "hour": "08:00",
-      "sessionCount": 8,
-      "totalEnergy": 45.2
-    },
-    {
-      "hour": "10:00",
-      "sessionCount": 5,
-      "totalEnergy": 28.1
-    },
-    {
-      "hour": "12:00",
-      "sessionCount": 12,
-      "totalEnergy": 68.5
-    },
-    {
-      "hour": "14:00",
-      "sessionCount": 18,
-      "totalEnergy": 95.3
-    },
-    {
-      "hour": "16:00",
-      "sessionCount": 15,
-      "totalEnergy": 82.7
-    },
-    {
-      "hour": "18:00",
-      "sessionCount": 22,
-      "totalEnergy": 120.8
-    },
-    {
-      "hour": "20:00",
-      "sessionCount": 10,
-      "totalEnergy": 55.4
-    },
-    {
-      "hour": "22:00",
-      "sessionCount": 6,
-      "totalEnergy": 32.1
-    }
-  ]
-}
-```
-
-### GET /api/dashboard/favorite-stations?limit={limit}
-Bearer token required (ROLE_DRIVER)  
-Lấy danh sách các trạm sạc yêu thích của driver (trạm mà driver sạc nhiều nhất).
-
-Query parameters:
-- `limit` (optional): Số lượng trạm trả về (mặc định: 5)
-
-Sample response (`List<FavoriteStationResponse>`):
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "stationId": "uuid-station-1...",
-      "stationName": "Vincom Đồng Khởi",
-      "address": "72 Lê Thánh Tôn, Quận 1, TP.HCM",
-      "sessionCount": 8
-    },
-    {
-      "stationId": "uuid-station-2...",
-      "stationName": "Landmark 81",
-      "address": "Vinhomes Central Park, Bình Thạnh, TP.HCM",
-      "sessionCount": 5
-    },
-    {
-      "stationId": "uuid-station-3...",
-      "stationName": "AEON Mall Tân Phú",
-      "address": "30 Bờ Bao Tân Thắng, Tân Phú, TP.HCM",
-      "sessionCount": 3
-    }
-  ]
-}
-```
-
-### GET /api/dashboard/charging-statistics
-Bearer token required (ROLE_DRIVER)  
-Lấy thống kê về thói quen sạc: thời gian sạc trung bình, giờ cao điểm, ngày trong tuần thường sạc.
-
-Sample response (`ChargingStatisticsResponse`):
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "averageChargingTimeMinutes": 52,
-    "peakHours": "18:00 - 20:00",
-    "mostFrequentDays": "T2, T6"
-  }
-}
-```
-
-**Dashboard Notes:**
-- Tất cả API chỉ trả về dữ liệu của driver đang đăng nhập
-- Dữ liệu được tính toán từ bảng `charging_sessions`
-- Biểu đồ hourly-sessions luôn trả về đầy đủ 24 giờ (giờ không có dữ liệu sẽ có giá trị 0)
-- Giờ cao điểm được tính dựa trên 2 giờ có nhiều phiên sạc nhất
-- Ngày trong tuần phổ biến được tính dựa trên 2 ngày có nhiều phiên sạc nhất (T2=Thứ 2, T3=Thứ 3, ..., T7=Thứ 7, CN=Chủ nhật)
-
----
-
-## 12. Charging Sessions (Phiên Sạc - Driver Dashboard)
-
-All charging session endpoints require bearer token (ROLE_DRIVER).
-
-### GET /api/charging-sessions/my-dashboard
-Bearer token required (ROLE_DRIVER)  
-Lấy thông tin tổng quan dashboard của driver bao gồm:
-- Tổng chi phí đã tiêu
-- Tổng năng lượng đã sạc (kWh)
-- Số phiên sạc
-- Trung bình chi phí/tháng (tính từ ngày join)
-- Thông tin xe chính và % pin hiện tại
-
-Sample response (`DriverDashboardResponse`):
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "totalCost": 727690.0,
-    "totalEnergyKwh": 212.9,
-    "totalSessions": 5,
-    "averageCostPerMonth": "3418",
-    "vehicleModel": "Tesla Model 3",
-    "licensePlate": "30A-12345",
-    "currentBatterySoc": 75
-  }
-}
-```
-
-### GET /api/charging-sessions/my-sessions
-Bearer token required (ROLE_DRIVER)  
-Lấy danh sách lịch sử phiên sạc của driver đang đăng nhập, sắp xếp theo thời gian mới nhất trước.
-
-Sample response (`List<ChargingSessionResponse>`):
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "sessionId": "uuid-session-...",
-      "startTime": "2024-10-03T14:30:00",
-      "endTime": "2024-10-03T15:15:00",
-      "durationMin": 45,
-      "stationName": "Vincom Đồng Khởi",
-      "stationAddress": "72 Lê Thánh Tôn, Quận 1, TP.HCM",
-      "chargingPointName": "Point A1",
-      "startSocPercent": 30,
-      "endSocPercent": 75,
-      "energyKwh": 32.5,
-      "costTotal": 113750.0,
-      "status": "COMPLETED",
-      "vehicleModel": "Tesla Model 3",
-      "licensePlate": "30A-12345"
-    },
-    {
-      "sessionId": "uuid-session-2...",
-      "startTime": "2024-10-01T09:15:00",
-      "endTime": "2024-10-01T10:35:00",
-      "durationMin": 80,
-      "stationName": "Landmark 81",
-      "stationAddress": "Vinhomes Central Park, Bình Thạnh, TP.HCM",
-      "chargingPointName": "Point B2",
-      "startSocPercent": 15,
-      "endSocPercent": 85,
-      "energyKwh": 58.2,
-      "costTotal": 186240.0,
-      "status": "COMPLETED",
-      "vehicleModel": "Tesla Model 3",
-      "licensePlate": "30A-12345"
-    }
-  ]
-}
-```
-
-### GET /api/charging-sessions/{sessionId}
-Bearer token required (ROLE_DRIVER)  
-Lấy chi tiết một phiên sạc cụ thể. Driver chỉ có thể xem phiên sạc của chính mình.
-
-Sample response (`ChargingSessionResponse`):
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": {
-    "sessionId": "uuid-session-...",
-    "startTime": "2024-10-03T14:30:00",
-    "endTime": "2024-10-03T15:15:00",
-    "durationMin": 45,
-    "stationName": "Vincom Đồng Khởi",
-    "stationAddress": "72 Lê Thánh Tôn, Quận 1, TP.HCM",
-    "chargingPointName": "Point A1",
-    "startSocPercent": 30,
-    "endSocPercent": 75,
-    "energyKwh": 32.5,
-    "costTotal": 113750.0,
-    "status": "COMPLETED",
-    "vehicleModel": "Tesla Model 3",
-    "licensePlate": "30A-12345"
-  }
-}
-```
-
-### GET /api/charging-sessions/my-analytics/monthly
-Bearer token required (ROLE_DRIVER)  
-Lấy thống kê phân tích theo tháng cho driver (5 tháng gần nhất).  
-Dùng cho tab **"Phân tích"** với 3 biểu đồ:
-- **Chi phí theo tháng** - Biểu đồ cột
-- **Năng lượng tiêu thụ** - Biểu đồ đường
-- **Số phiên sạc** - Biểu đồ cột
-
-Sample response (`List<MonthlyAnalyticsResponse>`):
-```json
-{
-  "code": 1000,
-  "message": null,
-  "result": [
-    {
-      "month": 6,
-      "year": 2025,
-      "totalCost": 450000.0,
-      "totalEnergyKwh": 150.5,
-      "totalSessions": 8,
-      "monthLabel": "T6"
-    },
-    {
-      "month": 7,
-      "year": 2025,
-      "totalCost": 620000.0,
-      "totalEnergyKwh": 225.3,
-      "totalSessions": 12,
-      "monthLabel": "T7"
-    },
-    {
-      "month": 8,
-      "year": 2025,
-      "totalCost": 580000.0,
-      "totalEnergyKwh": 210.8,
-      "totalSessions": 11,
-      "monthLabel": "T8"
-    },
-    {
-      "month": 9,
-      "year": 2025,
-      "totalCost": 750000.0,
-      "totalEnergyKwh": 295.7,
-      "totalSessions": 15,
-      "monthLabel": "T9"
-    },
-    {
-      "month": 10,
-      "year": 2025,
-      "totalCost": 285000.0,
-      "totalEnergyKwh": 125.4,
-      "totalSessions": 6,
-      "monthLabel": "T10"
-    }
-  ]
-}
-```
-
-**Cách sử dụng dữ liệu cho Frontend:**
-- **Biểu đồ Chi phí theo tháng (cột)**: Dùng `monthLabel` làm trục X, `totalCost` làm trục Y
-- **Biểu đồ Năng lượng tiêu thụ (đường)**: Dùng `monthLabel` làm trục X, `totalEnergyKwh` làm trục Y
-- **Biểu đồ Số phiên sạc (cột)**: Dùng `monthLabel` làm trục X, `totalSessions` làm trục Y
-
-**Charging Session Status:**
-- `IN_PROGRESS` - Đang sạc
-- `COMPLETED` - Hoàn thành
-- `CANCELLED` - Đã hủy
-- `FAILED` - Thất bại
-
-**Business Rules:**
-- Driver chỉ có thể xem dữ liệu phiên sạc của chính mình
-- Dashboard tính toán tự động dựa trên tất cả các phiên sạc đã hoàn thành
-- Trung bình chi phí/tháng = Tổng chi phí / Số tháng kể từ ngày join
-- % pin hiện tại lấy từ endSocPercent của phiên sạc gần nhất
-- Thông tin xe lấy từ xe đầu tiên trong danh sách xe của driver
-- Analytics lấy dữ liệu 5 tháng gần nhất (tính từ tháng hiện tại trở về trước)
-
-**Error Codes:**
-- `9001`: Session Not Found
-- `9002`: Unauthorized Access (driver cố xem phiên sạc không thuộc mình)
-
----
-
+**Last Updated:** October 15, 2025
