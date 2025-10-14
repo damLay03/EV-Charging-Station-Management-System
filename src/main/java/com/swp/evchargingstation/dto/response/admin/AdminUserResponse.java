@@ -1,4 +1,4 @@
-package com.swp.evchargingstation.dto.response;
+package com.swp.evchargingstation.dto.response.admin;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;

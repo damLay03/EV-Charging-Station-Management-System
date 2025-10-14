@@ -1360,7 +1360,163 @@ Sample response:
 
 ---
 
-## 11. Charging Sessions (Phiên Sạc - Driver Dashboard)
+## 11. Dashboard (Thống Kê Sử Dụng - Driver)
+
+All dashboard endpoints require bearer token (ROLE_DRIVER).
+
+### GET /api/dashboard/summary?period={period}
+Bearer token required (ROLE_DRIVER)  
+Lấy thống kê tổng quan cho driver: tổng chi phí, tổng năng lượng sử dụng, số phiên sạc, giá trung bình/kWh.
+
+Query parameters:
+- `period` (optional): Khoảng thời gian thống kê
+  - `today` - Hôm nay
+  - `week` - 7 ngày qua
+  - `month` - 30 ngày qua (mặc định)
+
+Sample response (`DashboardSummaryResponse`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "totalRevenue": 727690,
+    "totalEnergyUsed": 212.9,
+    "totalSessions": 5,
+    "averagePricePerKwh": 3418
+  }
+}
+```
+
+### GET /api/dashboard/hourly-sessions?date={date}
+Bearer token required (ROLE_DRIVER)  
+Lấy thống kê số phiên sạc và năng lượng theo từng giờ trong ngày (dùng cho biểu đồ "Thói quen sạc xe").
+
+Query parameters:
+- `date` (optional): Ngày cần thống kê (format: `YYYY-MM-DD`, mặc định: hôm nay)
+
+Sample response (`List<HourlyChargingResponse>`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "hour": "00:00",
+      "sessionCount": 0,
+      "totalEnergy": 0.0
+    },
+    {
+      "hour": "06:00",
+      "sessionCount": 2,
+      "totalEnergy": 15.5
+    },
+    {
+      "hour": "08:00",
+      "sessionCount": 8,
+      "totalEnergy": 45.2
+    },
+    {
+      "hour": "10:00",
+      "sessionCount": 5,
+      "totalEnergy": 28.1
+    },
+    {
+      "hour": "12:00",
+      "sessionCount": 12,
+      "totalEnergy": 68.5
+    },
+    {
+      "hour": "14:00",
+      "sessionCount": 18,
+      "totalEnergy": 95.3
+    },
+    {
+      "hour": "16:00",
+      "sessionCount": 15,
+      "totalEnergy": 82.7
+    },
+    {
+      "hour": "18:00",
+      "sessionCount": 22,
+      "totalEnergy": 120.8
+    },
+    {
+      "hour": "20:00",
+      "sessionCount": 10,
+      "totalEnergy": 55.4
+    },
+    {
+      "hour": "22:00",
+      "sessionCount": 6,
+      "totalEnergy": 32.1
+    }
+  ]
+}
+```
+
+### GET /api/dashboard/favorite-stations?limit={limit}
+Bearer token required (ROLE_DRIVER)  
+Lấy danh sách các trạm sạc yêu thích của driver (trạm mà driver sạc nhiều nhất).
+
+Query parameters:
+- `limit` (optional): Số lượng trạm trả về (mặc định: 5)
+
+Sample response (`List<FavoriteStationResponse>`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "stationId": "uuid-station-1...",
+      "stationName": "Vincom Đồng Khởi",
+      "address": "72 Lê Thánh Tôn, Quận 1, TP.HCM",
+      "sessionCount": 8
+    },
+    {
+      "stationId": "uuid-station-2...",
+      "stationName": "Landmark 81",
+      "address": "Vinhomes Central Park, Bình Thạnh, TP.HCM",
+      "sessionCount": 5
+    },
+    {
+      "stationId": "uuid-station-3...",
+      "stationName": "AEON Mall Tân Phú",
+      "address": "30 Bờ Bao Tân Thắng, Tân Phú, TP.HCM",
+      "sessionCount": 3
+    }
+  ]
+}
+```
+
+### GET /api/dashboard/charging-statistics
+Bearer token required (ROLE_DRIVER)  
+Lấy thống kê về thói quen sạc: thời gian sạc trung bình, giờ cao điểm, ngày trong tuần thường sạc.
+
+Sample response (`ChargingStatisticsResponse`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "averageChargingTimeMinutes": 52,
+    "peakHours": "18:00 - 20:00",
+    "mostFrequentDays": "T2, T6"
+  }
+}
+```
+
+**Dashboard Notes:**
+- Tất cả API chỉ trả về dữ liệu của driver đang đăng nhập
+- Dữ liệu được tính toán từ bảng `charging_sessions`
+- Biểu đồ hourly-sessions luôn trả về đầy đủ 24 giờ (giờ không có dữ liệu sẽ có giá trị 0)
+- Giờ cao điểm được tính dựa trên 2 giờ có nhiều phiên sạc nhất
+- Ngày trong tuần phổ biến được tính dựa trên 2 ngày có nhiều phiên sạc nhất (T2=Thứ 2, T3=Thứ 3, ..., T7=Thứ 7, CN=Chủ nhật)
+
+---
+
+## 12. Charging Sessions (Phiên Sạc - Driver Dashboard)
 
 All charging session endpoints require bearer token (ROLE_DRIVER).
 

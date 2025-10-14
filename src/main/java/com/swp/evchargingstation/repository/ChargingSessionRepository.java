@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -99,68 +100,72 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
             @Param("endTime") LocalDateTime endTime
     );
 
-    /**
-     * Đếm session theo status và thời gian
-     */
-    @Query("SELECT COUNT(cs) FROM ChargingSession cs " +
-            "WHERE cs.chargingPoint.station.stationId = :stationId " +
-            "AND cs.status = :status " +
-            "AND cs.startTime >= :startTime " +
-            "AND cs.startTime < :endTime")
-    Integer countSessionsByStationStatusAndTimeRange(
-            @Param("stationId") String stationId,
-            @Param("status") ChargingSessionStatus status,
-            @Param("startTime") LocalDateTime startTime,
-            @Param("endTime") LocalDateTime endTime
-    );
+    // ========== DASHBOARD QUERIES ==========
 
     /**
-     * Tính tổng năng lượng (kWh) trong khoảng thời gian
+     * Tính tổng theo khoảng thời gian cho dashboard summary
      */
-    @Query("SELECT COALESCE(SUM(cs.energyKwh), 0) FROM ChargingSession cs " +
-            "WHERE cs.chargingPoint.station.stationId = :stationId " +
-            "AND cs.startTime >= :startTime " +
-            "AND cs.startTime < :endTime")
-    Double sumEnergyByStationAndTimeRange(
-            @Param("stationId") String stationId,
-            @Param("startTime") LocalDateTime startTime,
-            @Param("endTime") LocalDateTime endTime
-    );
-
-    /**
-     * Tính tổng doanh thu trong khoảng thời gian
-     */
-    @Query("SELECT COALESCE(SUM(cs.costTotal), 0) FROM ChargingSession cs " +
-            "WHERE cs.chargingPoint.station.stationId = :stationId " +
-            "AND cs.startTime >= :startTime " +
-            "AND cs.startTime < :endTime")
-    Double sumRevenueByStationAndTimeRange(
-            @Param("stationId") String stationId,
-            @Param("startTime") LocalDateTime startTime,
-            @Param("endTime") LocalDateTime endTime
-    );
-
-    /**
-     * Lấy danh sách session đang IN_PROGRESS của một trạm
-     */
-    @Query("SELECT cs FROM ChargingSession cs " +
-            "WHERE cs.chargingPoint.station.stationId = :stationId " +
-            "AND cs.status = 'IN_PROGRESS'")
-    List<ChargingSession> findActiveSessionsByStation(@Param("stationId") String stationId);
-
-    /**
-     * Phân tích usage theo giờ - trả về data thô để xử lý
-     */
-    @Query("SELECT HOUR(cs.startTime), COUNT(cs), SUM(cs.energyKwh), SUM(cs.costTotal) " +
+    @Query("SELECT COALESCE(SUM(cs.costTotal), 0), COALESCE(SUM(cs.energyKwh), 0), COUNT(cs) " +
             "FROM ChargingSession cs " +
-            "WHERE cs.chargingPoint.station.stationId = :stationId " +
-            "AND cs.startTime >= :startTime " +
-            "AND cs.startTime < :endTime " +
+            "WHERE cs.driver.userId = :driverId " +
+            "AND cs.startTime >= :startTime")
+    Object[] getSummaryByDriverAndStartTime(
+            @Param("driverId") String driverId,
+            @Param("startTime") LocalDateTime startTime
+    );
+
+    /**
+     * Thống kê theo giờ trong ngày
+     */
+    @Query("SELECT HOUR(cs.startTime), COUNT(cs), COALESCE(SUM(cs.energyKwh), 0) " +
+            "FROM ChargingSession cs " +
+            "WHERE cs.driver.userId = :driverId " +
+            "AND DATE(cs.startTime) = :date " +
             "GROUP BY HOUR(cs.startTime) " +
             "ORDER BY HOUR(cs.startTime)")
-    List<Object[]> findHourlyUsageByStation(
-            @Param("stationId") String stationId,
-            @Param("startTime") LocalDateTime startTime,
-            @Param("endTime") LocalDateTime endTime
+    List<Object[]> getHourlySessionsByDriverAndDate(
+            @Param("driverId") String driverId,
+            @Param("date") LocalDate date
     );
+
+    /**
+     * Lấy top trạm sạc yêu thích
+     */
+    @Query("SELECT s.stationId, s.name, s.address, COUNT(cs) " +
+            "FROM ChargingSession cs " +
+            "JOIN cs.chargingPoint cp " +
+            "JOIN cp.station s " +
+            "WHERE cs.driver.userId = :driverId " +
+            "GROUP BY s.stationId, s.name, s.address " +
+            "ORDER BY COUNT(cs) DESC")
+    List<Object[]> getFavoriteStationsByDriver(@Param("driverId") String driverId);
+
+    /**
+     * Tính thời gian sạc trung bình
+     */
+    @Query("SELECT AVG(cs.durationMin) " +
+            "FROM ChargingSession cs " +
+            "WHERE cs.driver.userId = :driverId " +
+            "AND cs.durationMin > 0")
+    Double getAverageChargingTimeByDriver(@Param("driverId") String driverId);
+
+    /**
+     * Thống kê theo giờ để tìm giờ cao điểm
+     */
+    @Query("SELECT HOUR(cs.startTime), COUNT(cs) " +
+            "FROM ChargingSession cs " +
+            "WHERE cs.driver.userId = :driverId " +
+            "GROUP BY HOUR(cs.startTime) " +
+            "ORDER BY COUNT(cs) DESC")
+    List<Object[]> getPeakHoursByDriver(@Param("driverId") String driverId);
+
+    /**
+     * Thống kê theo ngày trong tuần
+     */
+    @Query("SELECT DAYOFWEEK(cs.startTime), COUNT(cs) " +
+            "FROM ChargingSession cs " +
+            "WHERE cs.driver.userId = :driverId " +
+            "GROUP BY DAYOFWEEK(cs.startTime) " +
+            "ORDER BY COUNT(cs) DESC")
+    List<Object[]> getMostFrequentDaysByDriver(@Param("driverId") String driverId);
 }

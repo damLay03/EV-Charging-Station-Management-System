@@ -1,8 +1,7 @@
 package com.swp.evchargingstation.service;
 
 import com.swp.evchargingstation.dto.response.ChargingSessionResponse;
-import com.swp.evchargingstation.dto.response.DriverDashboardResponse;
-import com.swp.evchargingstation.dto.response.MonthlyAnalyticsResponse;
+import com.swp.evchargingstation.dto.response.driver.DriverDashboardResponse;
 import com.swp.evchargingstation.dto.response.MonthlyAnalyticsResponse;
 import com.swp.evchargingstation.entity.ChargingSession;
 import com.swp.evchargingstation.entity.Driver;

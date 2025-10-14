@@ -1,6 +1,6 @@
 package com.swp.evchargingstation.controller;
 
-import com.swp.evchargingstation.dto.request.ApiResponse;
+import com.swp.evchargingstation.dto.response.ApiResponse;
 import com.swp.evchargingstation.dto.request.StationCreationRequest;
 import com.swp.evchargingstation.dto.request.StationUpdateRequest;
 import com.swp.evchargingstation.dto.response.StationDetailResponse;
