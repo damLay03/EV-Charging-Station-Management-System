@@ -11,7 +11,7 @@ All responses are wrapped in the common `ApiResponse<T>` envelope:
 {
   "code": 1000,
   "message": null,
-  "result": { ... }
+  "result": {  }
 }
 ```
 

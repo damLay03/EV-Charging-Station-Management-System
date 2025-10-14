@@ -100,6 +100,67 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
             @Param("endTime") LocalDateTime endTime
     );
 
+    /**
+     * Đếm số session của một trạm theo trạng thái trong khoảng thời gian
+     */
+    @Query("SELECT COUNT(cs) FROM ChargingSession cs " +
+            "WHERE cs.chargingPoint.station.stationId = :stationId " +
+            "AND cs.status = :status " +
+            "AND cs.startTime >= :startTime " +
+            "AND cs.startTime < :endTime")
+    Integer countSessionsByStationStatusAndTimeRange(
+            @Param("stationId") String stationId,
+            @Param("status") ChargingSessionStatus status,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime
+    );
+
+    /**
+     * Tính tổng năng lượng sạc của một trạm trong khoảng thời gian
+     */
+    @Query("SELECT COALESCE(SUM(cs.energyKwh), 0) FROM ChargingSession cs " +
+            "WHERE cs.chargingPoint.station.stationId = :stationId " +
+            "AND cs.startTime >= :startTime " +
+            "AND cs.startTime < :endTime")
+    Double sumEnergyByStationAndTimeRange(
+            @Param("stationId") String stationId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime
+    );
+
+    /**
+     * Tính tổng doanh thu của một trạm trong khoảng thời gian
+     */
+    @Query("SELECT COALESCE(SUM(cs.costTotal), 0) FROM ChargingSession cs " +
+            "WHERE cs.chargingPoint.station.stationId = :stationId " +
+            "AND cs.startTime >= :startTime " +
+            "AND cs.startTime < :endTime")
+    Double sumRevenueByStationAndTimeRange(
+            @Param("stationId") String stationId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime
+    );
+
+    /**
+     * Thống kê theo giờ cho một trạm trong khoảng thời gian
+     * Return: [giờ, số phiên, tổng năng lượng, tổng doanh thu]
+     */
+    @Query("SELECT HOUR(cs.startTime) as hour, " +
+           "COUNT(cs) as sessions, " +
+           "SUM(cs.energyKwh) as energy, " +
+           "SUM(cs.costTotal) as revenue " +
+           "FROM ChargingSession cs " +
+           "WHERE cs.chargingPoint.station.stationId = :stationId " +
+           "AND cs.startTime >= :startTime " +
+           "AND cs.startTime < :endTime " +
+           "GROUP BY HOUR(cs.startTime) " +
+           "ORDER BY hour")
+    List<Object[]> findHourlyUsageByStation(
+            @Param("stationId") String stationId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime
+    );
+
     // ========== DASHBOARD QUERIES ==========
 
     /**
