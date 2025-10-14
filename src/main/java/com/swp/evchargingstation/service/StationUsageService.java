@@ -170,27 +170,31 @@ public class StationUsageService {
 
         // Convert sang Map để dễ xử lý
         Map<Integer, HourlyUsageData> hourlyMap = new HashMap<>();
-        for (Object[] row : rawData) {
-            Integer hour = (Integer) row[0];
-            Long sessionCount = (Long) row[1];
-            Double energy = row[2] != null ? ((Number) row[2]).doubleValue() : 0.0;
-            Double revenue = row[3] != null ? ((Number) row[3]).doubleValue() : 0.0;
+        if (rawData != null) {
+            for (Object[] row : rawData) {
+                if (row == null || row.length < 4) continue;
 
-            // Tạm tính usage percent (có thể cần logic phức tạp hơn)
-            // Giả sử: nếu có session trong giờ đó => coi như có điểm đang sạc
-            // Cần logic chính xác hơn dựa trên thời gian bắt đầu/kết thúc session
-            double usagePercent = totalPoints > 0 ? (sessionCount * 100.0 / totalPoints) : 0.0;
+                Integer hour = (Integer) row[0];
+                Long sessionCount = row[1] != null ? (Long) row[1] : 0L;
+                Double energy = row[2] != null ? ((Number) row[2]).doubleValue() : 0.0;
+                Double revenue = row[3] != null ? ((Number) row[3]).doubleValue() : 0.0;
 
-            HourlyUsageData hourlyData = HourlyUsageData.builder()
-                    .hour(hour)
-                    .sessionCount(sessionCount.intValue())
-                    .activePoints(sessionCount.intValue()) // Simplified - cần logic chính xác hơn
-                    .usagePercent(Math.round(usagePercent * 100.0) / 100.0)
-                    .energyConsumed(Math.round(energy * 100.0) / 100.0)
-                    .revenue(Math.round(revenue * 100.0) / 100.0)
-                    .build();
+                // Tạm tính usage percent (có thể cần logic phức tạp hơn)
+                // Giả sử: nếu có session trong giờ đó => coi như có điểm đang sạc
+                // Cần logic chính xác hơn dựa trên thời gian bắt đầu/kết thúc session
+                double usagePercent = totalPoints > 0 ? (sessionCount * 100.0 / totalPoints) : 0.0;
 
-            hourlyMap.put(hour, hourlyData);
+                HourlyUsageData hourlyData = HourlyUsageData.builder()
+                        .hour(hour)
+                        .sessionCount(sessionCount.intValue())
+                        .activePoints(sessionCount.intValue()) // Simplified - cần logic chính xác hơn
+                        .usagePercent(Math.round(usagePercent * 100.0) / 100.0)
+                        .energyConsumed(Math.round(energy * 100.0) / 100.0)
+                        .revenue(Math.round(revenue * 100.0) / 100.0)
+                        .build();
+
+                hourlyMap.put(hour, hourlyData);
+            }
         }
 
         // Tạo list đầy đủ 24 giờ (fill 0 cho giờ không có data)
