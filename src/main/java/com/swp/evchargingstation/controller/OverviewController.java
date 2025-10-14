@@ -39,38 +39,4 @@ public class OverviewController {
                 .result(overviewService.getSystemOverview())
                 .build();
     }
-
-    /**
-     * Lấy tổng số trạm sạc trong hệ thống
-     *
-     * Chỉ ADMIN mới có quyền truy cập
-     *
-     * @return Tổng số trạm sạc
-     */
-    @GetMapping("/total-stations")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Long> getTotalStations() {
-        log.info("Admin requesting total stations count");
-
-        return ApiResponse.<Long>builder()
-                .result(overviewService.getTotalStations())
-                .build();
-    }
-
-    /**
-     * Lấy tổng số driver trong hệ thống
-     *
-     * Chỉ ADMIN mới có quyền truy cập
-     *
-     * @return Tổng số driver
-     */
-    @GetMapping("/total-drivers")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Long> getTotalDrivers() {
-        log.info("Admin requesting total drivers count");
-
-        return ApiResponse.<Long>builder()
-                .result(overviewService.getTotalDrivers())
-                .build();
-    }
 }

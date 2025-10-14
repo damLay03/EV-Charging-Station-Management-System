@@ -1359,3 +1359,347 @@ Sample response:
 - `9001`: Unauthorized Access
 
 ---
+
+## 11. Dashboard (Thống Kê Sử Dụng - Driver)
+
+All dashboard endpoints require bearer token (ROLE_DRIVER).
+
+### GET /api/dashboard/summary?period={period}
+Bearer token required (ROLE_DRIVER)  
+Lấy thống kê tổng quan cho driver: tổng chi phí, tổng năng lượng sử dụng, số phiên sạc, giá trung bình/kWh.
+
+Query parameters:
+- `period` (optional): Khoảng thời gian thống kê
+  - `today` - Hôm nay
+  - `week` - 7 ngày qua
+  - `month` - 30 ngày qua (mặc định)
+
+Sample response (`DashboardSummaryResponse`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "totalRevenue": 727690,
+    "totalEnergyUsed": 212.9,
+    "totalSessions": 5,
+    "averagePricePerKwh": 3418
+  }
+}
+```
+
+### GET /api/dashboard/hourly-sessions?date={date}
+Bearer token required (ROLE_DRIVER)  
+Lấy thống kê số phiên sạc và năng lượng theo từng giờ trong ngày (dùng cho biểu đồ "Thói quen sạc xe").
+
+Query parameters:
+- `date` (optional): Ngày cần thống kê (format: `YYYY-MM-DD`, mặc định: hôm nay)
+
+Sample response (`List<HourlyChargingResponse>`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "hour": "00:00",
+      "sessionCount": 0,
+      "totalEnergy": 0.0
+    },
+    {
+      "hour": "06:00",
+      "sessionCount": 2,
+      "totalEnergy": 15.5
+    },
+    {
+      "hour": "08:00",
+      "sessionCount": 8,
+      "totalEnergy": 45.2
+    },
+    {
+      "hour": "10:00",
+      "sessionCount": 5,
+      "totalEnergy": 28.1
+    },
+    {
+      "hour": "12:00",
+      "sessionCount": 12,
+      "totalEnergy": 68.5
+    },
+    {
+      "hour": "14:00",
+      "sessionCount": 18,
+      "totalEnergy": 95.3
+    },
+    {
+      "hour": "16:00",
+      "sessionCount": 15,
+      "totalEnergy": 82.7
+    },
+    {
+      "hour": "18:00",
+      "sessionCount": 22,
+      "totalEnergy": 120.8
+    },
+    {
+      "hour": "20:00",
+      "sessionCount": 10,
+      "totalEnergy": 55.4
+    },
+    {
+      "hour": "22:00",
+      "sessionCount": 6,
+      "totalEnergy": 32.1
+    }
+  ]
+}
+```
+
+### GET /api/dashboard/favorite-stations?limit={limit}
+Bearer token required (ROLE_DRIVER)  
+Lấy danh sách các trạm sạc yêu thích của driver (trạm mà driver sạc nhiều nhất).
+
+Query parameters:
+- `limit` (optional): Số lượng trạm trả về (mặc định: 5)
+
+Sample response (`List<FavoriteStationResponse>`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "stationId": "uuid-station-1...",
+      "stationName": "Vincom Đồng Khởi",
+      "address": "72 Lê Thánh Tôn, Quận 1, TP.HCM",
+      "sessionCount": 8
+    },
+    {
+      "stationId": "uuid-station-2...",
+      "stationName": "Landmark 81",
+      "address": "Vinhomes Central Park, Bình Thạnh, TP.HCM",
+      "sessionCount": 5
+    },
+    {
+      "stationId": "uuid-station-3...",
+      "stationName": "AEON Mall Tân Phú",
+      "address": "30 Bờ Bao Tân Thắng, Tân Phú, TP.HCM",
+      "sessionCount": 3
+    }
+  ]
+}
+```
+
+### GET /api/dashboard/charging-statistics
+Bearer token required (ROLE_DRIVER)  
+Lấy thống kê về thói quen sạc: thời gian sạc trung bình, giờ cao điểm, ngày trong tuần thường sạc.
+
+Sample response (`ChargingStatisticsResponse`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "averageChargingTimeMinutes": 52,
+    "peakHours": "18:00 - 20:00",
+    "mostFrequentDays": "T2, T6"
+  }
+}
+```
+
+**Dashboard Notes:**
+- Tất cả API chỉ trả về dữ liệu của driver đang đăng nhập
+- Dữ liệu được tính toán từ bảng `charging_sessions`
+- Biểu đồ hourly-sessions luôn trả về đầy đủ 24 giờ (giờ không có dữ liệu sẽ có giá trị 0)
+- Giờ cao điểm được tính dựa trên 2 giờ có nhiều phiên sạc nhất
+- Ngày trong tuần phổ biến được tính dựa trên 2 ngày có nhiều phiên sạc nhất (T2=Thứ 2, T3=Thứ 3, ..., T7=Thứ 7, CN=Chủ nhật)
+
+---
+
+## 12. Charging Sessions (Phiên Sạc - Driver Dashboard)
+
+All charging session endpoints require bearer token (ROLE_DRIVER).
+
+### GET /api/charging-sessions/my-dashboard
+Bearer token required (ROLE_DRIVER)  
+Lấy thông tin tổng quan dashboard của driver bao gồm:
+- Tổng chi phí đã tiêu
+- Tổng năng lượng đã sạc (kWh)
+- Số phiên sạc
+- Trung bình chi phí/tháng (tính từ ngày join)
+- Thông tin xe chính và % pin hiện tại
+
+Sample response (`DriverDashboardResponse`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "totalCost": 727690.0,
+    "totalEnergyKwh": 212.9,
+    "totalSessions": 5,
+    "averageCostPerMonth": "3418",
+    "vehicleModel": "Tesla Model 3",
+    "licensePlate": "30A-12345",
+    "currentBatterySoc": 75
+  }
+}
+```
+
+### GET /api/charging-sessions/my-sessions
+Bearer token required (ROLE_DRIVER)  
+Lấy danh sách lịch sử phiên sạc của driver đang đăng nhập, sắp xếp theo thời gian mới nhất trước.
+
+Sample response (`List<ChargingSessionResponse>`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "sessionId": "uuid-session-...",
+      "startTime": "2024-10-03T14:30:00",
+      "endTime": "2024-10-03T15:15:00",
+      "durationMin": 45,
+      "stationName": "Vincom Đồng Khởi",
+      "stationAddress": "72 Lê Thánh Tôn, Quận 1, TP.HCM",
+      "chargingPointName": "Point A1",
+      "startSocPercent": 30,
+      "endSocPercent": 75,
+      "energyKwh": 32.5,
+      "costTotal": 113750.0,
+      "status": "COMPLETED",
+      "vehicleModel": "Tesla Model 3",
+      "licensePlate": "30A-12345"
+    },
+    {
+      "sessionId": "uuid-session-2...",
+      "startTime": "2024-10-01T09:15:00",
+      "endTime": "2024-10-01T10:35:00",
+      "durationMin": 80,
+      "stationName": "Landmark 81",
+      "stationAddress": "Vinhomes Central Park, Bình Thạnh, TP.HCM",
+      "chargingPointName": "Point B2",
+      "startSocPercent": 15,
+      "endSocPercent": 85,
+      "energyKwh": 58.2,
+      "costTotal": 186240.0,
+      "status": "COMPLETED",
+      "vehicleModel": "Tesla Model 3",
+      "licensePlate": "30A-12345"
+    }
+  ]
+}
+```
+
+### GET /api/charging-sessions/{sessionId}
+Bearer token required (ROLE_DRIVER)  
+Lấy chi tiết một phiên sạc cụ thể. Driver chỉ có thể xem phiên sạc của chính mình.
+
+Sample response (`ChargingSessionResponse`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": {
+    "sessionId": "uuid-session-...",
+    "startTime": "2024-10-03T14:30:00",
+    "endTime": "2024-10-03T15:15:00",
+    "durationMin": 45,
+    "stationName": "Vincom Đồng Khởi",
+    "stationAddress": "72 Lê Thánh Tôn, Quận 1, TP.HCM",
+    "chargingPointName": "Point A1",
+    "startSocPercent": 30,
+    "endSocPercent": 75,
+    "energyKwh": 32.5,
+    "costTotal": 113750.0,
+    "status": "COMPLETED",
+    "vehicleModel": "Tesla Model 3",
+    "licensePlate": "30A-12345"
+  }
+}
+```
+
+### GET /api/charging-sessions/my-analytics/monthly
+Bearer token required (ROLE_DRIVER)  
+Lấy thống kê phân tích theo tháng cho driver (5 tháng gần nhất).  
+Dùng cho tab **"Phân tích"** với 3 biểu đồ:
+- **Chi phí theo tháng** - Biểu đồ cột
+- **Năng lượng tiêu thụ** - Biểu đồ đường
+- **Số phiên sạc** - Biểu đồ cột
+
+Sample response (`List<MonthlyAnalyticsResponse>`):
+```json
+{
+  "code": 1000,
+  "message": null,
+  "result": [
+    {
+      "month": 6,
+      "year": 2025,
+      "totalCost": 450000.0,
+      "totalEnergyKwh": 150.5,
+      "totalSessions": 8,
+      "monthLabel": "T6"
+    },
+    {
+      "month": 7,
+      "year": 2025,
+      "totalCost": 620000.0,
+      "totalEnergyKwh": 225.3,
+      "totalSessions": 12,
+      "monthLabel": "T7"
+    },
+    {
+      "month": 8,
+      "year": 2025,
+      "totalCost": 580000.0,
+      "totalEnergyKwh": 210.8,
+      "totalSessions": 11,
+      "monthLabel": "T8"
+    },
+    {
+      "month": 9,
+      "year": 2025,
+      "totalCost": 750000.0,
+      "totalEnergyKwh": 295.7,
+      "totalSessions": 15,
+      "monthLabel": "T9"
+    },
+    {
+      "month": 10,
+      "year": 2025,
+      "totalCost": 285000.0,
+      "totalEnergyKwh": 125.4,
+      "totalSessions": 6,
+      "monthLabel": "T10"
+    }
+  ]
+}
+```
+
+**Cách sử dụng dữ liệu cho Frontend:**
+- **Biểu đồ Chi phí theo tháng (cột)**: Dùng `monthLabel` làm trục X, `totalCost` làm trục Y
+- **Biểu đồ Năng lượng tiêu thụ (đường)**: Dùng `monthLabel` làm trục X, `totalEnergyKwh` làm trục Y
+- **Biểu đồ Số phiên sạc (cột)**: Dùng `monthLabel` làm trục X, `totalSessions` làm trục Y
+
+**Charging Session Status:**
+- `IN_PROGRESS` - Đang sạc
+- `COMPLETED` - Hoàn thành
+- `CANCELLED` - Đã hủy
+- `FAILED` - Thất bại
+
+**Business Rules:**
+- Driver chỉ có thể xem dữ liệu phiên sạc của chính mình
+- Dashboard tính toán tự động dựa trên tất cả các phiên sạc đã hoàn thành
+- Trung bình chi phí/tháng = Tổng chi phí / Số tháng kể từ ngày join
+- % pin hiện tại lấy từ endSocPercent của phiên sạc gần nhất
+- Thông tin xe lấy từ xe đầu tiên trong danh sách xe của driver
+- Analytics lấy dữ liệu 5 tháng gần nhất (tính từ tháng hiện tại trở về trước)
+
+**Error Codes:**
+- `9001`: Session Not Found
+- `9002`: Unauthorized Access (driver cố xem phiên sạc không thuộc mình)
+
+---
+

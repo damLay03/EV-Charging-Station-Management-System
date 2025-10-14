@@ -1,4 +1,4 @@
-package com.swp.evchargingstation.dto.response;
+package com.swp.evchargingstation.dto.response.driver;
 
 import com.swp.evchargingstation.enums.Role;
 import lombok.*;

@@ -29,7 +29,7 @@ public class OverviewService {
         log.info("Fetching system overview data");
 
         // 1. Tổng số trạm sạc
-        long totalStations = getTotalStations();
+        long totalStations = stationRepository.count();
         log.info("Total stations: {}", totalStations);
 
         // 2. Điểm sạc đang hoạt động (đang được cắm sạc - status = OCCUPIED)
@@ -37,7 +37,7 @@ public class OverviewService {
         log.info("Active charging points: {}", activeChargingPoints);
 
         // 3. Tổng số người dùng (driver)
-        long totalDrivers = getTotalDrivers();
+        long totalDrivers = driverRepository.count();
         log.info("Total drivers: {}", totalDrivers);
 
         // 4. Doanh thu tháng hiện tại (từ ngày 1 đến hiện tại)
@@ -56,29 +56,5 @@ public class OverviewService {
                 .totalDrivers(totalDrivers)
                 .currentMonthRevenue(revenue)
                 .build();
-    }
-
-    /**
-     * Tính tổng số trạm sạc trong hệ thống
-     *
-     * @return Tổng số trạm sạc
-     */
-    public long getTotalStations() {
-        log.info("Calculating total stations");
-        long totalStations = stationRepository.count();
-        log.info("Total stations count: {}", totalStations);
-        return totalStations;
-    }
-
-    /**
-     * Tính tổng số driver trong hệ thống
-     *
-     * @return Tổng số driver
-     */
-    public long getTotalDrivers() {
-        log.info("Calculating total drivers");
-        long totalDrivers = driverRepository.count();
-        log.info("Total drivers count: {}", totalDrivers);
-        return totalDrivers;
     }
 }

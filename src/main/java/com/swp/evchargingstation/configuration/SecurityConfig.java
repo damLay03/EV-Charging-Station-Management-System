@@ -30,8 +30,7 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/auth/login",
-            "/api/users/register",
-            "/api/plans",
+            "/api/users/register"
     };
 
     @Value("${jwt.singerKey}")
@@ -69,7 +68,8 @@ public class SecurityConfig {
         // Cho phép origins cụ thể
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:5173",
-                "https://overintense-hee-unaxiomatic.ngrok-free.dev"
+                "https://overintense-hee-unaxiomatic.ngrok-free.dev",
+                "https://unendued-somnolent-rosemarie.ngrok-free.dev"
         ));
 
         // Cho phép tất cả methods

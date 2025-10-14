@@ -2,10 +2,13 @@ package com.swp.evchargingstation.service;
 
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
+import com.swp.evchargingstation.dto.request.IntrospectRequest;
 import com.swp.evchargingstation.dto.response.AuthenticationResponse;
+import com.swp.evchargingstation.dto.response.IntrospectResponse;
 import com.swp.evchargingstation.entity.User;
-import com.swp.evchargingstation.mapper.UserMapper;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -23,6 +26,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -35,7 +39,6 @@ import java.util.StringJoiner;
 public class AuthenticationService {
 //    private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class); //da co @Slf4j, khong can nua
     UserRepository userRepository;
-    UserMapper userMapper;
 
     //use YAML config instead
     // protected static final String SIGN_KEY = "0a58c8b134bc3d3e7a853dc8a49bcd3895e02c20d39d29d2d976e87300dc23fa";
@@ -44,6 +47,23 @@ public class AuthenticationService {
     @Value("${jwt.singerKey}")
     @NonFinal
     private String singerKey;
+
+    public IntrospectResponse introspect(IntrospectRequest introspectRequest) throws JOSEException, ParseException {
+        var token = introspectRequest.getToken();
+
+        //Verify token
+        JWSVerifier verifier = new MACVerifier(singerKey);
+
+        SignedJWT signedJWT = SignedJWT.parse(token);
+
+        Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+
+        var verified = signedJWT.verify(verifier);
+
+        return IntrospectResponse.builder()
+                .valid(verified && expirationTime.after(new Date()))
+                .build();
+    }
 
     //update lai phuong thuc authenticate (SecurityConfig)
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
@@ -62,7 +82,6 @@ public class AuthenticationService {
         return AuthenticationResponse.builder()
                 .token(token)
                 .authenticated(true)
-                .userInfo(userMapper.toUserResponse(user))
                 .build();
     }
 
