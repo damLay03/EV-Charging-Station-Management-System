@@ -128,7 +128,6 @@ public class ChargingSessionService {
                 .durationMin(session.getDurationMin())
                 .stationName(session.getChargingPoint().getStation().getName())
                 .stationAddress(session.getChargingPoint().getStation().getAddress())
-                .chargingPointName(session.getChargingPoint().getPointName())
                 .startSocPercent(session.getStartSocPercent())
                 .endSocPercent(session.getEndSocPercent())
                 .energyKwh(session.getEnergyKwh())

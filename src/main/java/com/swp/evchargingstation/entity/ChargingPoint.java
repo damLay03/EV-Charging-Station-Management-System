@@ -25,9 +25,6 @@ public class ChargingPoint {
     @JoinColumn(name = "station_id")
     Station station;
 
-    @Column(name = "point_name")
-    String pointName;
-
     @Column(name = "max_power_kw")
     float maxPowerKw;
 
