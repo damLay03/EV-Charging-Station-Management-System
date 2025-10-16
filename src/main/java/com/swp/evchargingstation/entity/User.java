@@ -50,4 +50,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     Role role;
+
+    @OneToOne(mappedBy = "staff")
+    Station managedStation;
 }

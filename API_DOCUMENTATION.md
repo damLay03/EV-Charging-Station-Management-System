@@ -1718,6 +1718,43 @@ Get list of staff not assigned to any station.
 
 ---
 
+### GET /api/stations/staff/all
+**Bearer token required** (ROLE_ADMIN)
+
+Get list of all staff members in the system (for station assignment selection).
+
+**Response:**
+```json
+{
+  "code": 1000,
+  "result": [
+    {
+      "staffId": "uuid-...",
+      "fullName": "Nguyễn Văn A",
+      "email": "staff1@example.com",
+      "phone": "0123456789",
+      "stationId": "uuid-...",
+      "stationName": "Station A"
+    },
+    {
+      "staffId": "uuid-...",
+      "fullName": "Trần Thị B",
+      "email": "staff2@example.com",
+      "phone": "0987654321",
+      "stationId": null,
+      "stationName": null
+    }
+  ]
+}
+```
+
+**Note:**
+- Returns all staff with their current station assignment status
+- `stationId` and `stationName` will be `null` if staff is not assigned to any station
+- Used for dropdown/selection when creating or updating station assignments
+
+---
+
 ## 12. Station Usage
 
 ### GET /api/station-usage/{stationId}/today

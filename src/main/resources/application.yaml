@@ -9,5 +9,13 @@ spring:
     username: root
     password: NhVjxGFWNcSxFtqpTnDYScvjztjaVxpk
 
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
 jwt:
   singerKey: 0a58c8b134bc3d3e7a853dc8a49bcd3895e02c20d39d29d2d976e87300dc23fa

@@ -39,8 +39,8 @@ public class Station {
     @Column(name = "status")
     StationStatus status;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "staff_id")
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "staff_id", unique = true)
     User staff;
 
     @OneToMany(mappedBy = "station", cascade = CascadeType.ALL)
