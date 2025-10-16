@@ -15,6 +15,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@ToString(exclude = {"staff", "chargingPoints"})
 @Table(name = "stations")
 public class Station {
     @Id
@@ -39,9 +40,9 @@ public class Station {
     @Column(name = "status")
     StationStatus status;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "staff_id", unique = true)
-    User staff;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "staff_id")
+    Staff staff;
 
     @OneToMany(mappedBy = "station", cascade = CascadeType.ALL)
     List<ChargingPoint> chargingPoints;

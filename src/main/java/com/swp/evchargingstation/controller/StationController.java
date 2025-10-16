@@ -97,39 +97,14 @@ public class StationController {
                 .build();
     }
 
-    // ========== STAFF ASSIGNMENT ==========
-    // NOTE: Lấy danh sách nhân viên đang thuộc về một trạm
-    @GetMapping("/{stationId}/staff")
+    // ========== STAFF ==========
+    // NOTE: Lấy danh sách tất cả nhân viên để chọn khi tạo/cập nhật station
+    @GetMapping("/staff/all")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<List<StaffSummaryResponse>> getStaffOfStation(@PathVariable String stationId) {
+    public ApiResponse<List<StaffSummaryResponse>> getAllStaff() {
+        log.info("Admin fetching all staff for station assignment");
         return ApiResponse.<List<StaffSummaryResponse>>builder()
-                .result(stationService.getStaffOfStation(stationId))
-                .build();
-    }
-
-    // NOTE: Gán một nhân viên (staffId = userId của staff) vào trạm
-    @PostMapping("/{stationId}/staff/{staffId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<StaffSummaryResponse> assignStaff(@PathVariable String stationId, @PathVariable String staffId) {
-        return ApiResponse.<StaffSummaryResponse>builder()
-                .result(stationService.assignStaff(stationId, staffId))
-                .build();
-    }
-
-    // NOTE: Bỏ gán nhân viên khỏi trạm
-    @DeleteMapping("/{stationId}/staff/{staffId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> unassignStaff(@PathVariable String stationId, @PathVariable String staffId) {
-        stationService.unassignStaff(stationId, staffId);
-        return ApiResponse.<Void>builder().message("Unassigned").build();
-    }
-
-    // NOTE: Danh sách nhân viên chưa được gán vào bất kỳ trạm nào
-    @GetMapping("/staff/unassigned")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<List<StaffSummaryResponse>> getUnassignedStaff() {
-        return ApiResponse.<List<StaffSummaryResponse>>builder()
-                .result(stationService.getUnassignedStaff())
+                .result(stationService.getAllStaff())
                 .build();
     }
 
@@ -163,20 +138,4 @@ public class StationController {
                 .message("Station deleted successfully")
                 .build();
     }
-
-    /**
-     * Lấy danh sách tất cả nhân viên để gán cho station
-     */
-    @GetMapping("/staff/all")
-    public ResponseEntity<ApiResponse<List<StaffSummaryResponse>>> getAllStaff() {
-        List<StaffSummaryResponse> staffList = stationService.getAllStaff();
-        return ResponseEntity.ok(
-                ApiResponse.<List<StaffSummaryResponse>>builder()
-                        .code(1000)
-                        .message("Lấy danh sách nhân viên thành công")
-                        .result(staffList)
-                        .build()
-        );
-    }
-
 }

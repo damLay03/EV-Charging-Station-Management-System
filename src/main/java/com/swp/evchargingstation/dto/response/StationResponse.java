@@ -17,4 +17,6 @@ public class StationResponse {
     String contactPhone;
     StationStatus status;
     boolean active; // convenience flag: true if status == OPERATIONAL
+    String staffId; // ID của staff quản lý
+    String staffName; // Tên đầy đủ của staff quản lý
 }

@@ -60,6 +60,14 @@ public class StationService {
                 .chargingPoints(new ArrayList<>())
                 .build();
 
+        // Gán staff nếu có
+        if (request.getStaffId() != null && !request.getStaffId().isEmpty()) {
+            Staff staff = staffRepository.findById(request.getStaffId())
+                    .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+            station.setStaff(staff);
+            log.info("Assigned staff {} to station", request.getStaffId());
+        }
+
         // Lưu station trước để có ID
         Station savedStation = stationRepository.save(station);
 
@@ -83,7 +91,7 @@ public class StationService {
     }
 
     /**
-     * Cập nhật thông tin cơ bản của một trạm (name, address, operatorName, contactPhone, status).
+     * Cập nhật thông tin cơ bản của một trạm (name, address, operatorName, contactPhone, status, staff).
      * Không thay đổi số lượng charging points hoặc cấu hình phần cứng.
      * @param stationId id của trạm cần cập nhật
      * @param request thông tin cập nhật
@@ -102,6 +110,21 @@ public class StationService {
         station.setOperatorName(request.getOperatorName());
         station.setContactPhone(request.getContactPhone());
         station.setStatus(request.getStatus());
+
+        // Update staff nếu có trong request
+        if (request.getStaffId() != null) {
+            if (request.getStaffId().isEmpty()) {
+                // Nếu staffId = "" thì bỏ gán staff
+                station.setStaff(null);
+                log.info("Removed staff from station {}", stationId);
+            } else {
+                // Gán staff mới
+                Staff staff = staffRepository.findById(request.getStaffId())
+                        .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+                station.setStaff(staff);
+                log.info("Updated staff of station {} to {}", stationId, request.getStaffId());
+            }
+        }
 
         Station saved = stationRepository.save(station);
         log.info("Updated station {} successfully", stationId);
@@ -228,62 +251,13 @@ public class StationService {
     }
 
     /**
-     * Danh sách nhân viên đã gán cho một trạm.
+     * Danh sách tất cả staff có thể gán cho station.
+     * Không giới hạn staff đã được gán hay chưa.
      */
     @Transactional(readOnly = true)
-    public List<StaffSummaryResponse> getStaffOfStation(String stationId) {
-        // đảm bảo trạm tồn tại
-        stationRepository.findById(stationId)
-                .orElseThrow(() -> new AppException(ErrorCode.STATION_NOT_FOUND));
-        return staffRepository.findByStation_StationId(stationId).stream()
-                .map(staffMapper::toStaffSummaryResponse)
-                .toList();
-    }
-
-    /**
-     * Gán một nhân viên (staff) vào trạm.
-     * Rule: nếu staff đã thuộc 1 trạm khác -> STAFF_ALREADY_ASSIGNED (không tự động chuyển trạm để tránh nhầm lẫn).
-     */
-    @Transactional
-    public StaffSummaryResponse assignStaff(String stationId, String staffId) {
-        Station station = stationRepository.findById(stationId)
-                .orElseThrow(() -> new AppException(ErrorCode.STATION_NOT_FOUND));
-        Staff staff = staffRepository.findById(staffId)
-                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
-        if (staff.getStation() != null) {
-            if (stationId.equals(staff.getStation().getStationId())) {
-                throw new AppException(ErrorCode.STAFF_ALREADY_ASSIGNED); // đã gán đúng trạm rồi
-            }
-            // đang gán trạm khác -> không cho (business hiện tại)
-            throw new AppException(ErrorCode.STAFF_ALREADY_ASSIGNED);
-        }
-        staff.setStation(station);
-        Staff saved = staffRepository.save(staff);
-        return staffMapper.toStaffSummaryResponse(saved);
-    }
-
-    /**
-     * Bỏ gán nhân viên khỏi trạm.
-     */
-    @Transactional
-    public void unassignStaff(String stationId, String staffId) {
-        stationRepository.findById(stationId)
-                .orElseThrow(() -> new AppException(ErrorCode.STATION_NOT_FOUND));
-        Staff staff = staffRepository.findById(staffId)
-                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
-        if (staff.getStation() == null || !stationId.equals(staff.getStation().getStationId())) {
-            throw new AppException(ErrorCode.STAFF_NOT_IN_STATION);
-        }
-        staff.setStation(null);
-        staffRepository.save(staff);
-    }
-
-    /**
-     * Danh sách nhân viên chưa được gán vào trạm nào.
-     */
-    @Transactional(readOnly = true)
-    public List<StaffSummaryResponse> getUnassignedStaff() {
-        return staffRepository.findByStationIsNull().stream()
+    public List<StaffSummaryResponse> getAllStaff() {
+        log.info("Fetching all staff for station assignment");
+        return staffRepository.findAll().stream()
                 .map(staffMapper::toStaffSummaryResponse)
                 .toList();
     }
@@ -340,12 +314,13 @@ public class StationService {
         }
 
         // Lấy tên nhân viên - CHỈ lấy nếu CÓ, không có thì NULL
-        List<Staff> staffList = staffRepository.findByStation_StationId(stationId);
         String staffName = null;
-        if (staffList != null && !staffList.isEmpty()) {
-            Staff firstStaff = staffList.get(0);
-            if (firstStaff != null && firstStaff.getUser() != null) {
-                staffName = firstStaff.getUser().getFullName();
+        String staffId = null;
+        if (station.getStaff() != null) {
+            Staff staff = station.getStaff();
+            staffId = staff.getUserId();
+            if (staff.getUser() != null) {
+                staffName = staff.getUser().getFullName();
             }
         }
 
@@ -364,34 +339,15 @@ public class StationService {
                 .name(station.getName())
                 .address(station.getAddress())
                 .status(station.getStatus())
-                .totalChargingPoints(totalPoints) // NULL nếu không có
-                .activeChargingPoints(activePoints) // NULL nếu không có
-                .offlineChargingPoints(offlinePoints) // NULL nếu không có
-                .maintenanceChargingPoints(maintenancePoints) // NULL nếu không có
-                .chargingPointsSummary(chargingPointsSummary) // NULL nếu không có dữ liệu
-                .revenue(revenue) // NULL nếu không có
-                .usagePercent(usagePercent) // NULL nếu không có đủ dữ liệu để tính
-                .staffName(staffName) // NULL nếu không có nhân viên
+                .totalChargingPoints(totalPoints)
+                .activeChargingPoints(activePoints)
+                .offlineChargingPoints(offlinePoints)
+                .maintenanceChargingPoints(maintenancePoints)
+                .chargingPointsSummary(chargingPointsSummary)
+                .revenue(revenue)
+                .usagePercent(usagePercent)
+                .staffId(staffId)
+                .staffName(staffName)
                 .build();
-    }
-
-    /**
-     * Lấy danh sách tất cả nhân viên (staff) trong hệ thống.
-     * Cung cấp cho frontend để chọn khi tạo/cập nhật station.
-     * @return danh sách StaffSummaryResponse với thông tin trạm đang quản lý (nếu có)
-     */
-    @Transactional(readOnly = true)
-    public List<StaffSummaryResponse> getAllStaff() {
-        log.info("Fetching all staff for station assignment");
-        return staffRepository.findAll().stream()
-                .map(staff -> {
-                    StaffSummaryResponse response = staffMapper.toStaffSummaryResponse(staff);
-                    // Thêm thông tin về station hiện tại của staff (nếu có)
-                    if (staff.getStation() != null) {
-                        response.setStationId(staff.getStation().getStationId());
-                    }
-                    return response;
-                })
-                .toList();
     }
 }

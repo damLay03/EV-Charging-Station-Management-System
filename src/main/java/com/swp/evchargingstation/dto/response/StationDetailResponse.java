@@ -24,6 +24,6 @@ public class StationDetailResponse {
 
     Double revenue; // Doanh thu (tổng từ các session của trạm này)
     Double usagePercent; // Phần trăm sử dụng (số điểm đang IN_USE / tổng)
+    String staffId; // ID của nhân viên quản lý
     String staffName; // Tên nhân viên quản lý (lấy từ staff được assign)
 }
-

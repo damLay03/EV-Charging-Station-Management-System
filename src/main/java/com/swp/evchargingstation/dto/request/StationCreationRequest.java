@@ -26,4 +26,5 @@ public class StationCreationRequest {
 
     String operatorName;
     String contactPhone;
+    String staffId; // ID của staff quản lý (optional)
 }

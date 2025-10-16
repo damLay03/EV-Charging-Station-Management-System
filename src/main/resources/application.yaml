@@ -17,5 +17,11 @@ spring:
       hibernate:
         format_sql: true
 
+  springdoc:
+    swagger-ui:
+      path: /swagger-ui.html
+    api-docs:
+      path: /api-docs
+
 jwt:
   singerKey: 0a58c8b134bc3d3e7a853dc8a49bcd3895e02c20d39d29d2d976e87300dc23fa

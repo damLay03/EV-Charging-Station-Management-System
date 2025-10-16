@@ -11,8 +11,7 @@ public interface StaffMapper {
     @Mapping(target = "staffId", source = "userId")
     @Mapping(target = "email", source = "user.email")
     @Mapping(target = "fullName", expression = "java(staff.getUser() == null ? null : staff.getUser().getFirstName() + \" \" + staff.getUser().getLastName())")
-    @Mapping(target = "stationId", expression = "java(staff.getStation() == null ? null : staff.getStation().getStationId())")
-    @Mapping(target = "stationName", expression = "java(staff.getStation() == null ? null : staff.getStation().getName())")
+    @Mapping(target = "stationId", ignore = true)
+    @Mapping(target = "stationName", ignore = true)
     StaffSummaryResponse toStaffSummaryResponse(Staff staff);
 }
-

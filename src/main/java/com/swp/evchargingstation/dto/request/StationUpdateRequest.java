@@ -22,5 +22,6 @@ public class StationUpdateRequest {
 
     @NotNull(message = "Trạng thái không được để trống")
     StationStatus status;
-}
 
+    String staffId; // ID của staff quản lý (optional, null để bỏ gán)
+}

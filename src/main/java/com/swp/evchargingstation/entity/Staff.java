@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.util.List;
+
 @Entity
 @Getter
 @Setter
@@ -23,10 +25,9 @@ public class Staff {
     @Column(name = "position")
     String position;
 
-    // NOTE: Quan hệ nhiều-nhiều tiềm năng (1 station có nhiều staff, 1 staff thuộc 1 station tại 1 thời điểm) -> ManyToOne
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "station_id")
-    Station station;
+    // Một staff có thể quản lý nhiều station
+    @OneToMany(mappedBy = "staff", fetch = FetchType.LAZY)
+    List<Station> stations;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

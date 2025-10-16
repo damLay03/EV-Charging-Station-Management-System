@@ -30,7 +30,13 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/auth/login",
-            "/api/users/register"
+            "/api/users/register",
+            // Swagger UI endpoints
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/v3/api-docs/**",
+            "/swagger-resources/**",
+            "/webjars/**"
     };
 
     @Value("${jwt.singerKey}")
