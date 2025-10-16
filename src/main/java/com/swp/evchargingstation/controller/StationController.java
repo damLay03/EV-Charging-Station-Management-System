@@ -14,6 +14,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -162,4 +163,20 @@ public class StationController {
                 .message("Station deleted successfully")
                 .build();
     }
+
+    /**
+     * Lấy danh sách tất cả nhân viên để gán cho station
+     */
+    @GetMapping("/staff/all")
+    public ResponseEntity<ApiResponse<List<StaffSummaryResponse>>> getAllStaff() {
+        List<StaffSummaryResponse> staffList = stationService.getAllStaff();
+        return ResponseEntity.ok(
+                ApiResponse.<List<StaffSummaryResponse>>builder()
+                        .code(1000)
+                        .message("Lấy danh sách nhân viên thành công")
+                        .result(staffList)
+                        .build()
+        );
+    }
+
 }

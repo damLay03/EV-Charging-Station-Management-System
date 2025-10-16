@@ -374,4 +374,24 @@ public class StationService {
                 .staffName(staffName) // NULL nếu không có nhân viên
                 .build();
     }
+
+    /**
+     * Lấy danh sách tất cả nhân viên (staff) trong hệ thống.
+     * Cung cấp cho frontend để chọn khi tạo/cập nhật station.
+     * @return danh sách StaffSummaryResponse với thông tin trạm đang quản lý (nếu có)
+     */
+    @Transactional(readOnly = true)
+    public List<StaffSummaryResponse> getAllStaff() {
+        log.info("Fetching all staff for station assignment");
+        return staffRepository.findAll().stream()
+                .map(staff -> {
+                    StaffSummaryResponse response = staffMapper.toStaffSummaryResponse(staff);
+                    // Thêm thông tin về station hiện tại của staff (nếu có)
+                    if (staff.getStation() != null) {
+                        response.setStationId(staff.getStation().getStationId());
+                    }
+                    return response;
+                })
+                .toList();
+    }
 }

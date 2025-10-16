@@ -14,7 +14,7 @@ public class StaffSummaryResponse {
     String position;
     String email;
     String fullName;     // firstName + lastName từ User
-    String stationId;    // null nếu chưa được gán
+    String stationId;   // null nếu chưa được gán
     String stationName;  // null nếu chưa được gán
 }
 
