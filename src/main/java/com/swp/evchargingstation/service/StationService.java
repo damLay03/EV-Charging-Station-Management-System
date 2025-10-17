@@ -56,6 +56,8 @@ public class StationService {
                 .address(request.getAddress())
                 .operatorName(request.getOperatorName())
                 .contactPhone(request.getContactPhone())
+                .latitude(request.getLatitude())
+                .longitude(request.getLongitude())
                 .status(StationStatus.OUT_OF_SERVICE)
                 .chargingPoints(new ArrayList<>())
                 .build();
@@ -109,6 +111,8 @@ public class StationService {
         station.setAddress(request.getAddress());
         station.setOperatorName(request.getOperatorName());
         station.setContactPhone(request.getContactPhone());
+        station.setLatitude(request.getLatitude());
+        station.setLongitude(request.getLongitude());
         station.setStatus(request.getStatus());
 
         // Update staff nếu có trong request
@@ -338,6 +342,8 @@ public class StationService {
                 .stationId(stationId)
                 .name(station.getName())
                 .address(station.getAddress())
+                .latitude(station.getLatitude())
+                .longitude(station.getLongitude())
                 .status(station.getStatus())
                 .totalChargingPoints(totalPoints)
                 .activeChargingPoints(activePoints)

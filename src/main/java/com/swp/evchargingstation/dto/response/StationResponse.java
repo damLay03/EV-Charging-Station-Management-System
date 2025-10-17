@@ -15,6 +15,8 @@ public class StationResponse {
     String address;
     String operatorName;
     String contactPhone;
+    Double latitude;
+    Double longitude;
     StationStatus status;
     boolean active; // convenience flag: true if status == OPERATIONAL
     String staffId; // ID của staff quản lý
