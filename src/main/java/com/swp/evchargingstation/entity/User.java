@@ -1,5 +1,6 @@
 package com.swp.evchargingstation.entity;
 
+import com.swp.evchargingstation.enums.Gender;
 import com.swp.evchargingstation.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
@@ -25,19 +26,20 @@ public class User {
     @Column(nullable = false)
     String password;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     String phone;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     LocalDate dateOfBirth;
 
-    @Column(nullable = false)
-    boolean gender;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = true)
+    Gender gender;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     String firstName;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     String lastName;
 
     @Transient
@@ -48,6 +50,6 @@ public class User {
     }
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = true)
     Role role;
 }

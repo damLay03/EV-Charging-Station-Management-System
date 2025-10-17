@@ -40,8 +40,9 @@ public class Station {
     @Column(name = "status")
     StationStatus status;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "staff_id")
+    // Một station có một staff quản lý (quan hệ 1-1)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "staff_id", unique = true)
     Staff staff;
 
     @OneToMany(mappedBy = "station", cascade = CascadeType.ALL)

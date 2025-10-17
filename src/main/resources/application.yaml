@@ -1,13 +1,18 @@
 server:
-  port: 8080
+  port: 8084
   servlet:
     context-path: /evchargingstation
 
 spring:
+#  datasource:
+#    url: jdbc:mysql://root:NhVjxGFWNcSxFtqpTnDYScvjztjaVxpk@switchyard.proxy.rlwy.net:32406/railway
+#    username: root
+#    password: NhVjxGFWNcSxFtqpTnDYScvjztjaVxpk
+
   datasource:
-    url: jdbc:mysql://root:NhVjxGFWNcSxFtqpTnDYScvjztjaVxpk@switchyard.proxy.rlwy.net:32406/railway
+    url: jdbc:mysql://root:vHfJPAeFUGvFYTaqGrsDTgwqAdgdzTri@mysql-njfw.railway.internal:3306/railway
     username: root
-    password: NhVjxGFWNcSxFtqpTnDYScvjztjaVxpk
+    password: vHfJPAeFUGvFYTaqGrsDTgwqAdgdzTri
 
   jpa:
     hibernate:
