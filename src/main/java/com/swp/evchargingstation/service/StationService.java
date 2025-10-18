@@ -40,9 +40,11 @@ public class StationService {
     StaffMapper staffMapper;
     ChargingPointRepository chargingPointRepository;
     ChargingSessionRepository chargingSessionRepository;
+    GeocodingService geocodingService;
 
     /**
      * Tạo trạm sạc mới với số lượng điểm sạc và công suất chỉ định.
+     * Tự động chuyển đổi địa chỉ thành tọa độ nếu không có sẵn.
      * @param request thông tin trạm cần tạo
      * @return StationResponse của trạm vừa tạo
      */
@@ -50,14 +52,31 @@ public class StationService {
     public StationResponse createStation(StationCreationRequest request) {
         log.info("Creating new station: {}", request.getName());
 
+        Double latitude = request.getLatitude();
+        Double longitude = request.getLongitude();
+
+        // Nếu không có tọa độ, tự động geocode từ địa chỉ
+        if (latitude == null || longitude == null) {
+            log.info("No coordinates provided, geocoding address: {}", request.getAddress());
+            var coordinates = geocodingService.geocodeAddress(request.getAddress());
+            latitude = coordinates.get("latitude");
+            longitude = coordinates.get("longitude");
+            log.info("Geocoded coordinates: lat={}, lon={}", latitude, longitude);
+        } else {
+            // Validate tọa độ nếu có
+            if (!geocodingService.isValidCoordinates(latitude, longitude)) {
+                throw new AppException(ErrorCode.INVALID_COORDINATES);
+            }
+        }
+
         // Tạo station mới với trạng thái OUT_OF_SERVICE (chưa hoạt động)
         Station station = Station.builder()
                 .name(request.getName())
                 .address(request.getAddress())
                 .operatorName(request.getOperatorName())
                 .contactPhone(request.getContactPhone())
-                .latitude(request.getLatitude())
-                .longitude(request.getLongitude())
+                .latitude(latitude)
+                .longitude(longitude)
                 .status(StationStatus.OUT_OF_SERVICE)
                 .chargingPoints(new ArrayList<>())
                 .build();
@@ -94,7 +113,7 @@ public class StationService {
 
     /**
      * Cập nhật thông tin cơ bản của một trạm (name, address, operatorName, contactPhone, status, staff).
-     * Không thay đổi số lượng charging points hoặc cấu hình phần cứng.
+     * Tự động chuyển đổi địa chỉ thành tọa độ nếu địa chỉ thay đổi và không có tọa độ mới.
      * @param stationId id của trạm cần cập nhật
      * @param request thông tin cập nhật
      * @return StationResponse sau khi cập nhật
@@ -106,13 +125,35 @@ public class StationService {
         Station station = stationRepository.findById(stationId)
                 .orElseThrow(() -> new AppException(ErrorCode.STATION_NOT_FOUND));
 
+        Double latitude = request.getLatitude();
+        Double longitude = request.getLongitude();
+
+        // Nếu địa chỉ thay đổi nhưng không có tọa độ mới, tự động geocode
+        if (!request.getAddress().equals(station.getAddress()) &&
+            (latitude == null || longitude == null)) {
+            log.info("Address changed without coordinates, geocoding new address: {}", request.getAddress());
+            var coordinates = geocodingService.geocodeAddress(request.getAddress());
+            latitude = coordinates.get("latitude");
+            longitude = coordinates.get("longitude");
+            log.info("Geocoded new coordinates: lat={}, lon={}", latitude, longitude);
+        } else if (latitude != null && longitude != null) {
+            // Validate tọa độ nếu có
+            if (!geocodingService.isValidCoordinates(latitude, longitude)) {
+                throw new AppException(ErrorCode.INVALID_COORDINATES);
+            }
+        } else {
+            // Giữ nguyên tọa độ cũ nếu địa chỉ không đổi và không có tọa độ mới
+            latitude = station.getLatitude();
+            longitude = station.getLongitude();
+        }
+
         // Update fields
         station.setName(request.getName());
         station.setAddress(request.getAddress());
         station.setOperatorName(request.getOperatorName());
         station.setContactPhone(request.getContactPhone());
-        station.setLatitude(request.getLatitude());
-        station.setLongitude(request.getLongitude());
+        station.setLatitude(latitude);
+        station.setLongitude(longitude);
         station.setStatus(request.getStatus());
 
         // Update staff nếu có trong request

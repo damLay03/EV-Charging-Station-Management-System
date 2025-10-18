@@ -22,6 +22,7 @@ public class StationUpdateRequest {
 
     String contactPhone;
 
+    // Tọa độ là OPTIONAL - nếu không cung cấp, backend sẽ tự động geocode từ địa chỉ
     @DecimalMin(value = "-90.0", message = "Vĩ độ phải nằm trong khoảng -90 đến 90")
     @DecimalMax(value = "90.0", message = "Vĩ độ phải nằm trong khoảng -90 đến 90")
     Double latitude;

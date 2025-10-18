@@ -33,7 +33,10 @@ public enum ErrorCode {
     // --- Charging Session related ---
     SESSION_NOT_FOUND(9001, "Charging Session Not Found"),
     // --- General ---
-    UNAUTHORIZED(9002, "Unauthorized Access")
+    UNAUTHORIZED(9002, "Unauthorized Access"),
+    // --- Geocoding related ---
+    GEOCODING_FAILED(10001, "Failed To Convert Address To Coordinates"),
+    INVALID_COORDINATES(10002, "Invalid Coordinates Provided")
     ;
 
     private int code;
