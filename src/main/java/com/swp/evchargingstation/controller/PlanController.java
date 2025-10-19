@@ -61,7 +61,6 @@ public class PlanController {
 
     // NOTE: Lấy tất cả plan (chưa phân trang, dùng cho admin màn quản trị gói).
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<PlanResponse>> getAll() {
         return ApiResponse.<List<PlanResponse>>builder()
                 .result(planService.getAll())
