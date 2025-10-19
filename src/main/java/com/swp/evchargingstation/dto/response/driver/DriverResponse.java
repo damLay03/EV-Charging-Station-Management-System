@@ -1,5 +1,6 @@
 package com.swp.evchargingstation.dto.response.driver;
 
+import com.swp.evchargingstation.enums.Gender;
 import com.swp.evchargingstation.enums.Role;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -18,7 +19,7 @@ public class DriverResponse {
     String email;
     String phone;
     LocalDate dateOfBirth;
-    boolean gender;
+    Gender gender;
     String firstName;
     String lastName;
     String fullName;
@@ -28,4 +29,3 @@ public class DriverResponse {
     String address;
     LocalDateTime joinDate;
 }
-

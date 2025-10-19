@@ -1,5 +1,6 @@
 package com.swp.evchargingstation.dto.response;
 
+import com.swp.evchargingstation.enums.Gender;
 import com.swp.evchargingstation.enums.Role;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -17,7 +18,7 @@ public class UserResponse {
     // Đã xóa field password vì lý do bảo mật - không nên trả password về client
     String phone;
     LocalDate dateOfBirth;
-    boolean gender;
+    Gender gender;
     String firstName;
     String lastName;
     String fullName;

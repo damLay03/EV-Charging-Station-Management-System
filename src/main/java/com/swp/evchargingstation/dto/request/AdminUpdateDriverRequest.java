@@ -1,5 +1,6 @@
 package com.swp.evchargingstation.dto.request;
 
+import com.swp.evchargingstation.enums.Gender;
 import lombok.Data;
 import java.time.LocalDate;
 
@@ -9,9 +10,8 @@ public class AdminUpdateDriverRequest {
     // Tất cả field đều OPTIONAL cho partial update.
     private String phone;      // optional
     private LocalDate dateOfBirth; // optional
-    private Boolean gender;    // optional (true = male, false = female)
+    private Gender gender;    // optional (MALE, FEMALE, OTHER)
     private String firstName;  // optional
     private String lastName;   // optional
     private String address;    // optional - admin có thể sửa địa chỉ driver
 }
-

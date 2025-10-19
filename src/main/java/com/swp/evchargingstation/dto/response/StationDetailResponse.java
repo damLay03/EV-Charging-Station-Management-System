@@ -13,6 +13,8 @@ public class StationDetailResponse {
     String stationId;
     String name; // Tên trạm
     String address; // Địa chỉ
+    Double latitude;
+    Double longitude;
     StationStatus status; // Trạng thái
 
     // Điểm sạc - thông tin tổng hợp

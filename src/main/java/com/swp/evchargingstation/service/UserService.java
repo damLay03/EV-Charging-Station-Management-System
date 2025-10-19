@@ -6,6 +6,7 @@ import com.swp.evchargingstation.dto.response.admin.AdminUserResponse;
 import com.swp.evchargingstation.dto.response.driver.DriverResponse;
 import com.swp.evchargingstation.dto.response.UserResponse;
 import com.swp.evchargingstation.entity.*;
+import com.swp.evchargingstation.enums.Gender;
 import com.swp.evchargingstation.enums.Role;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
@@ -90,7 +91,7 @@ public class UserService {
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .dateOfBirth(user.getDateOfBirth())
-                .gender(user.isGender())
+                .gender(user.getGender())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .fullName(user.getFullName())
@@ -126,7 +127,6 @@ public class UserService {
     }
 
     // ALIAS (theo yeu cau doi ten updateUser). KHONG thay doi logic: van chi cho phep user tu update ho so cua minh
-    // NOTE gender mapping moi: true = female, false = male (giu nguyen field boolean, UI tu dien giai)
     public DriverResponse updateUser(UserUpdateRequest request) {
         return updateMyInfo(request); // delegate
     }
@@ -250,7 +250,7 @@ public class UserService {
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .dateOfBirth(user.getDateOfBirth())
-                .gender(user.isGender())
+                .gender(user.getGender())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .fullName(user.getFullName())
