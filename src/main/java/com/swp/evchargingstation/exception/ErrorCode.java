@@ -36,7 +36,14 @@ public enum ErrorCode {
     UNAUTHORIZED(9002, "Unauthorized Access"),
     // --- Geocoding related ---
     GEOCODING_FAILED(10001, "Failed To Convert Address To Coordinates"),
-    INVALID_COORDINATES(10002, "Invalid Coordinates Provided")
+    INVALID_COORDINATES(10002, "Invalid Coordinates Provided"),
+    // --- Charging Point related ---
+    CHARGING_POINT_NOT_FOUND(11001, "Charging Point Not Found"),
+    // --- Payment related ---
+    PAYMENT_ALREADY_EXISTS(12001, "Payment Already Exists For This Session"),
+    // --- Incident related ---
+    INCIDENT_NOT_FOUND(13001, "Incident Not Found"),
+    USER_NOT_EXISTED(14001, "User Not Existed")
     ;
 
     private int code;

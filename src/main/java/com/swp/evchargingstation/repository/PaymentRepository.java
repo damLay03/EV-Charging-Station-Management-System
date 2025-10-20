@@ -64,4 +64,7 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
             "AND MONTH(p.paymentTime) = :month " +
             "AND p.status = 'COMPLETED'")
     Float findCurrentMonthRevenue(@Param("year") int year, @Param("month") int month);
+
+    // Check if payment exists for a session
+    boolean existsBySession_SessionId(String sessionId);
 }

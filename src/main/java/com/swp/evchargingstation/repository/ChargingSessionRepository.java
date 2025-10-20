@@ -154,7 +154,7 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
            "AND cs.startTime >= :startTime " +
            "AND cs.startTime < :endTime " +
            "GROUP BY HOUR(cs.startTime) " +
-           "ORDER BY hour")
+           "ORDER BY HOUR(cs.startTime)")
     List<Object[]> findHourlyUsageByStation(
             @Param("stationId") String stationId,
             @Param("startTime") LocalDateTime startTime,
@@ -229,4 +229,27 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
             "GROUP BY DAYOFWEEK(cs.startTime) " +
             "ORDER BY COUNT(cs) DESC")
     List<Object[]> getMostFrequentDaysByDriver(@Param("driverId") String driverId);
+
+    // ========== STAFF DASHBOARD QUERIES ==========
+
+    /**
+     * Lấy sessions của một trạm trong khoảng thời gian
+     */
+    @Query("SELECT cs FROM ChargingSession cs " +
+            "WHERE cs.chargingPoint.station.stationId = :stationId " +
+            "AND cs.startTime >= :startTime " +
+            "AND cs.startTime <= :endTime")
+    List<ChargingSession> findByStationIdAndDateRange(
+            @Param("stationId") String stationId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime
+    );
+
+    /**
+     * Lấy tất cả sessions của một trạm, sắp xếp theo thời gian
+     */
+    @Query("SELECT cs FROM ChargingSession cs " +
+            "WHERE cs.chargingPoint.station.stationId = :stationId " +
+            "ORDER BY cs.startTime DESC")
+    List<ChargingSession> findByStationIdOrderByStartTimeDesc(@Param("stationId") String stationId);
 }
