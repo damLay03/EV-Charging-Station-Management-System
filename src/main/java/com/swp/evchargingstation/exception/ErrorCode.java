@@ -43,7 +43,12 @@ public enum ErrorCode {
     PAYMENT_ALREADY_EXISTS(12001, "Payment Already Exists For This Session"),
     // --- Incident related ---
     INCIDENT_NOT_FOUND(13001, "Incident Not Found"),
-    USER_NOT_EXISTED(14001, "User Not Existed")
+    USER_NOT_EXISTED(14001, "User Not Existed"),
+    // --- Charging Simulation related ---
+    CHARGING_POINT_NOT_AVAILABLE(15001, "Charging Point Not Available"),
+    INVALID_SOC_RANGE(15002, "Start SOC Must Be Less Than Target SOC"),
+    CHARGING_SESSION_NOT_FOUND(15003, "Charging Session Not Found"),
+    CHARGING_SESSION_NOT_ACTIVE(15004, "Charging Session Is Not Active")
     ;
 
     private int code;
