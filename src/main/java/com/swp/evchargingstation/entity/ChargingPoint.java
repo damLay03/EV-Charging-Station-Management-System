@@ -31,7 +31,7 @@ public class ChargingPoint {
     ChargingPower chargingPower;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status")
+    @Column(name = "status", length = 20)
     ChargingPointStatus status;
 
     @OneToOne(fetch = FetchType.LAZY)

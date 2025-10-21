@@ -46,7 +46,16 @@ public class ChargingSimulationService {
     @Transactional
     public ChargingProgressResponse startCharging(StartChargingRequest request) {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userId = authentication.getName();
+
+        // Lấy userId từ JWT claims thay vì getName() (getName() trả về email)
+        String userId = null;
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            userId = jwt.getClaim("userId");
+        }
+
+        if (userId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
 
         log.info("User {} starting charging session for vehicle {}", userId, request.getVehicleId());
 
@@ -98,7 +107,7 @@ public class ChargingSimulationService {
         session = chargingSessionRepository.save(session);
 
         // Cập nhật trạng thái charging point
-        chargingPoint.setStatus(ChargingPointStatus.CHARGING);
+        chargingPoint.setStatus(ChargingPointStatus.OCCUPIED); // Đổi từ CHARGING sang OCCUPIED
         chargingPoint.setCurrentSession(session);
         chargingPointRepository.save(chargingPoint);
 
@@ -208,7 +217,16 @@ public class ChargingSimulationService {
 
         // Kiểm tra quyền truy cập
         var authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userId = authentication.getName();
+
+        // Lấy userId từ JWT claims thay vì getName() (getName() trả về email)
+        String userId = null;
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            userId = jwt.getClaim("userId");
+        }
+
+        if (userId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
 
         if (!session.getDriver().getUserId().equals(userId)) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
@@ -230,7 +248,16 @@ public class ChargingSimulationService {
     @Transactional
     public ChargingProgressResponse stopCharging(String sessionId) {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userId = authentication.getName();
+
+        // Lấy userId từ JWT claims thay vì getName() (getName() trả về email)
+        String userId = null;
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            userId = jwt.getClaim("userId");
+        }
+
+        if (userId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
 
         log.info("User {} stopping charging session {}", userId, sessionId);
 

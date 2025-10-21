@@ -38,7 +38,16 @@ public class ChargingSessionService {
      */
     public DriverDashboardResponse getMyDashboard() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userId = authentication.getName();
+
+        // Lấy userId từ JWT claims thay vì getName() (getName() trả về email)
+        String userId = null;
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            userId = jwt.getClaim("userId");
+        }
+
+        if (userId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
 
         log.info("Getting dashboard for driver: {}", userId);
 
@@ -88,7 +97,16 @@ public class ChargingSessionService {
      */
     public List<ChargingSessionResponse> getMySessions() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userId = authentication.getName();
+
+        // Lấy userId từ JWT claims thay vì getName() (getName() trả về email)
+        String userId = null;
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            userId = jwt.getClaim("userId");
+        }
+
+        if (userId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
 
         log.info("Getting charging sessions for driver: {}", userId);
 
@@ -104,7 +122,16 @@ public class ChargingSessionService {
      */
     public ChargingSessionResponse getSessionById(String sessionId) {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userId = authentication.getName();
+
+        // Lấy userId từ JWT claims thay vì getName() (getName() trả về email)
+        String userId = null;
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            userId = jwt.getClaim("userId");
+        }
+
+        if (userId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
 
         ChargingSession session = chargingSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new AppException(ErrorCode.SESSION_NOT_FOUND));
@@ -154,7 +181,16 @@ public class ChargingSessionService {
      */
     public List<MonthlyAnalyticsResponse> getMyMonthlyAnalytics() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userId = authentication.getName();
+
+        // Lấy userId từ JWT claims thay vì getName() (getName() trả về email)
+        String userId = null;
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            userId = jwt.getClaim("userId");
+        }
+
+        if (userId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
 
         log.info("Getting monthly analytics for driver: {}", userId);
 

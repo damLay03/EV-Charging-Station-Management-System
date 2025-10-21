@@ -9,10 +9,9 @@ import com.swp.evchargingstation.dto.request.IntrospectRequest;
 import com.swp.evchargingstation.dto.response.AuthenticationResponse;
 import com.swp.evchargingstation.dto.response.IntrospectResponse;
 import com.swp.evchargingstation.entity.User;
+import com.swp.evchargingstation.mapper.UserMapper;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,7 +24,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -39,6 +37,7 @@ import java.util.StringJoiner;
 public class AuthenticationService {
 //    private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class); //da co @Slf4j, khong can nua
     UserRepository userRepository;
+    UserMapper userMapper;
 
     //use YAML config instead
     // protected static final String SIGN_KEY = "0a58c8b134bc3d3e7a853dc8a49bcd3895e02c20d39d29d2d976e87300dc23fa";
@@ -95,6 +94,7 @@ public class AuthenticationService {
                 .expirationTime(new Date(//new Date().getTime() + 60 * 60 * 1000)) // 1 hour expiration
                         Instant.now().plus(1, ChronoUnit.HOURS).toEpochMilli()
                 ))
+                .claim("userId", user.getUserId()) //them userId vao token
                 .claim("scope", buildScope(user)) //scope chua thong tin ve vai tro cua user
                 .build();
         Payload payload = new Payload(claimsSet.toJSONObject());
