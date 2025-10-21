@@ -72,6 +72,9 @@ public class ChargingSimulationService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
+        // Lấy % pin hiện tại của xe (tự động)
+        int startSocPercent = vehicle.getCurrentSocPercent();
+
         // Validate charging point
         ChargingPoint chargingPoint = chargingPointRepository.findById(request.getChargingPointId())
                 .orElseThrow(() -> new AppException(ErrorCode.CHARGING_POINT_NOT_FOUND));
@@ -81,8 +84,8 @@ public class ChargingSimulationService {
             throw new AppException(ErrorCode.CHARGING_POINT_NOT_AVAILABLE);
         }
 
-        // Validate SOC
-        if (request.getStartSocPercent() >= request.getTargetSocPercent()) {
+        // Validate SOC: target PHẢI cao hơn pin hiện tại
+        if (startSocPercent >= request.getTargetSocPercent()) {
             throw new AppException(ErrorCode.INVALID_SOC_RANGE);
         }
 
@@ -95,8 +98,8 @@ public class ChargingSimulationService {
                 .vehicle(vehicle)
                 .chargingPoint(chargingPoint)
                 .startTime(LocalDateTime.now())
-                .startSocPercent(request.getStartSocPercent())
-                .endSocPercent(request.getStartSocPercent()) // Khởi tạo bằng start
+                .startSocPercent(startSocPercent) // Dùng % pin thật của xe
+                .endSocPercent(startSocPercent) // Khởi tạo bằng start
                 .energyKwh(0)
                 .durationMin(0)
                 .costTotal(0)
@@ -107,7 +110,7 @@ public class ChargingSimulationService {
         session = chargingSessionRepository.save(session);
 
         // Cập nhật trạng thái charging point
-        chargingPoint.setStatus(ChargingPointStatus.OCCUPIED); // Đổi từ CHARGING sang OCCUPIED
+        chargingPoint.setStatus(ChargingPointStatus.OCCUPIED);
         chargingPoint.setCurrentSession(session);
         chargingPointRepository.save(chargingPoint);
 
@@ -117,7 +120,7 @@ public class ChargingSimulationService {
         simState.vehicleId = vehicle.getVehicleId();
         simState.chargingPointId = chargingPoint.getPointId();
         simState.startTime = LocalDateTime.now();
-        simState.currentSocPercent = request.getStartSocPercent();
+        simState.currentSocPercent = startSocPercent; // Dùng % pin thật
         simState.targetSocPercent = request.getTargetSocPercent();
         simState.batteryCapacityKwh = vehicle.getBatteryCapacityKwh();
         simState.maxPowerKw = chargingPoint.getChargingPower().getPowerKw();
@@ -155,6 +158,11 @@ public class ChargingSimulationService {
         // Tính thời gian đã trôi qua (phút)
         long elapsedMinutes = ChronoUnit.MINUTES.between(simState.startTime, LocalDateTime.now());
 
+        // Nếu thời gian quá nhỏ (dưới 1 giây), giả lập thêm 1 phút để demo
+        if (elapsedMinutes == 0) {
+            elapsedMinutes = 1; // Tăng ít nhất 1 phút để có thể thấy pin tăng
+        }
+
         // Giả lập: mỗi phút sạc tăng khoảng 1-2% SOC (tùy thuộc vào công suất)
         // Công thức: energy = power * time (kWh = kW * hours)
         float elapsedHours = elapsedMinutes / 60f;
@@ -175,6 +183,11 @@ public class ChargingSimulationService {
         session.setEnergyKwh(energyDelivered);
         session.setDurationMin((int) elapsedMinutes);
         session.setCostTotal(simState.currentCost);
+
+        // Cập nhật % pin thật của xe trong database
+        Vehicle vehicle = session.getVehicle();
+        vehicle.setCurrentSocPercent(newSocPercent);
+        vehicleRepository.save(vehicle);
 
         boolean isCompleted = newSocPercent >= simState.targetSocPercent;
 

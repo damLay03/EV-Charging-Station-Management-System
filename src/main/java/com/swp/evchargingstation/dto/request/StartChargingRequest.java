@@ -18,9 +18,6 @@ public class StartChargingRequest {
     @NotBlank(message = "Charging Point ID is required")
     String chargingPointId;
 
-    @Min(value = 0, message = "Start SOC must be between 0 and 100")
-    @Max(value = 100, message = "Start SOC must be between 0 and 100")
-    int startSocPercent;
 
     @Min(value = 1, message = "Target SOC must be between 1 and 100")
     @Max(value = 100, message = "Target SOC must be between 1 and 100")

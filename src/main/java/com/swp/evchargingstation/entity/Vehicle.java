@@ -32,6 +32,9 @@ public class Vehicle {
     @Column(name = "battery_type")
     String batteryType;
 
+    @Column(name = "current_soc_percent")
+    int currentSocPercent; // % pin hiện tại của xe
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
     Driver owner;
