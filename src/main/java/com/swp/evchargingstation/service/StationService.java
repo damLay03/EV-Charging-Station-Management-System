@@ -2,9 +2,11 @@ package com.swp.evchargingstation.service;
 
 import com.swp.evchargingstation.dto.request.StationCreationRequest;
 import com.swp.evchargingstation.dto.request.StationUpdateRequest;
+import com.swp.evchargingstation.dto.request.ChargingPointCreationRequest;
 import com.swp.evchargingstation.dto.response.StationDetailResponse;
 import com.swp.evchargingstation.dto.response.StationResponse;
 import com.swp.evchargingstation.dto.response.StaffSummaryResponse;
+import com.swp.evchargingstation.dto.response.ChargingPointResponse;
 import com.swp.evchargingstation.entity.ChargingPoint;
 import com.swp.evchargingstation.entity.Station;
 import com.swp.evchargingstation.entity.Staff;
@@ -14,6 +16,7 @@ import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
 import com.swp.evchargingstation.mapper.StationMapper;
 import com.swp.evchargingstation.mapper.StaffMapper;
+import com.swp.evchargingstation.mapper.ChargingPointMapper;
 import com.swp.evchargingstation.repository.ChargingPointRepository;
 import com.swp.evchargingstation.repository.ChargingSessionRepository;
 import com.swp.evchargingstation.repository.StationRepository;
@@ -39,6 +42,7 @@ public class StationService {
     StaffRepository staffRepository;
     StaffMapper staffMapper;
     ChargingPointRepository chargingPointRepository;
+    ChargingPointMapper chargingPointMapper;
     ChargingSessionRepository chargingSessionRepository;
     GeocodingService geocodingService;
 
@@ -97,7 +101,7 @@ public class StationService {
         for (int i = 1; i <= request.getNumberOfChargingPoints(); i++) {
             ChargingPoint point = ChargingPoint.builder()
                     .station(savedStation)
-                    .maxPowerKw(request.getPowerOutputKw())
+                    .chargingPower(request.getPowerOutput())
                     .status(ChargingPointStatus.AVAILABLE)
                     .build();
             chargingPoints.add(point);
@@ -332,7 +336,7 @@ public class StationService {
     private StationDetailResponse mapToStationDetailResponse(Station station) {
         String stationId = station.getStationId();
 
-        // Đếm số lượng charging points theo trạng thái - GIỮ NGUYÊN NULL nếu không có
+        // Đếm số lượng charging points theo trạng thái - GI�� NGUYÊN NULL nếu không có
         Integer totalPoints = chargingPointRepository.countByStationId(stationId);
         Integer availablePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.AVAILABLE);
         Integer inUsePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.OCCUPIED);
@@ -396,5 +400,136 @@ public class StationService {
                 .staffId(staffId)
                 .staffName(staffName)
                 .build();
+    }
+
+    /**
+     * Tạo thêm trụ sạc cho trạm sạc đã tồn tại.
+     * Trụ sạc mới sẽ được tạo với trạng thái AVAILABLE nếu không chỉ định.
+     * @param stationId id của trạm cần thêm trụ sạc
+     * @param request thông tin trụ sạc cần tạo
+     * @return ChargingPointResponse của trụ sạc vừa tạo
+     * @throws AppException nếu không tìm thấy trạm
+     */
+    @Transactional
+    public ChargingPointResponse addChargingPointToStation(String stationId, ChargingPointCreationRequest request) {
+        log.info("Adding charging point to station {} with power {}", stationId, request.getChargingPower());
+
+        // Kiểm tra station có tồn tại không
+        Station station = stationRepository.findById(stationId)
+                .orElseThrow(() -> new AppException(ErrorCode.STATION_NOT_FOUND));
+
+        // Xác định trạng thái - mặc định là AVAILABLE nếu không truyền
+        ChargingPointStatus status = request.getStatus() != null ? request.getStatus() : ChargingPointStatus.AVAILABLE;
+
+        // Tạo charging point mới
+        ChargingPoint newPoint = ChargingPoint.builder()
+                .station(station)
+                .chargingPower(request.getChargingPower())
+                .status(status)
+                .build();
+
+        // Lưu charging point
+        ChargingPoint savedPoint = chargingPointRepository.save(newPoint);
+
+        log.info("Created charging point {} for station {}", savedPoint.getPointId(), stationId);
+
+        // Trả về response
+        return chargingPointMapper.toChargingPointResponse(savedPoint);
+    }
+
+    /**
+     * Lấy danh sách tất cả trụ sạc của một trạm sạc.
+     * @param stationId id của trạm
+     * @return danh sách ChargingPointResponse
+     * @throws AppException nếu không tìm thấy trạm
+     */
+    @Transactional(readOnly = true)
+    public List<ChargingPointResponse> getChargingPointsByStation(String stationId) {
+        log.info("Fetching charging points for station {}", stationId);
+
+        // Kiểm tra station có tồn tại không
+        if (!stationRepository.existsById(stationId)) {
+            throw new AppException(ErrorCode.STATION_NOT_FOUND);
+        }
+
+        // Lấy danh sách charging points
+        List<ChargingPoint> chargingPoints = chargingPointRepository.findByStation_StationId(stationId);
+
+        return chargingPoints.stream()
+                .map(chargingPointMapper::toChargingPointResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Cập nhật thông tin trụ sạc.
+     * @param stationId id của trạm sạc chứa trụ sạc
+     * @param pointId id của trụ sạc cần cập nhật
+     * @param request thông tin cập nhật
+     * @return ChargingPointResponse sau khi cập nhật
+     * @throws AppException nếu không tìm thấy trụ sạc hoặc trụ sạc không thuộc trạm
+     */
+    @Transactional
+    public ChargingPointResponse updateChargingPoint(String stationId, String pointId, com.swp.evchargingstation.dto.request.ChargingPointUpdateRequest request) {
+        log.info("Updating charging point {} at station {}", pointId, stationId);
+
+        // Kiểm tra charging point có tồn tại không
+        ChargingPoint chargingPoint = chargingPointRepository.findById(pointId)
+                .orElseThrow(() -> new AppException(ErrorCode.CHARGING_POINT_NOT_FOUND));
+
+        // Kiểm tra charging point có thuộc station này không
+        if (!chargingPoint.getStation().getStationId().equals(stationId)) {
+            log.warn("Charging point {} does not belong to station {}", pointId, stationId);
+            throw new AppException(ErrorCode.CHARGING_POINT_NOT_FOUND);
+        }
+
+        // Cập nhật chargingPower nếu có
+        if (request.getChargingPower() != null) {
+            chargingPoint.setChargingPower(request.getChargingPower());
+            log.info("Updated power for charging point {} to {}", pointId, request.getChargingPower());
+        }
+
+        // Cập nhật status nếu có
+        if (request.getStatus() != null) {
+            chargingPoint.setStatus(request.getStatus());
+            log.info("Updated status for charging point {} to {}", pointId, request.getStatus());
+        }
+
+        // Lưu charging point
+        ChargingPoint savedPoint = chargingPointRepository.save(chargingPoint);
+
+        log.info("Updated charging point {} successfully", pointId);
+
+        return chargingPointMapper.toChargingPointResponse(savedPoint);
+    }
+
+    /**
+     * Xóa trụ sạc theo id.
+     * @param stationId id của trạm sạc chứa trụ sạc
+     * @param pointId id của trụ sạc cần xóa
+     * @throws AppException nếu không tìm thấy trụ sạc, trụ sạc không thuộc trạm, hoặc trụ sạc đang có session
+     */
+    @Transactional
+    public void deleteChargingPoint(String stationId, String pointId) {
+        log.info("Deleting charging point {} from station {}", pointId, stationId);
+
+        // Kiểm tra charging point có tồn tại không
+        ChargingPoint chargingPoint = chargingPointRepository.findById(pointId)
+                .orElseThrow(() -> new AppException(ErrorCode.CHARGING_POINT_NOT_FOUND));
+
+        // Kiểm tra charging point có thuộc station này không
+        if (!chargingPoint.getStation().getStationId().equals(stationId)) {
+            log.warn("Charging point {} does not belong to station {}", pointId, stationId);
+            throw new AppException(ErrorCode.CHARGING_POINT_NOT_FOUND);
+        }
+
+        // Kiểm tra xem có session đang hoạt động không
+        if (chargingPoint.getCurrentSession() != null) {
+            log.warn("Cannot delete charging point {} - has active session", pointId);
+            throw new AppException(ErrorCode.CHARGING_POINT_IN_USE);
+        }
+
+        // Xóa charging point
+        chargingPointRepository.delete(chargingPoint);
+        log.info("Deleted charging point {} successfully", pointId);
     }
 }

@@ -7,6 +7,9 @@ import com.swp.evchargingstation.dto.response.StationDetailResponse;
 import com.swp.evchargingstation.dto.response.StationOverviewResponse;
 import com.swp.evchargingstation.dto.response.StaffSummaryResponse;
 import com.swp.evchargingstation.dto.response.StationResponse;
+import com.swp.evchargingstation.dto.request.ChargingPointCreationRequest;
+import com.swp.evchargingstation.dto.request.ChargingPointUpdateRequest;
+import com.swp.evchargingstation.dto.response.ChargingPointResponse;
 import com.swp.evchargingstation.enums.StationStatus;
 import com.swp.evchargingstation.service.StationService;
 import jakarta.validation.Valid;
@@ -136,6 +139,56 @@ public class StationController {
         stationService.deleteStation(stationId);
         return ApiResponse.<Void>builder()
                 .message("Station deleted successfully")
+                .build();
+    }
+
+    // ========== CHARGING POINTS ==========
+    // NOTE: Tạo thêm trụ sạc cho trạm sạc đã tồn tại
+    @PostMapping("/{stationId}/charging-points")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<ChargingPointResponse> addChargingPointToStation(
+            @PathVariable String stationId,
+            @Valid @RequestBody ChargingPointCreationRequest request) {
+        log.info("Admin adding charging point to station {}", stationId);
+        return ApiResponse.<ChargingPointResponse>builder()
+                .result(stationService.addChargingPointToStation(stationId, request))
+                .message("Charging point created successfully")
+                .build();
+    }
+
+    // NOTE: Lấy danh sách tất cả trụ sạc của một trạm sạc
+    @GetMapping("/{stationId}/charging-points")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<List<ChargingPointResponse>> getChargingPointsByStation(@PathVariable String stationId) {
+        log.info("Admin fetching charging points for station {}", stationId);
+        return ApiResponse.<List<ChargingPointResponse>>builder()
+                .result(stationService.getChargingPointsByStation(stationId))
+                .build();
+    }
+
+    // NOTE: Cập nhật thông tin trụ sạc (status, price, power, connectorType)
+    @PutMapping("/{stationId}/charging-points/{chargingPointId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<ChargingPointResponse> updateChargingPoint(
+            @PathVariable String stationId,
+            @PathVariable String chargingPointId,
+            @Valid @RequestBody ChargingPointUpdateRequest request) {
+        log.info("Admin updating charging point: {} at station: {}", chargingPointId, stationId);
+        return ApiResponse.<ChargingPointResponse>builder()
+                .result(stationService.updateChargingPoint(stationId, chargingPointId, request))
+                .build();
+    }
+
+    // NOTE: Xóa trụ sạc theo id
+    @DeleteMapping("/{stationId}/charging-points/{chargingPointId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> deleteChargingPoint(
+            @PathVariable String stationId,
+            @PathVariable String chargingPointId) {
+        log.info("Admin deleting charging point: {} from station: {}", chargingPointId, stationId);
+        stationService.deleteChargingPoint(stationId, chargingPointId);
+        return ApiResponse.<Void>builder()
+                .message("Charging point deleted successfully")
                 .build();
     }
 }

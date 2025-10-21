@@ -39,6 +39,7 @@ public enum ErrorCode {
     INVALID_COORDINATES(10002, "Invalid Coordinates Provided"),
     // --- Charging Point related ---
     CHARGING_POINT_NOT_FOUND(11001, "Charging Point Not Found"),
+    CHARGING_POINT_IN_USE(11002, "Charging Point Is In Use And Cannot Be Deleted"),
     // --- Payment related ---
     PAYMENT_ALREADY_EXISTS(12001, "Payment Already Exists For This Session"),
     // --- Incident related ---

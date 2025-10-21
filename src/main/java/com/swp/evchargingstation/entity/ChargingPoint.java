@@ -1,6 +1,7 @@
 package com.swp.evchargingstation.entity;
 
 import com.swp.evchargingstation.enums.ChargingPointStatus;
+import com.swp.evchargingstation.enums.ChargingPower;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -25,8 +26,9 @@ public class ChargingPoint {
     @JoinColumn(name = "station_id")
     Station station;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "max_power_kw")
-    float maxPowerKw;
+    ChargingPower chargingPower;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")

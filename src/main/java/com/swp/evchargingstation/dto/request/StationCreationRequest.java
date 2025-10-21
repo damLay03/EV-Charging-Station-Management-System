@@ -1,5 +1,6 @@
 package com.swp.evchargingstation.dto.request;
 
+import com.swp.evchargingstation.enums.ChargingPower;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -23,8 +24,7 @@ public class StationCreationRequest {
     Integer numberOfChargingPoints;
 
     @NotNull(message = "Công suất không được để trống")
-    @Min(value = 1, message = "Công suất phải lớn hơn 0")
-    Float powerOutputKw;
+    ChargingPower powerOutput;
 
     String operatorName;
     String contactPhone;

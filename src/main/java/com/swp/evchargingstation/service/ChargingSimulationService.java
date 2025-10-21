@@ -111,7 +111,7 @@ public class ChargingSimulationService {
         simState.currentSocPercent = request.getStartSocPercent();
         simState.targetSocPercent = request.getTargetSocPercent();
         simState.batteryCapacityKwh = vehicle.getBatteryCapacityKwh();
-        simState.maxPowerKw = chargingPoint.getMaxPowerKw();
+        simState.maxPowerKw = chargingPoint.getChargingPower().getPowerKw();
         simState.pricePerKwh = DEFAULT_PRICE_PER_KWH;
         simState.energyDeliveredKwh = 0f;
         simState.currentCost = 0f;
@@ -322,7 +322,7 @@ public class ChargingSimulationService {
                 .vehicleModel(session.getVehicle().getModel())
                 .chargingPointId(session.getChargingPoint().getPointId())
                 .stationName(session.getChargingPoint().getStation().getName())
-                .maxPowerKw(session.getChargingPoint().getMaxPowerKw())
+                .maxPowerKw(session.getChargingPoint().getChargingPower().getPowerKw())
                 .startTime(session.getStartTime())
                 .startSocPercent(session.getStartSocPercent())
                 .currentSocPercent(session.getEndSocPercent())
@@ -359,4 +359,3 @@ public class ChargingSimulationService {
         float currentCost;
     }
 }
-
