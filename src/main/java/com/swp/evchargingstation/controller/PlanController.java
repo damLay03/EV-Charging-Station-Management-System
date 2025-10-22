@@ -25,7 +25,7 @@ public class PlanController {
 
     // NOTE: Endpoint generic tạo plan theo billingType trong body (PAY_AS_YOU_GO / MONTHLY_SUBSCRIPTION / PREPAID / POSTPAID / VIP).
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+//    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<PlanResponse> create(@RequestBody @Valid PlanCreationRequest request) {
         return ApiResponse.<PlanResponse>builder()
                 .result(planService.create(request))
