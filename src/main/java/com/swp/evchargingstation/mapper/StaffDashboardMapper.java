@@ -15,7 +15,7 @@ public interface StaffDashboardMapper {
     // Map ChargingPoint to StaffChargingPointResponse
     @Mapping(target = "currentSessionId", expression = "java(chargingPoint.getCurrentSession() != null ? chargingPoint.getCurrentSession().getSessionId() : null)")
     @Mapping(target = "driverName", expression = "java(chargingPoint.getCurrentSession() != null && chargingPoint.getCurrentSession().getDriver() != null && chargingPoint.getCurrentSession().getDriver().getUser() != null ? chargingPoint.getCurrentSession().getDriver().getUser().getFullName() : null)")
-    @Mapping(target = "vehicleModel", expression = "java(chargingPoint.getCurrentSession() != null && chargingPoint.getCurrentSession().getVehicle() != null ? chargingPoint.getCurrentSession().getVehicle().getModel() : null)")
+    @Mapping(target = "vehicleModel", expression = "java(chargingPoint.getCurrentSession() != null && chargingPoint.getCurrentSession().getVehicle() != null && chargingPoint.getCurrentSession().getVehicle().getModel() != null ? chargingPoint.getCurrentSession().getVehicle().getModel().getModelName() : null)")
     @Mapping(target = "startTime", expression = "java(chargingPoint.getCurrentSession() != null && chargingPoint.getCurrentSession().getStartTime() != null ? chargingPoint.getCurrentSession().getStartTime().format(java.time.format.DateTimeFormatter.ofPattern(\"HH:mm dd/MM/yyyy\")) : null)")
     @Mapping(target = "currentSocPercent", expression = "java(chargingPoint.getCurrentSession() != null ? chargingPoint.getCurrentSession().getEndSocPercent() : 0)")
     StaffChargingPointResponse toStaffChargingPointResponse(ChargingPoint chargingPoint);
@@ -23,7 +23,7 @@ public interface StaffDashboardMapper {
     // Map ChargingSession to StaffTransactionResponse
     @Mapping(target = "driverName", expression = "java(session.getDriver() != null && session.getDriver().getUser() != null ? session.getDriver().getUser().getFullName() : \"N/A\")")
     @Mapping(target = "driverPhone", expression = "java(session.getDriver() != null && session.getDriver().getUser() != null ? session.getDriver().getUser().getPhone() : \"N/A\")")
-    @Mapping(target = "vehicleModel", expression = "java(session.getVehicle() != null ? session.getVehicle().getModel() : \"N/A\")")
+    @Mapping(target = "vehicleModel", expression = "java(session.getVehicle() != null && session.getVehicle().getModel() != null ? session.getVehicle().getModel().getModelName() : \"N/A\")")
     @Mapping(target = "chargingPointId", expression = "java(session.getChargingPoint() != null ? session.getChargingPoint().getPointId() : \"N/A\")")
     @Mapping(target = "isPaid", ignore = true) // Will be set manually in service
     StaffTransactionResponse toStaffTransactionResponse(ChargingSession session);
@@ -35,4 +35,3 @@ public interface StaffDashboardMapper {
     @Mapping(target = "assignedStaffName", expression = "java(incident.getAssignedStaff() != null && incident.getAssignedStaff().getUser() != null ? incident.getAssignedStaff().getUser().getFullName() : null)")
     IncidentResponse toIncidentResponse(Incident incident);
 }
-

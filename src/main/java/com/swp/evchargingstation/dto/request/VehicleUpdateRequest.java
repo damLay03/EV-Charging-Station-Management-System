@@ -1,6 +1,7 @@
 package com.swp.evchargingstation.dto.request;
 
-import jakarta.validation.constraints.Positive;
+import com.swp.evchargingstation.enums.VehicleBrand;
+import com.swp.evchargingstation.enums.VehicleModel;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
@@ -10,7 +11,6 @@ import lombok.experimental.FieldDefaults;
 public class VehicleUpdateRequest {
     // NOTE: Tất cả field đều OPTIONAL cho partial update
     String licensePlate;  // optional - có thể cập nhật biển số
-    String model;         // optional
-    Float batteryCapacityKwh; // optional - dùng Float để có thể null
-    String batteryType;   // optional
+    VehicleBrand brand;   // optional
+    VehicleModel model;   // optional
 }

@@ -1,5 +1,7 @@
 package com.swp.evchargingstation.entity;
 
+import com.swp.evchargingstation.enums.VehicleBrand;
+import com.swp.evchargingstation.enums.VehicleModel;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -23,8 +25,13 @@ public class Vehicle {
     @Column(name = "license_plate", unique = true)
     String licensePlate;
 
-    @Column(name = "model")
-    String model;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "brand", nullable = false)
+    VehicleBrand brand;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "model", nullable = false)
+    VehicleModel model;
 
     @Column(name = "battery_capacity_kwh")
     float batteryCapacityKwh;

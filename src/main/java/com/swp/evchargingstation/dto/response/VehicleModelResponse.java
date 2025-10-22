@@ -10,14 +10,10 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class VehicleResponse {
-    String vehicleId;
-    String licensePlate;
-    VehicleBrand brand;
-    String brandDisplayName;
+public class VehicleModelResponse {
     VehicleModel model;
     String modelName;
+    VehicleBrand brand;
     float batteryCapacityKwh;
     String batteryType;
-    String ownerId;
 }

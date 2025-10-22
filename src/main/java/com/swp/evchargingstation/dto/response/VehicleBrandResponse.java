@@ -1,5 +1,6 @@
 package com.swp.evchargingstation.dto.response;
 
+import com.swp.evchargingstation.enums.VehicleBrand;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -8,13 +9,9 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ChargingSimulationResponse {
-    String sessionId;
-    String message;
-    int currentSocPercent;
-    float energyDeliveredKwh;
-    float currentCost;
-    boolean isCompleted;
+public class VehicleBrandResponse {
+    VehicleBrand brand;
+    String displayName;
+    String country;
 }
-
 

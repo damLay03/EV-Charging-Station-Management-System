@@ -3,7 +3,10 @@ package com.swp.evchargingstation.controller;
 import com.swp.evchargingstation.dto.response.ApiResponse;
 import com.swp.evchargingstation.dto.request.VehicleCreationRequest;
 import com.swp.evchargingstation.dto.request.VehicleUpdateRequest;
+import com.swp.evchargingstation.dto.response.VehicleBrandResponse;
+import com.swp.evchargingstation.dto.response.VehicleModelResponse;
 import com.swp.evchargingstation.dto.response.VehicleResponse;
+import com.swp.evchargingstation.enums.VehicleBrand;
 import com.swp.evchargingstation.service.VehicleService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -22,6 +25,35 @@ import java.util.List;
 @Slf4j
 public class VehicleController {
     VehicleService vehicleService;
+
+    // =====================================================PUBLIC===========================================================
+
+    // NOTE: Lấy danh sách tất cả các hãng xe (không cần đăng nhập)
+    @GetMapping("/brands")
+    public ApiResponse<List<VehicleBrandResponse>> getAllBrands() {
+        log.info("Fetching all vehicle brands");
+        return ApiResponse.<List<VehicleBrandResponse>>builder()
+                .result(vehicleService.getAllBrands())
+                .build();
+    }
+
+    // NOTE: Lấy danh sách models theo brand (không cần đăng nhập)
+    @GetMapping("/brands/{brand}/models")
+    public ApiResponse<List<VehicleModelResponse>> getModelsByBrand(@PathVariable VehicleBrand brand) {
+        log.info("Fetching models for brand: {}", brand);
+        return ApiResponse.<List<VehicleModelResponse>>builder()
+                .result(vehicleService.getModelsByBrand(brand))
+                .build();
+    }
+
+    // NOTE: Lấy danh sách tất cả models (không cần đăng nhập)
+    @GetMapping("/models")
+    public ApiResponse<List<VehicleModelResponse>> getAllModels() {
+        log.info("Fetching all vehicle models");
+        return ApiResponse.<List<VehicleModelResponse>>builder()
+                .result(vehicleService.getAllModels())
+                .build();
+    }
 
     // =====================================================DRIVER===========================================================
 
@@ -89,4 +121,3 @@ public class VehicleController {
                 .build();
     }
 }
-

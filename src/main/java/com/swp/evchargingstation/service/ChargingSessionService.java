@@ -74,7 +74,7 @@ public class ChargingSessionService {
 
         if (!vehicles.isEmpty()) {
             Vehicle primaryVehicle = vehicles.get(0);
-            vehicleModel = primaryVehicle.getModel();
+            vehicleModel = primaryVehicle.getModel() != null ? primaryVehicle.getModel().getModelName() : "";
             licensePlate = primaryVehicle.getLicensePlate();
 
             // Lấy % pin từ session gần nhất
@@ -160,7 +160,8 @@ public class ChargingSessionService {
                 .energyKwh(session.getEnergyKwh())
                 .costTotal(session.getCostTotal())
                 .status(session.getStatus())
-                .vehicleModel(session.getVehicle() != null ? session.getVehicle().getModel() : "")
+                // map VehicleModel enum -> modelName string
+                .vehicleModel(session.getVehicle() != null && session.getVehicle().getModel() != null ? session.getVehicle().getModel().getModelName() : "")
                 .licensePlate(session.getVehicle() != null ? session.getVehicle().getLicensePlate() : "")
                 .build();
     }

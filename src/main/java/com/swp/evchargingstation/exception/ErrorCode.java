@@ -21,6 +21,7 @@ public enum ErrorCode {
     VEHICLE_NOT_FOUND(5001, "Vehicle Not Found"),
     LICENSE_PLATE_EXISTED(5002, "License Plate Already Exists"),
     VEHICLE_NOT_BELONG_TO_DRIVER(5003, "Vehicle Does Not Belong To This Driver"),
+    INVALID_VEHICLE_MODEL_FOR_BRAND(5004, "Vehicle Model Does Not Match Selected Brand"),
     // --- Driver related ---
     DRIVER_NOT_FOUND(6001, "Driver Not Found"),
     // --- Subscription related ---

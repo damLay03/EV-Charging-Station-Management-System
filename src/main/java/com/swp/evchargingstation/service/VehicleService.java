@@ -7,6 +7,7 @@ import com.swp.evchargingstation.entity.Driver;
 import com.swp.evchargingstation.entity.User;
 import com.swp.evchargingstation.entity.Vehicle;
 import com.swp.evchargingstation.enums.Role;
+import com.swp.evchargingstation.enums.VehicleModel;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
 import com.swp.evchargingstation.mapper.VehicleMapper;
@@ -47,18 +48,28 @@ public class VehicleService {
         Driver driver = driverRepository.findById(user.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        // Validate model thuộc về brand được chọn
+        if (request.getModel().getBrand() != request.getBrand()) {
+            throw new AppException(ErrorCode.INVALID_VEHICLE_MODEL_FOR_BRAND);
+        }
+
         // Validate biển số xe không trùng
         if (vehicleRepository.existsByLicensePlate(request.getLicensePlate())) {
             throw new AppException(ErrorCode.LICENSE_PLATE_EXISTED);
         }
 
-        log.info("Driver '{}' creating vehicle with license plate '{}'", user.getUserId(), request.getLicensePlate());
+        log.info("Driver '{}' creating vehicle with license plate '{}', brand '{}', model '{}'",
+                user.getUserId(), request.getLicensePlate(), request.getBrand(), request.getModel());
+
+        // Tự động lấy thông tin từ enum
+        VehicleModel selectedModel = request.getModel();
 
         Vehicle vehicle = Vehicle.builder()
                 .licensePlate(request.getLicensePlate())
+                .brand(request.getBrand())
                 .model(request.getModel())
-                .batteryCapacityKwh(request.getBatteryCapacityKwh())
-                .batteryType(request.getBatteryType())
+                .batteryCapacityKwh(selectedModel.getBatteryCapacityKwh())
+                .batteryType(selectedModel.getBatteryType())
                 .owner(driver)
                 .build();
 
@@ -136,14 +147,28 @@ public class VehicleService {
             }
             vehicle.setLicensePlate(request.getLicensePlate());
         }
-        if (request.getModel() != null) {
-            vehicle.setModel(request.getModel());
-        }
-        if (request.getBatteryCapacityKwh() != null) {
-            vehicle.setBatteryCapacityKwh(request.getBatteryCapacityKwh());
-        }
-        if (request.getBatteryType() != null) {
-            vehicle.setBatteryType(request.getBatteryType());
+
+        // Nếu update brand hoặc model, cần validate
+        if (request.getBrand() != null || request.getModel() != null) {
+            // Lấy brand và model hiện tại hoặc mới
+            var brand = request.getBrand() != null ? request.getBrand() : vehicle.getBrand();
+            var model = request.getModel() != null ? request.getModel() : vehicle.getModel();
+
+            // Validate model thuộc về brand
+            if (model.getBrand() != brand) {
+                throw new AppException(ErrorCode.INVALID_VEHICLE_MODEL_FOR_BRAND);
+            }
+
+            if (request.getBrand() != null) {
+                vehicle.setBrand(request.getBrand());
+            }
+
+            if (request.getModel() != null) {
+                vehicle.setModel(request.getModel());
+                // Tự động cập nhật thông tin pin từ model mới
+                vehicle.setBatteryCapacityKwh(request.getModel().getBatteryCapacityKwh());
+                vehicle.setBatteryType(request.getModel().getBatteryType());
+            }
         }
 
         Vehicle saved = vehicleRepository.save(vehicle);
@@ -193,5 +218,44 @@ public class VehicleService {
                 .map(vehicleMapper::toVehicleResponse)
                 .toList();
     }
-}
 
+    // NOTE: Lấy danh sách tất cả các hãng xe
+    public List<com.swp.evchargingstation.dto.response.VehicleBrandResponse> getAllBrands() {
+        log.info("Fetching all vehicle brands");
+        return java.util.Arrays.stream(com.swp.evchargingstation.enums.VehicleBrand.values())
+                .map(brand -> com.swp.evchargingstation.dto.response.VehicleBrandResponse.builder()
+                        .brand(brand)
+                        .displayName(brand.getDisplayName())
+                        .country(brand.getCountry())
+                        .build())
+                .toList();
+    }
+
+    // NOTE: Lấy danh sách models theo brand
+    public List<com.swp.evchargingstation.dto.response.VehicleModelResponse> getModelsByBrand(com.swp.evchargingstation.enums.VehicleBrand brand) {
+        log.info("Fetching models for brand '{}'", brand);
+        return java.util.Arrays.stream(VehicleModel.getModelsByBrand(brand))
+                .map(model -> com.swp.evchargingstation.dto.response.VehicleModelResponse.builder()
+                        .model(model)
+                        .modelName(model.getModelName())
+                        .brand(model.getBrand())
+                        .batteryCapacityKwh(model.getBatteryCapacityKwh())
+                        .batteryType(model.getBatteryType())
+                        .build())
+                .toList();
+    }
+
+    // NOTE: Lấy danh sách tất cả models
+    public List<com.swp.evchargingstation.dto.response.VehicleModelResponse> getAllModels() {
+        log.info("Fetching all vehicle models");
+        return java.util.Arrays.stream(VehicleModel.values())
+                .map(model -> com.swp.evchargingstation.dto.response.VehicleModelResponse.builder()
+                        .model(model)
+                        .modelName(model.getModelName())
+                        .brand(model.getBrand())
+                        .batteryCapacityKwh(model.getBatteryCapacityKwh())
+                        .batteryType(model.getBatteryType())
+                        .build())
+                .toList();
+    }
+}

@@ -43,7 +43,7 @@ public class StationController {
 
     // Danh sách trạm với thông tin cơ bản
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+//    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<StationResponse>> getStations(
             @RequestParam(value = "status", required = false) StationStatus status) {
         log.info("Admin fetching stations - status: {}", status);
