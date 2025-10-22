@@ -1,6 +1,7 @@
 package com.swp.evchargingstation.exception;
 
 import com.swp.evchargingstation.dto.response.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 @ControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     // Handle Spring Security Access Denied (when user doesn't have required role)
@@ -52,5 +54,17 @@ public class GlobalExceptionHandler {
         apiResponse.setMessage(errorCode.getMessage()); //lấy message từ enum
 
         return ResponseEntity.badRequest().body(apiResponse); //nội dung mình mốn trả về cho user
+    }
+
+    // Bắt tất cả exception chưa xử lý (500 Internal Server Error)
+    @ExceptionHandler(value = Exception.class)
+    ResponseEntity<ApiResponse> handlingRuntimeException(Exception exception) {
+        log.error("Unhandled exception occurred: ", exception);
+
+        ApiResponse apiResponse = new ApiResponse();
+        apiResponse.setCode(500);
+        apiResponse.setMessage("Internal Server Error: " + exception.getMessage());
+
+        return ResponseEntity.status(500).body(apiResponse);
     }
 }

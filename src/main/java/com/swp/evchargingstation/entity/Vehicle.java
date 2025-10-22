@@ -33,7 +33,7 @@ public class Vehicle {
     String batteryType;
 
     @Column(name = "current_soc_percent")
-    int currentSocPercent; // % pin hiện tại của xe
+    Integer currentSocPercent; // % pin hiện tại của xe - ĐÃ SỬA int → Integer (FIX LỖI)
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
