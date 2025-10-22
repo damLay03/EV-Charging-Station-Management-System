@@ -1,15 +1,19 @@
 package com.swp.evchargingstation.controller;
 
 import com.swp.evchargingstation.dto.response.ApiResponse;
+import com.swp.evchargingstation.dto.request.StartChargingRequest;
 import com.swp.evchargingstation.dto.response.ChargingSessionResponse;
 import com.swp.evchargingstation.dto.response.driver.DriverDashboardResponse;
 import com.swp.evchargingstation.dto.response.MonthlyAnalyticsResponse;
 import com.swp.evchargingstation.service.ChargingSessionService;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -45,7 +49,7 @@ public class ChargingSessionController {
      *
      * Endpoint: GET /api/charging-sessions/my-sessions
      */
-        @GetMapping("/my-sessions")
+    @GetMapping("/my-sessions")
     @PreAuthorize("hasRole('DRIVER')")
     public ApiResponse<List<ChargingSessionResponse>> getMySessions() {
         log.info("Driver requesting charging sessions history");
@@ -84,6 +88,28 @@ public class ChargingSessionController {
         log.info("Driver requesting monthly analytics");
         return ApiResponse.<List<MonthlyAnalyticsResponse>>builder()
                 .result(chargingSessionService.getMyMonthlyAnalytics())
+                .build();
+    }
+
+    // Phase 1: Start Charging
+    @PostMapping("/start")
+    @PreAuthorize("hasRole('DRIVER')")
+    public ApiResponse<ChargingSessionResponse> startCharging(@RequestBody @Valid StartChargingRequest request,
+                                                              @AuthenticationPrincipal Jwt jwt) {
+        String driverId = jwt.getClaim("userId");
+        return ApiResponse.<ChargingSessionResponse>builder()
+                .result(chargingSessionService.startSession(request, driverId))
+                .build();
+    }
+
+    // Phase 3: Stop Charging by user
+    @PostMapping("/{sessionId}/stop")
+    @PreAuthorize("hasRole('DRIVER')")
+    public ApiResponse<ChargingSessionResponse> stopCharging(@PathVariable String sessionId,
+                                                             @AuthenticationPrincipal Jwt jwt) {
+        String driverId = jwt.getClaim("userId");
+        return ApiResponse.<ChargingSessionResponse>builder()
+                .result(chargingSessionService.stopSessionByUser(sessionId, driverId))
                 .build();
     }
 }

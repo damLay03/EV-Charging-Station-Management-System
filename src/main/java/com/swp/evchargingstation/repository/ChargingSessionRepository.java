@@ -258,4 +258,9 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
             "WHERE cs.chargingPoint.station.stationId = :stationId " +
             "ORDER BY cs.startTime DESC")
     List<ChargingSession> findByStationIdOrderByStartTimeDesc(@Param("stationId") String stationId);
+
+    /**
+     * Lấy danh sách phiên sạc đang hoạt động theo trạng thái
+     */
+    List<ChargingSession> findByStatus(ChargingSessionStatus status);
 }

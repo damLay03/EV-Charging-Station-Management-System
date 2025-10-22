@@ -1,22 +1,31 @@
 package com.swp.evchargingstation.service;
 
+import com.swp.evchargingstation.dto.request.StartChargingRequest;
 import com.swp.evchargingstation.dto.response.ChargingSessionResponse;
 import com.swp.evchargingstation.dto.response.driver.DriverDashboardResponse;
 import com.swp.evchargingstation.dto.response.MonthlyAnalyticsResponse;
+import com.swp.evchargingstation.entity.ChargingPoint;
 import com.swp.evchargingstation.entity.ChargingSession;
 import com.swp.evchargingstation.entity.Driver;
+import com.swp.evchargingstation.entity.User;
 import com.swp.evchargingstation.entity.Vehicle;
+import com.swp.evchargingstation.enums.ChargingPointStatus;
+import com.swp.evchargingstation.enums.ChargingSessionStatus;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
+import com.swp.evchargingstation.repository.ChargingPointRepository;
 import com.swp.evchargingstation.repository.ChargingSessionRepository;
 import com.swp.evchargingstation.repository.DriverRepository;
+import com.swp.evchargingstation.repository.UserRepository;
 import com.swp.evchargingstation.repository.VehicleRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -31,7 +40,11 @@ public class ChargingSessionService {
 
     ChargingSessionRepository chargingSessionRepository;
     DriverRepository driverRepository;
+    UserRepository userRepository;
     VehicleRepository vehicleRepository;
+    ChargingPointRepository chargingPointRepository;
+
+    ChargingSimulatorService simulatorService;
 
     /**
      * Lấy dashboard overview của driver đang đăng nhập
@@ -237,5 +250,78 @@ public class ChargingSessionService {
         }
 
         return analytics;
+    }
+
+    // Phase 1: Start a new charging session
+    @Transactional
+    @PreAuthorize("hasRole('DRIVER')")
+    public ChargingSessionResponse startSession(StartChargingRequest request, String driverId) {
+        Integer target = request.getTargetSocPercent() != null ? request.getTargetSocPercent() : 100;
+
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> new AppException(ErrorCode.DRIVER_NOT_FOUND));
+
+        Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
+                .orElseThrow(() -> new AppException(ErrorCode.VEHICLE_NOT_FOUND));
+
+        ChargingPoint chargingPoint = chargingPointRepository.findById(request.getChargingPointId())
+                .orElseThrow(() -> new AppException(ErrorCode.CHARGING_POINT_NOT_FOUND));
+
+        // Validations
+        if (chargingPoint.getStatus() != ChargingPointStatus.AVAILABLE) {
+            throw new AppException(ErrorCode.CHARGING_POINT_NOT_AVAILABLE);
+        }
+        if (!vehicle.getOwner().getUserId().equals(driverId)) {
+            throw new AppException(ErrorCode.VEHICLE_NOT_BELONG_TO_DRIVER);
+        }
+        if (vehicle.getCurrentSocPercent() >= target) {
+            throw new AppException(ErrorCode.INVALID_SOC_RANGE);
+        }
+
+        // Create session
+        int currentSoc = vehicle.getCurrentSocPercent();
+        ChargingSession newSession = ChargingSession.builder()
+                .driver(driver)
+                .vehicle(vehicle)
+                .chargingPoint(chargingPoint)
+                .startTime(LocalDateTime.now())
+                .startSocPercent(currentSoc)
+                .endSocPercent(currentSoc)
+                .targetSocPercent(target)
+                .energyKwh(0f)
+                .durationMin(0)
+                .costTotal(0f)
+                .startedByUser(driver.getUser())
+                .status(ChargingSessionStatus.IN_PROGRESS)
+                .build();
+
+        chargingSessionRepository.save(newSession);
+
+        // Update charging point -> CHARGING
+        chargingPoint.setStatus(ChargingPointStatus.CHARGING);
+        chargingPoint.setCurrentSession(newSession);
+        chargingPointRepository.save(chargingPoint);
+
+        log.info("Started charging session {} for driver {} at point {}", newSession.getSessionId(), driverId, chargingPoint.getPointId());
+        return convertToResponse(newSession);
+    }
+
+    // Phase 3: Stop charging by user (cancel)
+    @Transactional
+    @PreAuthorize("hasRole('DRIVER')")
+    public ChargingSessionResponse stopSessionByUser(String sessionId, String driverId) {
+        ChargingSession session = chargingSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new AppException(ErrorCode.CHARGING_SESSION_NOT_FOUND));
+
+        if (!session.getDriver().getUserId().equals(driverId)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        if (session.getStatus() != ChargingSessionStatus.IN_PROGRESS) {
+            throw new AppException(ErrorCode.CHARGING_SESSION_NOT_ACTIVE);
+        }
+
+        simulatorService.stopSessionLogic(session, ChargingSessionStatus.CANCELLED);
+        log.info("Driver {} stopped session {} manually", driverId, sessionId);
+        return convertToResponse(session);
     }
 }

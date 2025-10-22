@@ -1,0 +1,140 @@
+package com.swp.evchargingstation.service;
+
+import com.swp.evchargingstation.entity.ChargingPoint;
+import com.swp.evchargingstation.entity.ChargingSession;
+import com.swp.evchargingstation.entity.Driver;
+import com.swp.evchargingstation.entity.Payment;
+import com.swp.evchargingstation.entity.Plan;
+import com.swp.evchargingstation.entity.Subscription;
+import com.swp.evchargingstation.entity.Vehicle;
+import com.swp.evchargingstation.enums.ChargingPointStatus;
+import com.swp.evchargingstation.enums.ChargingSessionStatus;
+import com.swp.evchargingstation.enums.PaymentStatus;
+import com.swp.evchargingstation.exception.AppException;
+import com.swp.evchargingstation.exception.ErrorCode;
+import com.swp.evchargingstation.repository.*;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+@Slf4j
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+public class ChargingSimulatorService {
+
+    ChargingSessionRepository chargingSessionRepository;
+    VehicleRepository vehicleRepository;
+    ChargingPointRepository chargingPointRepository;
+    PaymentRepository paymentRepository;
+    SubscriptionRepository subscriptionRepository;
+    PlanRepository planRepository;
+
+    // Phase 2: background simulation tick, runs every 2 seconds
+    @Scheduled(fixedRate = 2000)
+    @Transactional
+    public void simulateChargingTick() {
+        List<ChargingSession> activeSessions = chargingSessionRepository.findByStatus(ChargingSessionStatus.IN_PROGRESS);
+        log.info("Running charging simulation for {} active sessions", activeSessions.size());
+
+        for (ChargingSession session : activeSessions) {
+            try {
+                Vehicle vehicle = session.getVehicle();
+                ChargingPoint point = session.getChargingPoint();
+                if (vehicle == null || point == null) continue;
+
+                float powerKw = point.getChargingPower().getPowerKw();
+                float capacityKwh = vehicle.getBatteryCapacityKwh();
+                int targetSoc = session.getTargetSocPercent() != null ? session.getTargetSocPercent() : 100;
+
+                if (capacityKwh <= 0) {
+                    log.warn("Vehicle {} has non-positive capacity. Skipping session {}", vehicle.getVehicleId(), session.getSessionId());
+                    continue;
+                }
+
+                // Simulate 2 minutes per tick
+                float energyPerTick = powerKw * (2.0f / 60.0f);
+                float socAddedPerTick = (energyPerTick / capacityKwh) * 100.0f;
+
+                float currentSoc = session.getEndSocPercent();
+                float newSocFloat = currentSoc + socAddedPerTick;
+                int newSocRounded = Math.round(newSocFloat);
+
+                // Update session counters (add 2 simulated minutes)
+                session.setDurationMin(session.getDurationMin() + 2);
+                session.setEnergyKwh(session.getEnergyKwh() + energyPerTick);
+
+                if (newSocRounded >= targetSoc) {
+                    // Cap at target and stop
+                    session.setEndSocPercent(targetSoc);
+                    vehicle.setCurrentSocPercent(targetSoc);
+                    stopSessionLogic(session, ChargingSessionStatus.COMPLETED);
+                } else {
+                    session.setEndSocPercent(newSocRounded);
+                    vehicle.setCurrentSocPercent(newSocRounded);
+                    chargingSessionRepository.save(session);
+                    vehicleRepository.save(vehicle);
+                }
+            } catch (Exception ex) {
+                log.error("Error simulating session {}: {}", session.getSessionId(), ex.getMessage(), ex);
+            }
+        }
+    }
+
+    // Phase 3: stop logic (used by scheduler and user-triggered stop)
+    @Transactional
+    public void stopSessionLogic(ChargingSession session, ChargingSessionStatus finalStatus) {
+        // Sanity checks
+        if (session.getStatus() != ChargingSessionStatus.IN_PROGRESS) {
+            // Already stopped; no-op
+            return;
+        }
+
+        session.setStatus(finalStatus);
+        session.setEndTime(LocalDateTime.now());
+
+        // Calculate cost
+        String driverId = session.getDriver().getUserId();
+        Subscription sub = subscriptionRepository.findActiveSubscriptionByDriverId(driverId).orElse(null);
+        Plan plan = (sub != null ? sub.getPlan() : null);
+        if (plan == null) {
+            // fallback: try default "Linh hoạt"
+            plan = planRepository.findByNameIgnoreCase("Linh hoạt").orElse(null);
+        }
+        float cost = 0f;
+        if (plan != null) {
+            cost = (session.getEnergyKwh() * plan.getPricePerKwh()) + (session.getDurationMin() * plan.getPricePerMinute());
+        }
+        session.setCostTotal(cost);
+
+        // Release charging point
+        ChargingPoint point = session.getChargingPoint();
+        if (point != null) {
+            point.setStatus(ChargingPointStatus.AVAILABLE);
+            point.setCurrentSession(null);
+            chargingPointRepository.save(point);
+        }
+
+        // Create payment if not exists
+        if (!paymentRepository.existsBySession_SessionId(session.getSessionId())) {
+            Payment payment = Payment.builder()
+                    .session(session)
+                    .payer(session.getDriver())
+                    .amount(cost)
+                    .paymentTime(LocalDateTime.now())
+                    .status(PaymentStatus.PENDING)
+                    .build();
+            paymentRepository.save(payment);
+        }
+
+        chargingSessionRepository.save(session);
+        log.info("Session {} stopped. Status: {}. Cost: {}", session.getSessionId(), finalStatus, cost);
+    }
+}

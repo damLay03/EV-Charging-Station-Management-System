@@ -47,6 +47,9 @@ public class ChargingSession {
     @Column(name = "end_soc_percent")
     int endSocPercent;
 
+    @Column(name = "target_soc_percent")
+    Integer targetSocPercent;
+
     @Column(name = "energy_kwh")
     float energyKwh;
 
