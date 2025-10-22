@@ -148,13 +148,28 @@ public class ChargingSessionService {
      * Chuyển đổi ChargingSession entity sang ChargingSessionResponse
      */
     private ChargingSessionResponse convertToResponse(ChargingSession session) {
+        String stationName = "";
+        String stationAddress = "";
+        String chargingPointName = "";
+
+        if (session.getChargingPoint() != null) {
+            // ChargingPoint không có name, dùng pointId
+            chargingPointName = session.getChargingPoint().getPointId() != null ? session.getChargingPoint().getPointId() : "";
+
+            if (session.getChargingPoint().getStation() != null) {
+                stationName = session.getChargingPoint().getStation().getName();
+                stationAddress = session.getChargingPoint().getStation().getAddress();
+            }
+        }
+
         return ChargingSessionResponse.builder()
                 .sessionId(session.getSessionId())
                 .startTime(session.getStartTime())
                 .endTime(session.getEndTime())
                 .durationMin(session.getDurationMin())
-                .stationName(session.getChargingPoint().getStation().getName())
-                .stationAddress(session.getChargingPoint().getStation().getAddress())
+                .stationName(stationName)
+                .stationAddress(stationAddress)
+                .chargingPointName(chargingPointName)
                 .startSocPercent(session.getStartSocPercent())
                 .endSocPercent(session.getEndSocPercent())
                 .energyKwh(session.getEnergyKwh())

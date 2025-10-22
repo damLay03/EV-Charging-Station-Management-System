@@ -45,7 +45,7 @@ public class ChargingSessionController {
      *
      * Endpoint: GET /api/charging-sessions/my-sessions
      */
-    @GetMapping("/my-sessions")
+        @GetMapping("/my-sessions")
     @PreAuthorize("hasRole('DRIVER')")
     public ApiResponse<List<ChargingSessionResponse>> getMySessions() {
         log.info("Driver requesting charging sessions history");
