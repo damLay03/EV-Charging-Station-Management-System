@@ -4,6 +4,7 @@ import com.swp.evchargingstation.dto.response.ApiResponse;
 import com.swp.evchargingstation.dto.request.UserCreationRequest;
 import com.swp.evchargingstation.dto.request.UserUpdateRequest;
 import com.swp.evchargingstation.dto.request.AdminUpdateDriverRequest;
+import com.swp.evchargingstation.dto.request.RoleAssignmentRequest;
 import com.swp.evchargingstation.dto.response.admin.AdminUserResponse;
 import com.swp.evchargingstation.dto.response.driver.DriverResponse;
 import com.swp.evchargingstation.dto.response.UserResponse;
@@ -98,5 +99,15 @@ public class UserController {
     public ApiResponse<Void> deleteUser(@PathVariable("userId") String userId) {
         userService.deleteUser(userId);
         return ApiResponse.<Void>builder().message("Deleted").build();
+    }
+
+    // ADMIN assign role to a user
+    @PutMapping("/{userId}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<UserResponse> assignRole(@PathVariable("userId") String userId,
+                                                @RequestBody @Valid RoleAssignmentRequest request) {
+        return ApiResponse.<UserResponse>builder()
+                .result(userService.assignRoleToUser(userId, request))
+                .build();
     }
 }

@@ -23,9 +23,14 @@ public class Staff {
     @Column(name = "position")
     String position;
 
-    // Một staff chỉ quản lý một station
-    @OneToOne(mappedBy = "staff", fetch = FetchType.LAZY)
+    // Station mà staff này ĐANG LÀM VIỆC (mỗi staff thuộc một trạm)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "station_id")
     Station station;
+
+    // Station mà staff này QUẢN LÝ (một staff có thể là manager của 1 station)
+    @OneToOne(mappedBy = "staff", fetch = FetchType.LAZY)
+    Station managedStation;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

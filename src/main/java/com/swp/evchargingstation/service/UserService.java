@@ -2,11 +2,11 @@ package com.swp.evchargingstation.service;
 import com.swp.evchargingstation.dto.request.UserCreationRequest;
 import com.swp.evchargingstation.dto.request.UserUpdateRequest;
 import com.swp.evchargingstation.dto.request.AdminUpdateDriverRequest;
+import com.swp.evchargingstation.dto.request.RoleAssignmentRequest;
 import com.swp.evchargingstation.dto.response.admin.AdminUserResponse;
 import com.swp.evchargingstation.dto.response.driver.DriverResponse;
 import com.swp.evchargingstation.dto.response.UserResponse;
 import com.swp.evchargingstation.entity.*;
-import com.swp.evchargingstation.enums.Gender;
 import com.swp.evchargingstation.enums.Role;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
@@ -53,6 +53,7 @@ public class UserService {
 
 //=====================================================DRIVER===========================================================
 
+    @Transactional
     public UserResponse register(UserCreationRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new AppException(ErrorCode.USER_EXISTED);
@@ -65,12 +66,13 @@ public class UserService {
         //PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10); BO LUON KHONG CAN NUA
         // ma hoa password
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        //set role dua vao email
-        String email = request.getEmail().toLowerCase();
+        //set role mặc định là DRIVER
         user.setRole(Role.DRIVER);
-        createRoleSpecificRecord(user);
-        //luu user vao db
-        return userMapper.toUserResponse(userRepository.save(user));
+        // Lưu user trước khi tạo record role-specific để đảm bảo userId đã sinh
+        User saved = userRepository.save(user);
+        createRoleSpecificRecord(saved);
+        // trả về response từ user đã lưu
+        return userMapper.toUserResponse(saved);
     }
 
     @PreAuthorize("hasRole('DRIVER')")
@@ -133,39 +135,66 @@ public class UserService {
 
     private void createRoleSpecificRecord(User user) {
         switch (user.getRole()) {
-            case DRIVER:
+            case DRIVER: {
                 Driver driver = Driver.builder()
-                        .userId(user.getUserId())
+                        // Không set userId thủ công khi dùng @MapsId
                         .user(user)
-                        .address(null) // Có thể để null, user sẽ cập nhật sau
-                        .joinDate(LocalDateTime.now()) // Lưu mốc thời gian đăng ký
+                        .address(null)
+                        .joinDate(LocalDateTime.now())
                         .build();
                 driverRepository.save(driver);
                 log.info("Driver record created for user ID: {} at {}", user.getUserId(), driver.getJoinDate());
                 break;
-
-            case STAFF:
+            }
+            case STAFF: {
                 Staff staff = Staff.builder()
-                        .userId(user.getUserId())
+                        // Không set userId thủ công khi dùng @MapsId
                         .user(user)
-                        .employeeNo(null) // Có thể để null hoặc generate mã nhân viên
-                        .position(null) // Có thể để null, admin sẽ cập nhật sau
+                        .employeeNo(null)
+                        .position(null)
                         .build();
                 staffRepository.save(staff);
                 log.info("Staff record created for user ID: {}", user.getUserId());
                 break;
-
-            case ADMIN:
+            }
+            case ADMIN: {
                 Admin admin = Admin.builder()
-                        .userId(user.getUserId())
+                        // Không set userId thủ công khi dùng @MapsId
                         .user(user)
                         .build();
                 adminRepository.save(admin);
                 log.info("Admin record created for user ID: {}", user.getUserId());
                 break;
-
+            }
             default:
                 log.warn("Unknown role: {}", user.getRole());
+        }
+    }
+
+    // Đảm bảo tồn tại bản ghi role-specific tương ứng với user.role; nếu thiếu thì tạo mới (idempotent)
+    //Dùng khi gán role cho user trùng với lại role đã tồn tại sẵn của user đó
+    private void ensureRoleSpecificRecord(User user) {
+        switch (user.getRole()) {
+            case DRIVER:
+                if (driverRepository.findById(user.getUserId()).isEmpty()) {
+                    log.info("Driver record missing for user {}. Creating...", user.getUserId());
+                    createRoleSpecificRecord(user);
+                }
+                break;
+            case STAFF:
+                if (staffRepository.findById(user.getUserId()).isEmpty()) {
+                    log.info("Staff record missing for user {}. Creating...", user.getUserId());
+                    createRoleSpecificRecord(user);
+                }
+                break;
+            case ADMIN:
+                if (adminRepository.findById(user.getUserId()).isEmpty()) {
+                    log.info("Admin record missing for user {}. Creating...", user.getUserId());
+                    createRoleSpecificRecord(user);
+                }
+                break;
+            default:
+                log.warn("Unknown role when ensuring record: {} for user {}", user.getRole(), user.getUserId());
         }
     }
 
@@ -330,5 +359,49 @@ public class UserService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         userRepository.delete(user); // hard delete
         log.info("Deleted user id={}", id);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public UserResponse assignRoleToUser(String userId, RoleAssignmentRequest request) {
+        log.info("Admin assigning role {} to user {}", request.getRole(), userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Role newRole = request.getRole();
+        Role oldRole = user.getRole();
+
+        if (oldRole == newRole) {
+            log.info("User {} already has role {}. Ensuring role-specific record exists...", userId, newRole);
+            ensureRoleSpecificRecord(user);
+            return userMapper.toUserResponse(user);
+        }
+
+        // Remove old role-specific record if exists
+        if (oldRole != null) {
+            switch (oldRole) {
+                case DRIVER:
+                    driverRepository.findById(userId).ifPresent(driverRepository::delete);
+                    log.info("Removed Driver record for user {}", userId);
+                    break;
+                case STAFF:
+                    staffRepository.findById(userId).ifPresent(staffRepository::delete);
+                    log.info("Removed Staff record for user {}", userId);
+                    break;
+                case ADMIN:
+                    adminRepository.findById(userId).ifPresent(adminRepository::delete);
+                    log.info("Removed Admin record for user {}", userId);
+                    break;
+                default:
+                    log.warn("Unknown old role {} for user {}", oldRole, userId);
+            }
+        }
+
+        // Assign new role and create corresponding record
+        user.setRole(newRole);
+        userRepository.save(user);
+        createRoleSpecificRecord(user);
+
+        return userMapper.toUserResponse(user);
     }
 }

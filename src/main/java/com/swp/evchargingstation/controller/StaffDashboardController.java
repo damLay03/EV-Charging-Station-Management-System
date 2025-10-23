@@ -5,6 +5,7 @@ import com.swp.evchargingstation.dto.request.IncidentUpdateRequest;
 import com.swp.evchargingstation.dto.request.StaffPaymentRequest;
 import com.swp.evchargingstation.dto.response.*;
 import com.swp.evchargingstation.service.StaffDashboardService;
+import com.swp.evchargingstation.service.StationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AccessLevel;
@@ -12,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +28,7 @@ import java.util.List;
 public class StaffDashboardController {
 
     StaffDashboardService staffDashboardService;
+    StationService stationService;
 
     @GetMapping("/dashboard")
     @PreAuthorize("hasRole('STAFF')")
@@ -45,6 +49,18 @@ public class StaffDashboardController {
         log.info("Staff requesting charging points list");
         return ApiResponse.<List<StaffChargingPointResponse>>builder()
                 .result(staffDashboardService.getStaffChargingPoints())
+                .build();
+    }
+
+    @GetMapping("/my-station/charging-points")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(summary = "List charging points at my station",
+               description = "Return empty list if staff is not assigned to any station")
+    public ApiResponse<List<ChargingPointResponse>> getMyStationChargingPoints(@AuthenticationPrincipal Jwt jwt) {
+        String staffId = jwt.getClaim("userId");
+        log.info("Staff {} requesting all charging points at their station", staffId);
+        return ApiResponse.<List<ChargingPointResponse>>builder()
+                .result(stationService.getMyStationChargingPoints(staffId))
                 .build();
     }
 

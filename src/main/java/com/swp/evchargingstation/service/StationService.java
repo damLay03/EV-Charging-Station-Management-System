@@ -90,7 +90,10 @@ public class StationService {
             Staff staff = staffRepository.findById(request.getStaffId())
                     .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
             station.setStaff(staff);
-            log.info("Assigned staff {} to station", request.getStaffId());
+            // Đồng bộ staff.station để mỗi staff gắn với một trạm
+            staff.setStation(station);
+            staffRepository.save(staff);
+            log.info("Assigned staff {} to station (and set staff.station)", request.getStaffId());
         }
 
         // Lưu station trước để có ID
@@ -164,14 +167,26 @@ public class StationService {
         if (request.getStaffId() != null) {
             if (request.getStaffId().isEmpty()) {
                 // Nếu staffId = "" thì bỏ gán staff
-                station.setStaff(null);
-                log.info("Removed staff from station {}", stationId);
+                if (station.getStaff() != null) {
+                    Staff prev = station.getStaff();
+                    station.setStaff(null);
+                    if (prev.getStation() != null && stationId.equals(prev.getStation().getStationId())) {
+                        prev.setStation(null);
+                        staffRepository.save(prev);
+                    }
+                    log.info("Removed staff from station {} and cleared prevStaff.station", stationId);
+                } else {
+                    log.info("Station {} already has no staff assigned", stationId);
+                }
             } else {
                 // Gán staff mới
                 Staff staff = staffRepository.findById(request.getStaffId())
                         .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
                 station.setStaff(staff);
-                log.info("Updated staff of station {} to {}", stationId, request.getStaffId());
+                // Đồng bộ staff.station
+                staff.setStation(station);
+                staffRepository.save(staff);
+                log.info("Updated staff of station {} to {} and set staff.station", stationId, request.getStaffId());
             }
         }
 
@@ -531,5 +546,27 @@ public class StationService {
         // Xóa charging point
         chargingPointRepository.delete(chargingPoint);
         log.info("Deleted charging point {} successfully", pointId);
+    }
+
+    /**
+     * STAFF: Lấy tất cả trụ sạc của trạm mà nhân viên đang làm việc.
+     * Trả về danh sách rỗng nếu staff chưa được gán trạm (để FE hiển thị "chưa có dữ liệu").
+     */
+    @Transactional(readOnly = true)
+    public List<ChargingPointResponse> getMyStationChargingPoints(String staffId) {
+        log.info("Staff {} fetching charging points of their station", staffId);
+        Staff staff = staffRepository.findById(staffId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+        if (staff.getStation() == null) {
+            log.info("Staff {} has no station assigned. Returning empty list.", staffId);
+            return List.of();
+        }
+
+        String stationId = staff.getStation().getStationId();
+        List<ChargingPoint> points = chargingPointRepository.findByStation_StationId(stationId);
+        return points.stream()
+                .map(chargingPointMapper::toChargingPointResponse)
+                .collect(Collectors.toList());
     }
 }
