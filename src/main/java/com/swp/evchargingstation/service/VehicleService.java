@@ -48,33 +48,23 @@ public class VehicleService {
         Driver driver = driverRepository.findById(user.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Validate model thuộc về brand được chọn
-        if (request.getModel().getBrand() != request.getBrand()) {
-            throw new AppException(ErrorCode.INVALID_VEHICLE_MODEL_FOR_BRAND);
-        }
-
         // Validate biển số xe không trùng
         if (vehicleRepository.existsByLicensePlate(request.getLicensePlate())) {
             throw new AppException(ErrorCode.LICENSE_PLATE_EXISTED);
         }
 
-        log.info("Driver '{}' creating vehicle with license plate '{}', brand '{}', model '{}'",
-                user.getUserId(), request.getLicensePlate(), request.getBrand(), request.getModel());
-
-        // Tự động lấy thông tin từ enum
-        VehicleModel selectedModel = request.getModel();
+        log.info("Driver '{}' creating vehicle with license plate '{}', model '{}'",
+                user.getUserId(), request.getLicensePlate(), request.getModel());
 
         Vehicle vehicle = Vehicle.builder()
                 .licensePlate(request.getLicensePlate())
-                .brand(request.getBrand())
                 .model(request.getModel())
-                .batteryCapacityKwh(selectedModel.getBatteryCapacityKwh())
-                .batteryType(selectedModel.getBatteryType())
                 .owner(driver)
                 .build();
 
         Vehicle saved = vehicleRepository.save(vehicle);
-        log.info("Vehicle '{}' created successfully", saved.getVehicleId());
+        log.info("Vehicle '{}' created successfully with brand '{}' auto-detected from model",
+                saved.getVehicleId(), saved.getBrand());
 
         return vehicleMapper.toVehicleResponse(saved);
     }
@@ -138,7 +128,7 @@ public class VehicleService {
 
         log.info("Driver '{}' updating vehicle '{}'", user.getUserId(), vehicleId);
 
-        // Update fields (chỉ update nếu không null)
+        // Update license plate (nếu có)
         if (request.getLicensePlate() != null) {
             // Kiểm tra biển số mới không trùng với xe khác
             if (!vehicle.getLicensePlate().equals(request.getLicensePlate()) &&
@@ -148,27 +138,11 @@ public class VehicleService {
             vehicle.setLicensePlate(request.getLicensePlate());
         }
 
-        // Nếu update brand hoặc model, cần validate
-        if (request.getBrand() != null || request.getModel() != null) {
-            // Lấy brand và model hiện tại hoặc mới
-            var brand = request.getBrand() != null ? request.getBrand() : vehicle.getBrand();
-            var model = request.getModel() != null ? request.getModel() : vehicle.getModel();
-
-            // Validate model thuộc về brand
-            if (model.getBrand() != brand) {
-                throw new AppException(ErrorCode.INVALID_VEHICLE_MODEL_FOR_BRAND);
-            }
-
-            if (request.getBrand() != null) {
-                vehicle.setBrand(request.getBrand());
-            }
-
-            if (request.getModel() != null) {
-                vehicle.setModel(request.getModel());
-                // Tự động cập nhật thông tin pin từ model mới
-                vehicle.setBatteryCapacityKwh(request.getModel().getBatteryCapacityKwh());
-                vehicle.setBatteryType(request.getModel().getBatteryType());
-            }
+        // Update model (nếu có) - brand sẽ tự động được xác định từ model
+        if (request.getModel() != null) {
+            vehicle.setModel(request.getModel());
+            log.info("Vehicle '{}' model updated to '{}', brand auto-updated to '{}'",
+                    vehicleId, request.getModel(), vehicle.getBrand());
         }
 
         Vehicle saved = vehicleRepository.save(vehicle);

@@ -3,9 +3,10 @@ package com.swp.evchargingstation.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.GenericGenerator;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -30,4 +31,9 @@ public class Driver {
     @JoinColumn(name = "user_id")
     @MapsId
     User user;
+
+    // One Driver can own many Vehicles
+    @OneToMany(mappedBy = "owner", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @Builder.Default
+    List<Vehicle> vehicles = new ArrayList<>();
 }

@@ -1,6 +1,5 @@
 package com.swp.evchargingstation.entity;
 
-import com.swp.evchargingstation.enums.VehicleBrand;
 import com.swp.evchargingstation.enums.VehicleModel;
 import jakarta.persistence.*;
 import lombok.*;
@@ -26,23 +25,26 @@ public class Vehicle {
     String licensePlate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "brand", nullable = false)
-    VehicleBrand brand;
-
-    @Enumerated(EnumType.STRING)
     @Column(name = "model", nullable = false)
     VehicleModel model;
 
-    @Column(name = "battery_capacity_kwh")
-    float batteryCapacityKwh;
-
-    @Column(name = "battery_type")
-    String batteryType;
-
     @Column(name = "current_soc_percent")
-    Integer currentSocPercent; // % pin hiện tại của xe - ĐÃ SỬA int → Integer (FIX LỖI)
+    Integer currentSocPercent;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
     Driver owner;
+
+    // Helper methods để lấy thông tin từ model
+    public float getBatteryCapacityKwh() {
+        return model != null ? model.getBatteryCapacityKwh() : 0f;
+    }
+
+    public String getBatteryType() {
+        return model != null ? model.getBatteryType() : null;
+    }
+
+    public com.swp.evchargingstation.enums.VehicleBrand getBrand() {
+        return model != null ? model.getBrand() : null;
+    }
 }

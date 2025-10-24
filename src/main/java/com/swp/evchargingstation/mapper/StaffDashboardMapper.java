@@ -13,6 +13,8 @@ import org.mapstruct.Mapping;
 public interface StaffDashboardMapper {
 
     // Map ChargingPoint to StaffChargingPointResponse
+    @Mapping(target = "name", expression = "java(chargingPoint.getName())")
+    @Mapping(target = "maxPowerKw", expression = "java(chargingPoint.getChargingPower() != null ? chargingPoint.getChargingPower().getPowerKw() : 0f)")
     @Mapping(target = "currentSessionId", expression = "java(chargingPoint.getCurrentSession() != null ? chargingPoint.getCurrentSession().getSessionId() : null)")
     @Mapping(target = "driverName", expression = "java(chargingPoint.getCurrentSession() != null && chargingPoint.getCurrentSession().getDriver() != null && chargingPoint.getCurrentSession().getDriver().getUser() != null ? chargingPoint.getCurrentSession().getDriver().getUser().getFullName() : null)")
     @Mapping(target = "vehicleModel", expression = "java(chargingPoint.getCurrentSession() != null && chargingPoint.getCurrentSession().getVehicle() != null && chargingPoint.getCurrentSession().getVehicle().getModel() != null ? chargingPoint.getCurrentSession().getVehicle().getModel().getModelName() : null)")

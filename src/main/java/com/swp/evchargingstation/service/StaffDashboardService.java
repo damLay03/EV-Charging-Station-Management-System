@@ -293,9 +293,39 @@ public class StaffDashboardService {
                 .build();
     }
 
+    /**
+     * Lấy hồ sơ của staff đang đăng nhập
+     */
+    public StaffProfileResponse getMyProfile() {
+        String staffUserId = getCurrentStaffUserId();
+        Staff staff = staffRepository.findById(staffUserId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+        User user = staff.getUser();
+        Station station = staff.getStation();
+
+        return StaffProfileResponse.builder()
+                .staffId(staff.getUserId())
+                .email(user != null ? user.getEmail() : null)
+                .fullName(user != null ? user.getFullName() : null)
+                .phone(user != null ? user.getPhone() : null)
+                .employeeNo(staff.getEmployeeNo())
+                .position(staff.getPosition())
+                .stationId(station != null ? station.getStationId() : null)
+                .stationName(station != null ? station.getName() : null)
+                .stationAddress(station != null ? station.getAddress() : null)
+                .build();
+    }
+
     // Helper methods
     private String getCurrentStaffUserId() {
         var context = SecurityContextHolder.getContext();
-        return context.getAuthentication().getName();
+        var authentication = context.getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            String userId = jwt.getClaim("userId");
+            if (userId != null) return userId;
+        }
+        // Fallback: dùng name (thường là email) – chỉ khi legacy flow yêu cầu
+        return authentication != null ? authentication.getName() : null;
     }
 }

@@ -12,6 +12,7 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ChargingPointResponse {
     String pointId;
+    String name; // TS1, TS2, ...
     String stationId;
     String stationName;
     ChargingPower chargingPower;

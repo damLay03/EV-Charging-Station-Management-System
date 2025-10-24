@@ -11,6 +11,7 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class StaffChargingPointResponse {
     String pointId;
+    String name; // TS1, TS2, ...
     float maxPowerKw;
     ChargingPointStatus status;
 
@@ -21,4 +22,3 @@ public class StaffChargingPointResponse {
     String startTime;
     int currentSocPercent;
 }
-

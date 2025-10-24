@@ -9,6 +9,7 @@ public class ChargingPointMapper {
     public ChargingPointResponse toChargingPointResponse(ChargingPoint chargingPoint) {
         return ChargingPointResponse.builder()
                 .pointId(chargingPoint.getPointId())
+                .name(chargingPoint.getName())
                 .stationId(chargingPoint.getStation() != null ? chargingPoint.getStation().getStationId() : null)
                 .stationName(chargingPoint.getStation() != null ? chargingPoint.getStation().getName() : null)
                 .chargingPower(chargingPoint.getChargingPower())

@@ -1,5 +1,6 @@
 package com.swp.evchargingstation.dto.request;
 
+import com.swp.evchargingstation.enums.IncidentSeverity;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -12,6 +13,5 @@ public class IncidentCreationRequest {
     String stationId;
     String chargingPointId;
     String description;
-    String severity; // LOW, MEDIUM, HIGH, CRITICAL
+    IncidentSeverity severity;
 }
-

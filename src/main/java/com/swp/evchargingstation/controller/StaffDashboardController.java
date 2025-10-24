@@ -114,4 +114,14 @@ public class StaffDashboardController {
         log.info("Staff updating incident: {} to status: {}", incidentId, request.getStatus());
         return staffDashboardService.updateIncident(incidentId, request);
     }
+
+    @GetMapping("/profile")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(summary = "Get my staff profile",
+               description = "Return staff info and the station currently assigned (if any)")
+    public ApiResponse<StaffProfileResponse> getMyProfile() {
+        return ApiResponse.<StaffProfileResponse>builder()
+                .result(staffDashboardService.getMyProfile())
+                .build();
+    }
 }

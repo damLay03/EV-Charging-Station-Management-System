@@ -104,6 +104,7 @@ public class StationService {
         for (int i = 1; i <= request.getNumberOfChargingPoints(); i++) {
             ChargingPoint point = ChargingPoint.builder()
                     .station(savedStation)
+                    .name("TS" + i)
                     .chargingPower(request.getPowerOutput())
                     .status(ChargingPointStatus.AVAILABLE)
                     .build();
@@ -215,7 +216,7 @@ public class StationService {
     /**
      * Lấy danh sách trạm.
      * Nếu status == null => trả về tất cả.
-     * Nếu status != null => lọc theo trạng thái chỉ định.
+     * Nếu status != null => lọc theo trạng thái chỉ ��ịnh.
      * @param status trạng thái cần lọc (có thể null)
      * @return danh sách StationResponse
      */
@@ -436,9 +437,26 @@ public class StationService {
         // Xác định trạng thái - mặc định là AVAILABLE nếu không truyền
         ChargingPointStatus status = request.getStatus() != null ? request.getStatus() : ChargingPointStatus.AVAILABLE;
 
+        // Sinh tên trụ sạc tiếp theo theo thứ tự TS{n} dựa trên số lớn nhất hiện có (phòng trường hợp đã xóa một số trụ)
+        List<ChargingPoint> existingPoints = chargingPointRepository.findByStation_StationId(stationId);
+        int maxIndex = 0;
+        for (ChargingPoint cp : existingPoints) {
+            String n = cp.getName();
+            if (n != null && n.startsWith("TS")) {
+                try {
+                    int idx = Integer.parseInt(n.substring(2));
+                    if (idx > maxIndex) maxIndex = idx;
+                } catch (NumberFormatException ignored) {
+                    // Bỏ qua các tên không theo định dạng TS{number}
+                }
+            }
+        }
+        String nextName = "TS" + (maxIndex + 1);
+
         // Tạo charging point mới
         ChargingPoint newPoint = ChargingPoint.builder()
                 .station(station)
+                .name(nextName)
                 .chargingPower(request.getChargingPower())
                 .status(status)
                 .build();
@@ -446,7 +464,7 @@ public class StationService {
         // Lưu charging point
         ChargingPoint savedPoint = chargingPointRepository.save(newPoint);
 
-        log.info("Created charging point {} for station {}", savedPoint.getPointId(), stationId);
+        log.info("Created charging point {} ({}) for station {}", savedPoint.getPointId(), nextName, stationId);
 
         // Trả về response
         return chargingPointMapper.toChargingPointResponse(savedPoint);

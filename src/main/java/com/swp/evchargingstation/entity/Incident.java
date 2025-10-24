@@ -1,5 +1,6 @@
 package com.swp.evchargingstation.entity;
 
+import com.swp.evchargingstation.enums.IncidentSeverity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -40,8 +41,9 @@ public class Incident {
     @Column(name = "description")
     String description;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "severity")
-    String severity;
+    IncidentSeverity severity;
 
     @Column(name = "status")
     String status;

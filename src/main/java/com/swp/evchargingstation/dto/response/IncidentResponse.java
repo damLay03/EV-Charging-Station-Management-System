@@ -1,5 +1,6 @@
 package com.swp.evchargingstation.dto.response;
 
+import com.swp.evchargingstation.enums.IncidentSeverity;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -17,7 +18,7 @@ public class IncidentResponse {
     String chargingPointId;
     LocalDateTime reportedAt;
     String description;
-    String severity;
+    IncidentSeverity severity;
     String status;
     String assignedStaffName;
     LocalDateTime resolvedAt;

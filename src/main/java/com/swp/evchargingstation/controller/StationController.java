@@ -158,7 +158,7 @@ public class StationController {
 
     // NOTE: Lấy danh sách tất cả trụ sạc của một trạm sạc
     @GetMapping("/{stationId}/charging-points")
-    @PreAuthorize("hasRole('ADMIN')")
+//    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<ChargingPointResponse>> getChargingPointsByStation(@PathVariable String stationId) {
         log.info("Admin fetching charging points for station {}", stationId);
         return ApiResponse.<List<ChargingPointResponse>>builder()

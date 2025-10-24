@@ -13,11 +13,27 @@ import lombok.experimental.FieldDefaults;
 public class VehicleResponse {
     String vehicleId;
     String licensePlate;
-    VehicleBrand brand;
-    String brandDisplayName;
     VehicleModel model;
-    String modelName;
-    float batteryCapacityKwh;
-    String batteryType;
     String ownerId;
+
+    // Computed fields from model enum
+    public VehicleBrand getBrand() {
+        return model != null ? model.getBrand() : null;
+    }
+
+    public String getBrandDisplayName() {
+        return model != null && model.getBrand() != null ? model.getBrand().getDisplayName() : null;
+    }
+
+    public String getModelName() {
+        return model != null ? model.getModelName() : null;
+    }
+
+    public float getBatteryCapacityKwh() {
+        return model != null ? model.getBatteryCapacityKwh() : 0f;
+    }
+
+    public String getBatteryType() {
+        return model != null ? model.getBatteryType() : null;
+    }
 }

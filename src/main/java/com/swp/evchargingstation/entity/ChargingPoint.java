@@ -22,6 +22,9 @@ public class ChargingPoint {
     @Column(name = "point_id")
     String pointId;
 
+    @Column(name = "name")
+    String name; // Ví dụ: TS1, TS2, ...
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "station_id")
     Station station;
