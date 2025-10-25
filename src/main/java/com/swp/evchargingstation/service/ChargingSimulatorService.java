@@ -119,9 +119,9 @@ public class ChargingSimulatorService {
         }
 
         // Create payment if not exists
-        if (!paymentRepository.existsBySession_SessionId(session.getSessionId())) {
+        if (!paymentRepository.existsByChargingSession_SessionId(session.getSessionId())) {
             Payment payment = Payment.builder()
-                    .session(session)
+                    .chargingSession(session)
                     .payer(session.getDriver())
                     .amount(cost)
                     .paymentTime(LocalDateTime.now())

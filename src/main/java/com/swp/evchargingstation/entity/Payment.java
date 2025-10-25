@@ -46,5 +46,24 @@ public class Payment {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_id")
-    ChargingSession session;
+    ChargingSession chargingSession;
+
+    // VNPay specific fields
+    @Column(name = "transaction_id")
+    String transactionId; // VNPay transaction number
+
+    @Column(name = "payment_method")
+    String paymentMethod; // VNPAY, CASH, etc.
+
+    @Column(name = "payment_details")
+    String paymentDetails; // Store bank code, card type, etc.
+
+    @Column(name = "created_at")
+    LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    LocalDateTime updatedAt;
+
+    @Column(name = "paid_at")
+    LocalDateTime paidAt;
 }

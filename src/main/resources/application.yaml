@@ -1,5 +1,5 @@
 server:
-  port: 8084
+  port: 8080
   servlet:
     context-path: /evchargingstation
 
@@ -27,6 +27,16 @@ spring:
 
 jwt:
   singerKey: 0a58c8b134bc3d3e7a853dc8a49bcd3895e02c20d39d29d2d976e87300dc23fa
+
+# VNPay Configuration
+vnpay:
+  url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  returnUrl: http://localhost:8084/evchargingstation/api/payment/vnpay-callback
+  tmnCode: D18XZYI3
+  secretKey: WR0KM5KKY943UDP1SNZMFP5ZNH5ODCGU
+  version: 2.1.0
+  command: pay
+  orderType: other
 
 logging:
   level:

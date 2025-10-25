@@ -1,5 +1,6 @@
 package com.swp.evchargingstation.repository;
 
+import com.swp.evchargingstation.entity.ChargingSession;
 import com.swp.evchargingstation.entity.Payment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -7,9 +8,12 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, String> {
+    // Thêm method tìm payment theo charging session
+    Optional<Payment> findByChargingSession(ChargingSession chargingSession);
 
     // Query lấy doanh thu theo tuần của từng trạm
     @Query("SELECT s.stationId, s.name, s.address, " +
@@ -17,7 +21,7 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
             "FLOOR((DAY(p.paymentTime) - 1) / 7) + 1 AS weekOfMonth, " +
             "SUM(p.amount), COUNT(p.paymentId) " +
             "FROM Payment p " +
-            "JOIN p.session cs " +
+            "JOIN p.chargingSession cs " +
             "JOIN cs.chargingPoint cp " +
             "JOIN cp.station s " +
             "WHERE YEAR(p.paymentTime) = :year " +
@@ -27,12 +31,13 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
             "GROUP BY s.stationId, s.name, s.address, " +
             "MONTH(p.paymentTime), YEAR(p.paymentTime), weekOfMonth")
     List<Object[]> findWeeklyRevenueByStation(@Param("year") int year, @Param("month") int month, @Param("week") int week);
+
     // Query lấy doanh thu theo tháng của từng trạm
     @Query("SELECT s.stationId, s.name, s.address, " +
             "MONTH(p.paymentTime), YEAR(p.paymentTime), " +
             "SUM(p.amount), COUNT(p.paymentId) " +
             "FROM Payment p " +
-            "JOIN p.session cs " +
+            "JOIN p.chargingSession cs " +
             "JOIN cs.chargingPoint cp " +
             "JOIN cp.station s " +
             "WHERE YEAR(p.paymentTime) = :year " +
@@ -47,7 +52,7 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
             "MONTH(p.paymentTime), YEAR(p.paymentTime), " +
             "SUM(p.amount), COUNT(p.paymentId) " +
             "FROM Payment p " +
-            "JOIN p.session cs " +
+            "JOIN p.chargingSession cs " +
             "JOIN cs.chargingPoint cp " +
             "JOIN cp.station s " +
             "WHERE YEAR(p.paymentTime) = :year " +
@@ -66,5 +71,5 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     Float findCurrentMonthRevenue(@Param("year") int year, @Param("month") int month);
 
     // Check if payment exists for a session
-    boolean existsBySession_SessionId(String sessionId);
+    boolean existsByChargingSession_SessionId(String sessionId);
 }

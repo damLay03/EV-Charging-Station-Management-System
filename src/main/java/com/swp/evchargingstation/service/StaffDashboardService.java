@@ -143,7 +143,7 @@ public class StaffDashboardService {
         return sessions.stream().map(session -> {
             StaffTransactionResponse response = staffDashboardMapper.toStaffTransactionResponse(session);
             // Set isPaid manually
-            response.setPaid(paymentRepository.existsBySession_SessionId(session.getSessionId()));
+            response.setPaid(paymentRepository.existsByChargingSession_SessionId(session.getSessionId()));
             return response;
         }).collect(Collectors.toList());
     }
@@ -167,7 +167,7 @@ public class StaffDashboardService {
         }
 
         // Kiểm tra đã thanh toán chưa
-        if (paymentRepository.existsBySession_SessionId(session.getSessionId())) {
+        if (paymentRepository.existsByChargingSession_SessionId(session.getSessionId())) {
             throw new AppException(ErrorCode.PAYMENT_ALREADY_EXISTS);
         }
 
@@ -181,7 +181,7 @@ public class StaffDashboardService {
                 .paymentTime(LocalDateTime.now())
                 .status(PaymentStatus.COMPLETED)
                 .txnReference("STAFF_" + System.currentTimeMillis())
-                .session(session)
+                .chargingSession(session)
                 .build();
 
         paymentRepository.save(payment);

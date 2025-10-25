@@ -59,7 +59,13 @@ public enum ErrorCode {
     CHARGING_POINT_NOT_AVAILABLE(15001, "Charging Point Not Available"),
     INVALID_SOC_RANGE(15002, "Start SOC Must Be Less Than Target SOC"),
     CHARGING_SESSION_NOT_FOUND(15003, "Charging Session Not Found"),
-    CHARGING_SESSION_NOT_ACTIVE(15004, "Charging Session Is Not Active")
+    CHARGING_SESSION_NOT_ACTIVE(15004, "Charging Session Is Not Active"),
+
+    // VNPay Payment related
+    CHARGING_SESSION_NOT_COMPLETED(16001, "Charging Session Not Completed Yet"),
+    PAYMENT_ALREADY_COMPLETED(16002, "Payment Already Completed"),
+    INVALID_PAYMENT_SIGNATURE(16003, "Invalid Payment Signature"),
+    PAYMENT_PROCESSING_FAILED(16004, "Payment Processing Failed")
     ;
 
     private int code;
