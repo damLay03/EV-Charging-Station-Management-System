@@ -13,29 +13,29 @@ import lombok.experimental.FieldDefaults;
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class StationCreationRequest {
-    @NotBlank(message = "Tên trạm không được để trống")
+    @NotBlank(message = "STATION_NAME_REQUIRED")
     String name;
 
-    @NotBlank(message = "Địa chỉ không được để trống")
+    @NotBlank(message = "STATION_ADDRESS_REQUIRED")
     String address;
 
-    @NotNull(message = "Số điểm sạc không được để trống")
-    @Min(value = 1, message = "Số điểm sạc phải lớn hơn 0")
+    @NotNull(message = "STATION_CHARGING_POINTS_REQUIRED")
+    @Min(value = 1, message = "STATION_CHARGING_POINTS_MIN")
     Integer numberOfChargingPoints;
 
-    @NotNull(message = "Công suất không được để trống")
+    @NotNull(message = "STATION_POWER_OUTPUT_REQUIRED")
     ChargingPower powerOutput;
 
     String operatorName;
     String contactPhone;
 
     // Tọa độ là OPTIONAL - nếu không cung cấp, backend sẽ tự động geocode từ địa chỉ
-    @DecimalMin(value = "-90.0", message = "Vĩ độ phải nằm trong khoảng -90 đến 90")
-    @DecimalMax(value = "90.0", message = "Vĩ độ phải nằm trong khoảng -90 đến 90")
+    @DecimalMin(value = "-90.0", message = "LATITUDE_INVALID")
+    @DecimalMax(value = "90.0", message = "LATITUDE_INVALID")
     Double latitude;
 
-    @DecimalMin(value = "-180.0", message = "Kinh độ phải nằm trong khoảng -180 đến 180")
-    @DecimalMax(value = "180.0", message = "Kinh độ phải nằm trong khoảng -180 đến 180")
+    @DecimalMin(value = "-180.0", message = "LONGITUDE_INVALID")
+    @DecimalMax(value = "180.0", message = "LONGITUDE_INVALID")
     Double longitude;
 
     String staffId; // ID của staff quản lý (optional)

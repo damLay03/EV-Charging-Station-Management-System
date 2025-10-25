@@ -19,15 +19,15 @@ API quản lý trạm sạc cho phép ADMIN tạo, cập nhật, xóa trạm s�
 
 ### ChargingPointStatus
 - `AVAILABLE`: Sẵn sàng sử dụng
-- `OCCUPIED`: Đang được sử dụng
-- `OUT_OF_ORDER`: Hỏng hóc
-- `RESERVED`: Đã được đặt trước
+- `IN_USE`: Đang được sử dụng
+- `OFFLINE`: Ngưng hoạt động
+- `MAINTENANCE`: Đang bảo trì
 
-### ConnectorType
-- `TYPE_2`: Chuẩn Type 2 (châu Âu)
-- `CCS2`: Combined Charging System 2
-- `CHADEMO`: Chuẩn CHAdeMO (Nhật Bản)
-- `GB_T`: Chuẩn GB/T (Trung Quốc)
+### ChargingPower
+- `SLOW_7KW`: Sạc chậm 7kW
+- `FAST_22KW`: Sạc nhanh 22kW
+- `RAPID_50KW`: Sạc siêu nhanh 50kW
+- `ULTRA_RAPID_150KW`: Sạc cực nhanh 150kW
 
 ---
 
@@ -39,7 +39,7 @@ API quản lý trạm sạc cho phép ADMIN tạo, cập nhật, xóa trạm s�
 
 **Endpoint**: `GET /api/stations/overview`
 
-**Mô tả**: Lấy danh sách tất cả trạm sạc với thông tin tổng quan (nhẹ hơn endpoint detail).
+**Mô tả**: Lấy danh sách tất cả trạm sạc với thông tin tổng quan.
 
 **Quyền truy cập**: ADMIN
 
@@ -49,17 +49,34 @@ API quản lý trạm sạc cho phép ADMIN tạo, cập nhật, xóa trạm s�
   "code": 1000,
   "result": [
     {
-      "id": "station-uuid-1",
+      "stationId": "station-uuid-1",
       "name": "Trạm sạc Quận 1",
       "address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+      "operatorName": "EV Charging Corp",
+      "contactPhone": "0281234567",
+      "latitude": 10.7769,
+      "longitude": 106.7009,
       "status": "OPERATIONAL",
-      "totalChargingPoints": 8,
-      "availablePoints": 5,
-      "active": true
+      "active": true,
+      "staffId": "staff-uuid-1",
+      "staffName": "Nguyễn Văn A"
     }
   ]
 }
 ```
+
+**Response Fields**:
+- `stationId` (string): ID của trạm
+- `name` (string): Tên trạm
+- `address` (string): Địa chỉ
+- `operatorName` (string, nullable): Tên đơn vị vận hành
+- `contactPhone` (string, nullable): Số điện thoại
+- `latitude` (number, nullable): Vĩ độ
+- `longitude` (number, nullable): Kinh độ
+- `status` (string): Trạng thái (OPERATIONAL | OUT_OF_SERVICE | UNDER_MAINTENANCE)
+- `active` (boolean): true nếu status == OPERATIONAL
+- `staffId` (string, nullable): ID nhân viên quản lý
+- `staffName` (string, nullable): Tên nhân viên quản lý
 
 ---
 
@@ -85,12 +102,17 @@ GET /api/stations?status=OPERATIONAL
   "code": 1000,
   "result": [
     {
-      "id": "station-uuid-1",
+      "stationId": "station-uuid-1",
       "name": "Trạm sạc Quận 1",
       "address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
       "operatorName": "EV Charging Corp",
       "contactPhone": "0281234567",
-      "status": "OPERATIONAL"
+      "latitude": 10.7769,
+      "longitude": 106.7009,
+      "status": "OPERATIONAL",
+      "active": true,
+      "staffId": "staff-uuid-1",
+      "staffName": "Nguyễn Văn A"
     }
   ]
 }
@@ -102,7 +124,7 @@ GET /api/stations?status=OPERATIONAL
 
 **Endpoint**: `GET /api/stations/detail`
 
-**Mô tả**: Lấy danh sách trạm sạc với thông tin đầy đủ (bao gồm điểm sạc, doanh thu, % sử dụng, nhân viên).
+**Mô tả**: Lấy danh sách trạm sạc với thông tin đầy đủ (bao gồm điểm sạc, doanh thu, % sử dụng).
 
 **Quyền truy cập**: ADMIN
 
@@ -115,22 +137,42 @@ GET /api/stations?status=OPERATIONAL
   "code": 1000,
   "result": [
     {
-      "id": "station-uuid-1",
+      "stationId": "station-uuid-1",
       "name": "Trạm sạc Quận 1",
       "address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
-      "operatorName": "EV Charging Corp",
-      "contactPhone": "0281234567",
+      "latitude": 10.7769,
+      "longitude": 106.7009,
       "status": "OPERATIONAL",
       "totalChargingPoints": 8,
-      "availablePoints": 5,
-      "monthlyRevenue": 25000000.0,
-      "usagePercentage": 62.5,
-      "staffCount": 3,
-      "staffNames": ["Nguyễn Văn A", "Trần Thị B"]
+      "activeChargingPoints": 5,
+      "offlineChargingPoints": 1,
+      "maintenanceChargingPoints": 2,
+      "chargingPointsSummary": "Tổng: 8 | Hoạt động: 5 | Offline: 1 | Bảo trì: 2",
+      "revenue": 25000000.0,
+      "usagePercent": 62.5,
+      "staffId": "staff-uuid-1",
+      "staffName": "Nguyễn Văn A"
     }
   ]
 }
 ```
+
+**Response Fields**:
+- `stationId` (string): ID của trạm
+- `name` (string): Tên trạm
+- `address` (string): Địa chỉ
+- `latitude` (number, nullable): Vĩ độ
+- `longitude` (number, nullable): Kinh độ
+- `status` (string): Trạng thái
+- `totalChargingPoints` (integer, nullable): Tổng số điểm sạc
+- `activeChargingPoints` (integer, nullable): Số điểm đang hoạt động
+- `offlineChargingPoints` (integer, nullable): Số điểm offline
+- `maintenanceChargingPoints` (integer, nullable): Số điểm bảo trì
+- `chargingPointsSummary` (string, nullable): Tóm tắt trạng thái điểm sạc
+- `revenue` (number, nullable): Doanh thu
+- `usagePercent` (number, nullable): % sử dụng
+- `staffId` (string, nullable): ID nhân viên quản lý
+- `staffName` (string, nullable): Tên nhân viên quản lý
 
 ---
 
@@ -147,32 +189,43 @@ GET /api/stations?status=OPERATIONAL
 {
   "name": "Trạm sạc Quận 7",
   "address": "456 Nguyễn Văn Linh, Quận 7, TP.HCM",
+  "numberOfChargingPoints": 4,
+  "powerOutput": "FAST_22KW",
   "operatorName": "EV Charging Corp",
   "contactPhone": "0287654321",
-  "status": "OPERATIONAL",
-  "staffIds": ["staff-uuid-1", "staff-uuid-2"]
+  "latitude": 10.7329,
+  "longitude": 106.7196,
+  "staffId": "staff-uuid-1"
 }
 ```
 
 **Request Fields**:
 - `name` (string, required): Tên trạm sạc
 - `address` (string, required): Địa chỉ đầy đủ
+- `numberOfChargingPoints` (integer, required): Số lượng điểm sạc (tối thiểu 1)
+- `powerOutput` (string, required): Công suất sạc (SLOW_7KW | FAST_22KW | RAPID_50KW | ULTRA_RAPID_150KW)
 - `operatorName` (string, optional): Tên đơn vị vận hành
 - `contactPhone` (string, optional): Số điện thoại liên hệ
-- `status` (string, optional): Trạng thái ban đầu (mặc định: OPERATIONAL)
-- `staffIds` (array, optional): Danh sách ID của staff được gán
+- `latitude` (number, optional): Vĩ độ (-90 đến 90) - nếu không gửi sẽ auto geocode
+- `longitude` (number, optional): Kinh độ (-180 đến 180) - nếu không gửi sẽ auto geocode
+- `staffId` (string, optional): ID của staff được gán quản lý
 
 **Response Success** (200 OK):
 ```json
 {
   "code": 1000,
   "result": {
-    "id": "station-uuid-new",
+    "stationId": "station-uuid-new",
     "name": "Trạm sạc Quận 7",
     "address": "456 Nguyễn Văn Linh, Quận 7, TP.HCM",
     "operatorName": "EV Charging Corp",
     "contactPhone": "0287654321",
-    "status": "OPERATIONAL"
+    "latitude": 10.7329,
+    "longitude": 106.7196,
+    "status": "OPERATIONAL",
+    "active": true,
+    "staffId": "staff-uuid-1",
+    "staffName": "Nguyễn Văn A"
   }
 }
 ```
@@ -197,7 +250,10 @@ GET /api/stations?status=OPERATIONAL
   "address": "456 Nguyễn Văn Linh, Quận 7, TP.HCM",
   "operatorName": "EV Charging Corp",
   "contactPhone": "0287654321",
-  "status": "UNDER_MAINTENANCE"
+  "latitude": 10.7329,
+  "longitude": 106.7196,
+  "status": "UNDER_MAINTENANCE",
+  "staffId": "staff-uuid-2"
 }
 ```
 
@@ -206,12 +262,17 @@ GET /api/stations?status=OPERATIONAL
 {
   "code": 1000,
   "result": {
-    "id": "station-uuid-1",
+    "stationId": "station-uuid-1",
     "name": "Trạm sạc Quận 7 - Updated",
     "address": "456 Nguyễn Văn Linh, Quận 7, TP.HCM",
     "operatorName": "EV Charging Corp",
     "contactPhone": "0287654321",
-    "status": "UNDER_MAINTENANCE"
+    "latitude": 10.7329,
+    "longitude": 106.7196,
+    "status": "UNDER_MAINTENANCE",
+    "active": false,
+    "staffId": "staff-uuid-2",
+    "staffName": "Trần Thị B"
   }
 }
 ```
@@ -242,10 +303,17 @@ PATCH /api/stations/station-uuid-1/status?status=OUT_OF_SERVICE
 {
   "code": 1000,
   "result": {
-    "id": "station-uuid-1",
+    "stationId": "station-uuid-1",
     "name": "Trạm sạc Quận 1",
     "address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
-    "status": "OUT_OF_SERVICE"
+    "operatorName": "EV Charging Corp",
+    "contactPhone": "0281234567",
+    "latitude": 10.7769,
+    "longitude": 106.7009,
+    "status": "OUT_OF_SERVICE",
+    "active": false,
+    "staffId": "staff-uuid-1",
+    "staffName": "Nguyễn Văn A"
   }
 }
 ```
@@ -268,9 +336,17 @@ PATCH /api/stations/station-uuid-1/status?status=OUT_OF_SERVICE
 {
   "code": 1000,
   "result": {
-    "id": "station-uuid-1",
+    "stationId": "station-uuid-1",
     "name": "Trạm sạc Quận 1",
-    "status": "OPERATIONAL"
+    "address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "operatorName": "EV Charging Corp",
+    "contactPhone": "0281234567",
+    "latitude": 10.7769,
+    "longitude": 106.7009,
+    "status": "OPERATIONAL",
+    "active": true,
+    "staffId": "staff-uuid-1",
+    "staffName": "Nguyễn Văn A"
   }
 }
 ```
@@ -293,237 +369,18 @@ PATCH /api/stations/station-uuid-1/status?status=OUT_OF_SERVICE
 {
   "code": 1000,
   "result": {
-    "id": "station-uuid-1",
+    "stationId": "station-uuid-1",
     "name": "Trạm sạc Quận 1",
-    "status": "OUT_OF_SERVICE"
+    "address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "operatorName": "EV Charging Corp",
+    "contactPhone": "0281234567",
+    "latitude": 10.7769,
+    "longitude": 106.7009,
+    "status": "OUT_OF_SERVICE",
+    "active": false,
+    "staffId": "staff-uuid-1",
+    "staffName": "Nguyễn Văn A"
   }
-}
-```
-
----
-
-#### 9. Toggle trạng thái trạm sạc
-
-**Endpoint**: `PATCH /api/stations/{stationId}/toggle`
-
-**Mô tả**: Chuyển đổi trạng thái giữa OPERATIONAL và OUT_OF_SERVICE.
-
-**Quyền truy cập**: ADMIN
-
-**Path Parameters**:
-- `stationId` (string, required): ID của trạm sạc
-
-**Response Success** (200 OK):
-```json
-{
-  "code": 1000,
-  "result": {
-    "id": "station-uuid-1",
-    "name": "Trạm sạc Quận 1",
-    "status": "OPERATIONAL"
-  }
-}
-```
-
----
-
-#### 10. Xóa trạm sạc
-
-**Endpoint**: `DELETE /api/stations/{stationId}`
-
-**Mô tả**: Xóa trạm sạc khỏi hệ thống. Các charging points liên quan sẽ tự động bị xóa (cascade).
-
-**Quyền truy cập**: ADMIN
-
-**Path Parameters**:
-- `stationId` (string, required): ID của trạm sạc
-
-**Response Success** (200 OK):
-```json
-{
-  "code": 1000,
-  "message": "Station deleted successfully"
-}
-```
-
----
-
-### STAFF MANAGEMENT
-
-#### 11. Lấy danh sách tất cả nhân viên
-
-**Endpoint**: `GET /api/stations/staff/all`
-
-**Mô tả**: Lấy danh sách tất cả staff để chọn khi tạo/cập nhật trạm sạc.
-
-**Quyền truy cập**: ADMIN
-
-**Response Success** (200 OK):
-```json
-{
-  "code": 1000,
-  "result": [
-    {
-      "id": "staff-uuid-1",
-      "fullName": "Nguyễn Văn A",
-      "email": "staffa@example.com",
-      "phoneNumber": "0901234567",
-      "currentStationId": "station-uuid-1",
-      "currentStationName": "Trạm sạc Quận 1"
-    }
-  ]
-}
-```
-
----
-
-### CHARGING POINTS MANAGEMENT
-
-#### 12. Thêm trụ sạc vào trạm
-
-**Endpoint**: `POST /api/stations/{stationId}/charging-points`
-
-**Mô tả**: Tạo thêm trụ sạc cho trạm sạc đã tồn tại.
-
-**Quyền truy cập**: ADMIN
-
-**Path Parameters**:
-- `stationId` (string, required): ID của trạm sạc
-
-**Request Body**:
-```json
-{
-  "name": "Trụ A1",
-  "powerKw": 50.0,
-  "connectorType": "CCS2",
-  "pricePerKwh": 5000.0,
-  "status": "AVAILABLE"
-}
-```
-
-**Request Fields**:
-- `name` (string, optional): Tên trụ sạc (nếu không cung cấp, hệ thống tự sinh)
-- `powerKw` (number, required): Công suất (kW)
-- `connectorType` (string, required): Loại đầu sạc (TYPE_2 | CCS2 | CHADEMO | GB_T)
-- `pricePerKwh` (number, required): Giá mỗi kWh (VNĐ)
-- `status` (string, optional): Trạng thái ban đầu (mặc định: AVAILABLE)
-
-**Response Success** (200 OK):
-```json
-{
-  "code": 1000,
-  "result": {
-    "id": "cp-uuid-1",
-    "name": "Trụ A1",
-    "powerKw": 50.0,
-    "connectorType": "CCS2",
-    "pricePerKwh": 5000.0,
-    "status": "AVAILABLE",
-    "stationId": "station-uuid-1"
-  },
-  "message": "Charging point created successfully"
-}
-```
-
----
-
-#### 13. Lấy danh sách trụ sạc của trạm
-
-**Endpoint**: `GET /api/stations/{stationId}/charging-points`
-
-**Mô tả**: Lấy tất cả trụ sạc của một trạm sạc.
-
-**Quyền truy cập**: Public
-
-**Path Parameters**:
-- `stationId` (string, required): ID của trạm sạc
-
-**Response Success** (200 OK):
-```json
-{
-  "code": 1000,
-  "result": [
-    {
-      "id": "cp-uuid-1",
-      "name": "Trụ A1",
-      "powerKw": 50.0,
-      "connectorType": "CCS2",
-      "pricePerKwh": 5000.0,
-      "status": "AVAILABLE",
-      "stationId": "station-uuid-1"
-    },
-    {
-      "id": "cp-uuid-2",
-      "name": "Trụ A2",
-      "powerKw": 100.0,
-      "connectorType": "CCS2",
-      "pricePerKwh": 6000.0,
-      "status": "OCCUPIED",
-      "stationId": "station-uuid-1"
-    }
-  ]
-}
-```
-
----
-
-#### 14. Cập nhật thông tin trụ sạc
-
-**Endpoint**: `PUT /api/stations/{stationId}/charging-points/{chargingPointId}`
-
-**Mô tả**: Cập nhật thông tin trụ sạc (status, price, power, connectorType).
-
-**Quyền truy cập**: ADMIN
-
-**Path Parameters**:
-- `stationId` (string, required): ID của trạm sạc
-- `chargingPointId` (string, required): ID của trụ sạc
-
-**Request Body**:
-```json
-{
-  "powerKw": 75.0,
-  "connectorType": "CCS2",
-  "pricePerKwh": 5500.0,
-  "status": "AVAILABLE"
-}
-```
-
-**Response Success** (200 OK):
-```json
-{
-  "code": 1000,
-  "result": {
-    "id": "cp-uuid-1",
-    "name": "Trụ A1",
-    "powerKw": 75.0,
-    "connectorType": "CCS2",
-    "pricePerKwh": 5500.0,
-    "status": "AVAILABLE",
-    "stationId": "station-uuid-1"
-  }
-}
-```
-
----
-
-#### 15. Xóa trụ sạc
-
-**Endpoint**: `DELETE /api/stations/{stationId}/charging-points/{chargingPointId}`
-
-**Mô tả**: Xóa trụ sạc khỏi trạm.
-
-**Quyền truy cập**: ADMIN
-
-**Path Parameters**:
-- `stationId` (string, required): ID của trạm sạc
-- `chargingPointId` (string, required): ID của trụ sạc
-
-**Response Success** (200 OK):
-```json
-{
-  "code": 1000,
-  "message": "Charging point deleted successfully"
 }
 ```
 
@@ -535,26 +392,16 @@ PATCH /api/stations/station-uuid-1/status?status=OUT_OF_SERVICE
 |------|---------|-------------|
 | 1000 | Success | Request thành công |
 | 1002 | Invalid data | Dữ liệu không hợp lệ |
+| 1004 | Unauthenticated | Chưa đăng nhập |
 | 1005 | Unauthorized | Không có quyền truy cập |
-| 1006 | Station not found | Không tìm thấy trạm sạc |
-| 1007 | Charging point not found | Không tìm thấy trụ sạc |
+| 1006 | Not found | Không tìm thấy trạm sạc |
 
 ---
 
-## Lưu ý
+## Lưu ý khi sử dụng
 
-1. **Cascade Delete**: Khi xóa trạm sạc, tất cả trụ sạc thuộc trạm đó cũng bị xóa.
-
-2. **Charging Point Naming**: Nếu không cung cấp tên khi tạo trụ sạc, hệ thống sẽ tự động đặt tên theo format: `{stationName}-CP-{số thứ tự}`.
-
-3. **Status Management**: 
-   - Trạm sạc có 3 trạng thái: OPERATIONAL, OUT_OF_SERVICE, UNDER_MAINTENANCE
-   - Trụ sạc có 4 trạng thái: AVAILABLE, OCCUPIED, OUT_OF_ORDER, RESERVED
-
-4. **Price Configuration**: Giá được tính theo VNĐ/kWh, có thể khác nhau cho từng trụ sạc.
-
-5. **Power Levels**:
-   - Sạc chậm (AC): 7-22 kW
-   - Sạc nhanh (DC): 50-150 kW
-   - Sạc siêu nhanh: 150-350 kW
-
+1. **Tọa độ (latitude, longitude)**: Nếu không cung cấp, hệ thống sẽ tự động geocode từ địa chỉ
+2. **Charging Points**: Khi tạo trạm mới, hệ thống tự động tạo số lượng charging points theo `numberOfChargingPoints`
+3. **Staff Assignment**: Một trạm chỉ có thể gán cho một staff quản lý
+4. **Status vs Active**: `active` là computed field, true khi `status` == OPERATIONAL
+5. **Power Output**: Tất cả charging points trong trạm sẽ có cùng công suất được chỉ định

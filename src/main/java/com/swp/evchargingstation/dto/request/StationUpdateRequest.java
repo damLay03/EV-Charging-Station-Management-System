@@ -12,10 +12,10 @@ import lombok.experimental.FieldDefaults;
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class StationUpdateRequest {
-    @NotBlank(message = "Tên trạm không được để trống")
+    @NotBlank(message = "STATION_NAME_REQUIRED")
     String name;
 
-    @NotBlank(message = "Địa chỉ không được để trống")
+    @NotBlank(message = "STATION_ADDRESS_REQUIRED")
     String address;
 
     String operatorName;
@@ -23,15 +23,15 @@ public class StationUpdateRequest {
     String contactPhone;
 
     // Tọa độ là OPTIONAL - nếu không cung cấp, backend sẽ tự động geocode từ địa chỉ
-    @DecimalMin(value = "-90.0", message = "Vĩ độ phải nằm trong khoảng -90 đến 90")
-    @DecimalMax(value = "90.0", message = "Vĩ độ phải nằm trong khoảng -90 đến 90")
+    @DecimalMin(value = "-90.0", message = "LATITUDE_INVALID")
+    @DecimalMax(value = "90.0", message = "LATITUDE_INVALID")
     Double latitude;
 
-    @DecimalMin(value = "-180.0", message = "Kinh độ phải nằm trong khoảng -180 đến 180")
-    @DecimalMax(value = "180.0", message = "Kinh độ phải nằm trong khoảng -180 đến 180")
+    @DecimalMin(value = "-180.0", message = "LONGITUDE_INVALID")
+    @DecimalMax(value = "180.0", message = "LONGITUDE_INVALID")
     Double longitude;
 
-    @NotNull(message = "Trạng thái không được để trống")
+    @NotNull(message = "STATION_STATUS_REQUIRED")
     StationStatus status;
 
     String staffId; // ID của staff quản lý (optional, null để bỏ gán)

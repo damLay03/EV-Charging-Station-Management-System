@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -325,7 +324,9 @@ public class StaffDashboardService {
             String userId = jwt.getClaim("userId");
             if (userId != null) return userId;
         }
-        // Fallback: dùng name (thường là email) – chỉ khi legacy flow yêu cầu
-        return authentication != null ? authentication.getName() : null;
+        if (authentication != null && authentication.getName() != null) {
+            return authentication.getName();
+        }
+        throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
 }

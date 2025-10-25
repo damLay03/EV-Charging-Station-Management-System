@@ -2,7 +2,7 @@
 
 ## Tổng quan
 
-API Dashboard cho DRIVER hiển thị thống kê và phân tích về hoạt động sạc xe của họ, bao gồm tổng quan, biểu đồ theo giờ, trạm yêu thích và thói quen sạc.
+API Dashboard cho DRIVER hiển thị thống kê và phân tích về hoạt động sạc xe của họ.
 
 - **Base URL**: `http://localhost:8080`
 - **Authentication**: Bearer JWT token
@@ -33,27 +33,19 @@ GET /api/dashboard/summary?period=month
 {
   "code": 1000,
   "result": {
+    "totalRevenue": 2250000.0,
+    "totalEnergyUsed": 450.5,
     "totalSessions": 25,
-    "totalEnergyKwh": 450.5,
-    "totalCost": 2250000.0,
-    "averageCostPerSession": 90000.0,
-    "totalDuration": 1500,
-    "averageDuration": 60,
-    "periodStart": "2025-10-01T00:00:00",
-    "periodEnd": "2025-10-31T23:59:59"
+    "averagePricePerKwh": 5000.0
   }
 }
 ```
 
 **Response Fields**:
+- `totalRevenue` (number): Tổng chi phí đã trả (VNĐ)
+- `totalEnergyUsed` (number): Tổng năng lượng đã sạc (kWh)
 - `totalSessions` (integer): Tổng số phiên sạc
-- `totalEnergyKwh` (number): Tổng năng lượng đã sạc (kWh)
-- `totalCost` (number): Tổng chi phí (VNĐ)
-- `averageCostPerSession` (number): Chi phí trung bình mỗi phiên
-- `totalDuration` (integer): Tổng thời gian sạc (phút)
-- `averageDuration` (integer): Thời gian trung bình mỗi phiên (phút)
-- `periodStart` (string): Ngày bắt đầu khoảng thời gian
-- `periodEnd` (string): Ngày kết thúc khoảng thời gian
+- `averagePricePerKwh` (number): Giá trung bình mỗi kWh (VNĐ)
 
 ---
 
@@ -176,7 +168,7 @@ GET /api/dashboard/favorite-stations?limit=5
 - `visitCount` (integer): Số lần sử dụng
 - `totalEnergyKwh` (number): Tổng năng lượng đã sạc tại trạm này
 - `totalCost` (number): Tổng chi phí tại trạm này
-- `lastVisit` (string): Lần sạc gần nhất
+- `lastVisit` (string): Lần sạc gần nhất (ISO datetime)
 - `averageDuration` (integer): Thời gian sạc trung bình (phút)
 
 ---
@@ -199,43 +191,22 @@ GET /api/dashboard/favorite-stations?limit=5
     "mostActiveDay": "Monday",
     "mostActiveHour": 18,
     "preferredConnectorType": "CCS2",
-    "averageSocStart": 25,
-    "averageSocEnd": 85,
-    "totalDistinctStations": 8,
-    "monthlyTrend": [
-      {
-        "month": "2025-08",
-        "sessionCount": 20,
-        "totalEnergy": 360.0,
-        "totalCost": 1800000.0
-      },
-      {
-        "month": "2025-09",
-        "sessionCount": 23,
-        "totalEnergy": 415.0,
-        "totalCost": 2075000.0
-      },
-      {
-        "month": "2025-10",
-        "sessionCount": 25,
-        "totalEnergy": 450.5,
-        "totalCost": 2250000.0
-      }
-    ]
+    "totalLifetimeSessions": 125,
+    "totalLifetimeEnergy": 2312.5,
+    "totalLifetimeCost": 11562500.0
   }
 }
 ```
 
 **Response Fields**:
-- `averageSessionsPerWeek` (number): Số phiên sạc trung bình mỗi tuần
+- `averageSessionsPerWeek` (number): Trung bình số phiên sạc mỗi tuần
 - `averageEnergyPerSession` (number): Năng lượng trung bình mỗi phiên (kWh)
-- `mostActiveDay` (string): Ngày trong tuần sạc nhiều nhất
-- `mostActiveHour` (integer): Giờ trong ngày sạc nhiều nhất
-- `preferredConnectorType` (string): Loại đầu sạc ưa thích
-- `averageSocStart` (integer): SOC trung bình khi bắt đầu sạc (%)
-- `averageSocEnd` (integer): SOC trung bình khi kết thúc sạc (%)
-- `totalDistinctStations` (integer): Số trạm khác nhau đã sử dụng
-- `monthlyTrend` (array): Xu hướng theo tháng (3 tháng gần nhất)
+- `mostActiveDay` (string): Ngày trong tuần thường sạc nhất (Monday, Tuesday, ...)
+- `mostActiveHour` (integer): Giờ trong ngày thường sạc nhất (0-23)
+- `preferredConnectorType` (string): Loại connector thường dùng nhất
+- `totalLifetimeSessions` (integer): Tổng số phiên sạc từ trước đến nay
+- `totalLifetimeEnergy` (number): Tổng năng lượng đã sạc từ trước đến nay (kWh)
+- `totalLifetimeCost` (number): Tổng chi phí từ trước đến nay (VNĐ)
 
 ---
 
@@ -251,30 +222,20 @@ GET /api/dashboard/favorite-stations?limit=5
 
 ## Lưu ý khi sử dụng
 
-1. **Period Parameter**:
-   - `today`: Chỉ thống kê hôm nay
-   - `week`: 7 ngày gần nhất
-   - `month`: 30 ngày gần nhất
+1. **Period Parameter**: 
+   - `today`: Thống kê trong ngày hôm nay
+   - `week`: Thống kê 7 ngày gần nhất
+   - `month`: Thống kê 30 ngày gần nhất
 
-2. **Caching**:
-   - Dashboard data có thể được cache 5-10 phút để tối ưu performance
-   - Dữ liệu realtime có thể có độ trễ nhỏ
+2. **Hourly Sessions**: 
+   - Luôn trả về đủ 24 giờ
+   - Những giờ không có dữ liệu sẽ có giá trị 0
+   - Dùng để vẽ biểu đồ
 
-3. **Empty Data**:
-   - Nếu user mới, chưa có session nào → trả về giá trị 0
-   - Favorite stations: trả về array rỗng nếu chưa có
+3. **Favorite Stations**: 
+   - Sắp xếp theo số lần sử dụng giảm dần
+   - Mặc định trả về top 5 trạm
 
-4. **Timezone**:
-   - Tất cả datetime đều theo UTC
-   - Frontend cần convert sang timezone local
-
-5. **Chart Visualization**:
-   - Hourly sessions: dùng cho bar chart hoặc line chart
-   - Monthly trend: dùng cho line chart hoặc area chart
-   - Favorite stations: dùng cho table hoặc list view
-
-6. **Performance**:
-   - API đã được optimize với index trên database
-   - Limit số lượng dữ liệu trả về để tránh quá tải
-   - Sử dụng pagination nếu cần load thêm dữ liệu
-
+4. **Charging Statistics**: 
+   - Thống kê toàn bộ lịch sử sạc của driver
+   - Dùng để phân tích thói quen và xu hướng

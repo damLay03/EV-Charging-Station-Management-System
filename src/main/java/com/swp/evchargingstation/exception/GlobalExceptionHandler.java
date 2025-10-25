@@ -46,7 +46,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(value = MethodArgumentNotValidException.class)
     ResponseEntity<ApiResponse> handlingValidation(MethodArgumentNotValidException exception) {
         String enumkey = exception.getFieldError().getDefaultMessage();
-        ErrorCode errorCode = ErrorCode.valueOf(enumkey);
+        ErrorCode errorCode;
+
+        try {
+            errorCode = ErrorCode.valueOf(enumkey);
+        } catch (IllegalArgumentException e) {
+            // Fallback if message is not a valid ErrorCode constant
+            log.warn("Validation message '{}' is not a valid ErrorCode constant", enumkey);
+            errorCode = ErrorCode.VALIDATION_FAILED;
+        }
 
         ApiResponse apiResponse = new ApiResponse();
 

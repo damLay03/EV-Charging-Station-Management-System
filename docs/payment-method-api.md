@@ -16,8 +16,6 @@ API quản lý phương thức thanh toán cho phép DRIVER thêm, xem và xóa 
 - `CREDIT_CARD`: Thẻ tín dụng
 - `DEBIT_CARD`: Thẻ ghi nợ
 - `E_WALLET`: Ví điện tử (Momo, ZaloPay, VNPay, etc.)
-- `BANK_TRANSFER`: Chuyển khoản ngân hàng
-- `CASH`: Tiền mặt
 
 ---
 
@@ -34,40 +32,35 @@ API quản lý phương thức thanh toán cho phép DRIVER thêm, xem và xóa 
 **Request Body**:
 ```json
 {
-  "type": "CREDIT_CARD",
-  "cardNumber": "4111111111111111",
-  "cardHolderName": "NGUYEN VAN A",
-  "expiryDate": "12/26",
-  "isDefault": true
+  "methodType": "CREDIT_CARD",
+  "provider": "Visa",
+  "token": "4111111111111111"
 }
 ```
 
 **Request Fields**:
-- `type` (string, required): Loại thanh toán (CREDIT_CARD | DEBIT_CARD | E_WALLET | BANK_TRANSFER | CASH)
-- `cardNumber` (string, optional): Số thẻ (cho CREDIT_CARD, DEBIT_CARD)
-- `cardHolderName` (string, optional): Tên chủ thẻ
-- `expiryDate` (string, optional): Ngày hết hạn (MM/YY)
-- `eWalletPhone` (string, optional): Số điện thoại ví điện tử (cho E_WALLET)
-- `eWalletProvider` (string, optional): Nhà cung cấp ví (Momo, ZaloPay, VNPay)
-- `bankName` (string, optional): Tên ngân hàng (cho BANK_TRANSFER)
-- `accountNumber` (string, optional): Số tài khoản
-- `isDefault` (boolean, optional): Đặt làm phương thức mặc định (mặc định: false)
+- `methodType` (string, required): Loại thanh toán (CREDIT_CARD | DEBIT_CARD | E_WALLET)
+- `provider` (string, optional): Nhà cung cấp (Visa, MasterCard, Momo, ZaloPay, VNPay)
+- `token` (string, optional): Số thẻ/tài khoản (nên được mã hóa từ client)
 
 **Response Success** (200 OK):
 ```json
 {
   "code": 1000,
   "result": {
-    "id": "pm-uuid-1",
-    "type": "CREDIT_CARD",
-    "cardNumber": "************1111",
-    "cardHolderName": "NGUYEN VAN A",
-    "expiryDate": "12/26",
-    "isDefault": true,
-    "createdAt": "2025-10-25T10:30:00"
+    "pmId": "pm-uuid-1",
+    "methodType": "CREDIT_CARD",
+    "provider": "Visa",
+    "maskedToken": "************1111"
   }
 }
 ```
+
+**Response Fields**:
+- `pmId` (string): ID của phương thức thanh toán
+- `methodType` (string): Loại thanh toán
+- `provider` (string, nullable): Nhà cung cấp
+- `maskedToken` (string, nullable): Token đã được mask (chỉ hiển thị 4 số cuối)
 
 **Lưu ý**: Số thẻ được mask (chỉ hiển thị 4 số cuối) vì bảo mật.
 
@@ -87,29 +80,22 @@ API quản lý phương thức thanh toán cho phép DRIVER thêm, xem và xóa 
   "code": 1000,
   "result": [
     {
-      "id": "pm-uuid-1",
-      "type": "CREDIT_CARD",
-      "cardNumber": "************1111",
-      "cardHolderName": "NGUYEN VAN A",
-      "expiryDate": "12/26",
-      "isDefault": true,
-      "createdAt": "2025-10-25T10:30:00"
+      "pmId": "pm-uuid-1",
+      "methodType": "CREDIT_CARD",
+      "provider": "Visa",
+      "maskedToken": "************1111"
     },
     {
-      "id": "pm-uuid-2",
-      "type": "E_WALLET",
-      "eWalletProvider": "Momo",
-      "eWalletPhone": "0901234567",
-      "isDefault": false,
-      "createdAt": "2025-10-20T15:45:00"
+      "pmId": "pm-uuid-2",
+      "methodType": "E_WALLET",
+      "provider": "Momo",
+      "maskedToken": "****4567"
     },
     {
-      "id": "pm-uuid-3",
-      "type": "BANK_TRANSFER",
-      "bankName": "Vietcombank",
-      "accountNumber": "1234567890",
-      "isDefault": false,
-      "createdAt": "2025-10-18T09:00:00"
+      "pmId": "pm-uuid-3",
+      "methodType": "DEBIT_CARD",
+      "provider": "Vietcombank",
+      "maskedToken": "************7890"
     }
   ]
 }
@@ -169,25 +155,17 @@ API quản lý phương thức thanh toán cho phép DRIVER thêm, xem và xóa 
 
 2. **Validation**:
    - Số thẻ phải hợp lệ (Luhn algorithm)
-   - Ngày hết hạn phải trong tương lai
-   - Số điện thoại phải đúng format Việt Nam
+   - Token nên được mã hóa từ phía client trước khi gửi lên server
 
-3. **Default Payment Method**:
-   - Nếu đặt một phương thức làm default, các phương thức khác tự động bỏ flag default
-   - Phương thức default được sử dụng tự động khi thanh toán subscription
+3. **Payment Method Types**:
+   - **CREDIT_CARD/DEBIT_CARD**: Cần provider (Visa, MasterCard, JCB...) và token (số thẻ)
+   - **E_WALLET**: Cần provider (Momo, ZaloPay, VNPay) và token (số điện thoại hoặc ID ví)
 
-4. **Payment Method Types**:
-   - **CREDIT_CARD/DEBIT_CARD**: Cần cardNumber, cardHolderName, expiryDate
-   - **E_WALLET**: Cần eWalletProvider, eWalletPhone
-   - **BANK_TRANSFER**: Cần bankName, accountNumber
-   - **CASH**: Không cần thông tin thêm (thanh toán trực tiếp tại trạm)
-
-5. **Delete Restrictions**:
+4. **Delete Restrictions**:
    - Không xóa được phương thức đang dùng cho subscription
    - Không xóa được phương thức có payment đang pending
-   - Nên vô hiệu hóa thay vì xóa để giữ lịch sử
 
-6. **Integration với Payment Gateway**:
+5. **Integration với Payment Gateway**:
    - Trong production, cần tích hợp với payment gateway thực (Stripe, VNPay, etc.)
    - API này chỉ lưu thông tin, không xử lý thanh toán thực tế
    - Payment processing được thực hiện ở service layer

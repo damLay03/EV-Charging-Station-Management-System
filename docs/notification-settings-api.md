@@ -48,53 +48,46 @@ API quản lý cài đặt thông báo cho phép người dùng tùy chỉnh cá
   "code": 1000,
   "result": [
     {
-      "id": "setting-uuid-1",
-      "userId": "user-uuid-1",
+      "settingId": "setting-uuid-1",
       "notificationType": "CHARGING_COMPLETED",
-      "emailEnabled": true,
-      "smsEnabled": false,
-      "pushEnabled": true,
-      "inAppEnabled": true
+      "channel": "EMAIL",
+      "isEnabled": true
     },
     {
-      "id": "setting-uuid-2",
-      "userId": "user-uuid-1",
+      "settingId": "setting-uuid-2",
+      "notificationType": "CHARGING_COMPLETED",
+      "channel": "PUSH",
+      "isEnabled": true
+    },
+    {
+      "settingId": "setting-uuid-3",
       "notificationType": "PAYMENT_SUCCESS",
-      "emailEnabled": true,
-      "smsEnabled": true,
-      "pushEnabled": true,
-      "inAppEnabled": true
+      "channel": "EMAIL",
+      "isEnabled": true
     },
     {
-      "id": "setting-uuid-3",
-      "userId": "user-uuid-1",
-      "notificationType": "SUBSCRIPTION_EXPIRING",
-      "emailEnabled": true,
-      "smsEnabled": false,
-      "pushEnabled": true,
-      "inAppEnabled": true
+      "settingId": "setting-uuid-4",
+      "notificationType": "PAYMENT_SUCCESS",
+      "channel": "SMS",
+      "isEnabled": true
     },
     {
-      "id": "setting-uuid-4",
-      "userId": "user-uuid-1",
+      "settingId": "setting-uuid-5",
       "notificationType": "PROMOTION",
-      "emailEnabled": false,
-      "smsEnabled": false,
-      "pushEnabled": false,
-      "inAppEnabled": false
+      "channel": "EMAIL",
+      "isEnabled": false
     }
   ]
 }
 ```
 
 **Response Fields** (mỗi setting):
-- `id` (string): ID của cài đặt
-- `userId` (string): ID người dùng
+- `settingId` (string): ID của cài đặt
 - `notificationType` (string): Loại thông báo
-- `emailEnabled` (boolean): Bật/tắt email
-- `smsEnabled` (boolean): Bật/tắt SMS
-- `pushEnabled` (boolean): Bật/tắt push notification
-- `inAppEnabled` (boolean): Bật/tắt in-app notification
+- `channel` (string): Kênh gửi thông báo (EMAIL | SMS | PUSH | IN_APP)
+- `isEnabled` (boolean): Trạng thái bật/tắt
+
+**Lưu ý**: Mỗi setting là một tổ hợp của (notificationType + channel). Ví dụ: "CHARGING_COMPLETED qua EMAIL" và "CHARGING_COMPLETED qua PUSH" là 2 settings riêng biệt.
 
 ---
 
@@ -102,7 +95,7 @@ API quản lý cài đặt thông báo cho phép người dùng tùy chỉnh cá
 
 **Endpoint**: `PUT /api/notification`
 
-**Mô tả**: Cập nhật nhiều cài đặt thông báo cùng một lúc (khi người dùng nhấn "Lưu cài đặt").
+**Mô tả**: Cập nhật nhiều cài đặt thông báo cùng một lúc.
 
 **Quyền truy cập**: Authenticated (Bearer token)
 
@@ -112,24 +105,23 @@ API quản lý cài đặt thông báo cho phép người dùng tùy chỉnh cá
   "settings": [
     {
       "notificationType": "CHARGING_COMPLETED",
-      "emailEnabled": true,
-      "smsEnabled": false,
-      "pushEnabled": true,
-      "inAppEnabled": true
+      "channel": "EMAIL",
+      "isEnabled": true
+    },
+    {
+      "notificationType": "CHARGING_COMPLETED",
+      "channel": "PUSH",
+      "isEnabled": true
     },
     {
       "notificationType": "PAYMENT_SUCCESS",
-      "emailEnabled": true,
-      "smsEnabled": true,
-      "pushEnabled": true,
-      "inAppEnabled": true
+      "channel": "EMAIL",
+      "isEnabled": true
     },
     {
       "notificationType": "PROMOTION",
-      "emailEnabled": false,
-      "smsEnabled": false,
-      "pushEnabled": false,
-      "inAppEnabled": false
+      "channel": "EMAIL",
+      "isEnabled": false
     }
   ]
 }
@@ -140,10 +132,8 @@ API quản lý cài đặt thông báo cho phép người dùng tùy chỉnh cá
 
 **Mỗi item trong settings**:
 - `notificationType` (string, required): Loại thông báo
-- `emailEnabled` (boolean, required): Bật/tắt email
-- `smsEnabled` (boolean, required): Bật/tắt SMS
-- `pushEnabled` (boolean, required): Bật/tắt push
-- `inAppEnabled` (boolean, required): Bật/tắt in-app
+- `channel` (string, required): Kênh gửi (EMAIL | SMS | PUSH | IN_APP)
+- `isEnabled` (boolean, required): Bật/tắt
 
 **Response Success** (200 OK):
 ```json
@@ -151,22 +141,28 @@ API quản lý cài đặt thông báo cho phép người dùng tùy chỉnh cá
   "code": 1000,
   "result": [
     {
-      "id": "setting-uuid-1",
-      "userId": "user-uuid-1",
+      "settingId": "setting-uuid-1",
       "notificationType": "CHARGING_COMPLETED",
-      "emailEnabled": true,
-      "smsEnabled": false,
-      "pushEnabled": true,
-      "inAppEnabled": true
+      "channel": "EMAIL",
+      "isEnabled": true
     },
     {
-      "id": "setting-uuid-2",
-      "userId": "user-uuid-1",
+      "settingId": "setting-uuid-2",
+      "notificationType": "CHARGING_COMPLETED",
+      "channel": "PUSH",
+      "isEnabled": true
+    },
+    {
+      "settingId": "setting-uuid-3",
       "notificationType": "PAYMENT_SUCCESS",
-      "emailEnabled": true,
-      "smsEnabled": true,
-      "pushEnabled": true,
-      "inAppEnabled": true
+      "channel": "EMAIL",
+      "isEnabled": true
+    },
+    {
+      "settingId": "setting-uuid-4",
+      "notificationType": "PROMOTION",
+      "channel": "EMAIL",
+      "isEnabled": false
     }
   ]
 }
@@ -174,46 +170,35 @@ API quản lý cài đặt thông báo cho phép người dùng tùy chỉnh cá
 
 ---
 
-### 3. Cập nhật một cài đặt cụ thể (Single Update)
+### 3. Cập nhật một cài đặt cụ thể
 
-**Endpoint**: `PATCH /api/notification/single`
+**Endpoint**: `PUT /api/notification/{settingId}`
 
-**Mô tả**: Cập nhật một cài đặt cụ thể (khi người dùng toggle từng switch).
+**Mô tả**: Cập nhật một cài đặt thông báo cụ thể.
 
 **Quyền truy cập**: Authenticated (Bearer token)
+
+**Path Parameters**:
+- `settingId` (string, required): ID của cài đặt cần cập nhật
 
 **Request Body**:
 ```json
 {
-  "notificationType": "PROMOTION",
-  "emailEnabled": false,
-  "smsEnabled": false,
-  "pushEnabled": true,
-  "inAppEnabled": false
+  "notificationType": "CHARGING_COMPLETED",
+  "channel": "EMAIL",
+  "isEnabled": true
 }
 ```
-
-**Request Fields**:
-- `notificationType` (string, required): Loại thông báo cần cập nhật
-- `emailEnabled` (boolean, optional): Bật/tắt email
-- `smsEnabled` (boolean, optional): Bật/tắt SMS
-- `pushEnabled` (boolean, optional): Bật/tắt push
-- `inAppEnabled` (boolean, optional): Bật/tắt in-app
-
-**Lưu ý**: Chỉ cần gửi các field muốn cập nhật, không cần gửi tất cả.
 
 **Response Success** (200 OK):
 ```json
 {
   "code": 1000,
   "result": {
-    "id": "setting-uuid-4",
-    "userId": "user-uuid-1",
-    "notificationType": "PROMOTION",
-    "emailEnabled": false,
-    "smsEnabled": false,
-    "pushEnabled": true,
-    "inAppEnabled": false
+    "settingId": "setting-uuid-1",
+    "notificationType": "CHARGING_COMPLETED",
+    "channel": "EMAIL",
+    "isEnabled": true
   }
 }
 ```
@@ -228,69 +213,30 @@ API quản lý cài đặt thông báo cho phép người dùng tùy chỉnh cá
 | 1002 | Invalid data | Dữ liệu không hợp lệ |
 | 1004 | Unauthenticated | Chưa đăng nhập |
 | 1005 | Unauthorized | Không có quyền truy cập |
+| 1006 | Not found | Không tìm thấy cài đặt |
 
 ---
 
 ## Lưu ý khi sử dụng
 
-1. **Default Settings**:
-   - Khi user mới đăng ký, hệ thống tự động tạo settings với giá trị mặc định
-   - Mặc định bật email và push cho các thông báo quan trọng (CHARGING_COMPLETED, PAYMENT_SUCCESS)
-   - Mặc định tắt SMS (do có phí) và PROMOTION
+1. **Cấu trúc dữ liệu**: 
+   - Mỗi setting là một tổ hợp của (notificationType + channel)
+   - Người dùng có thể bật CHARGING_COMPLETED cho EMAIL nhưng tắt cho SMS
 
-2. **Batch vs Single Update**:
-   - **Batch Update** (`PUT /api/notification`): Dùng khi lưu toàn bộ form settings
-   - **Single Update** (`PATCH /api/notification/single`): Dùng khi toggle từng switch riêng lẻ
-   - Single update nhanh hơn, phù hợp với UX real-time
+2. **Batch Update**:
+   - Gửi tất cả settings cần thay đổi trong một request
+   - Hệ thống tự động tạo mới hoặc cập nhật settings hiện có
 
-3. **Notification Types Priority**:
-   - **Critical** (nên bật): CHARGING_COMPLETED, PAYMENT_SUCCESS, PAYMENT_FAILED
-   - **Important**: CHARGING_STARTED, SUBSCRIPTION_EXPIRING, STATION_MAINTENANCE
-   - **Optional**: PROMOTION, LOW_BATTERY
+3. **Default Settings**:
+   - Khi tạo user mới, hệ thống có thể tự động tạo default settings
+   - User có thể customize sau
 
-4. **Channel Costs**:
-   - EMAIL: Miễn phí
-   - PUSH/IN_APP: Miễn phí
-   - SMS: Có phí, cân nhắc trước khi bật
+4. **Notification Channels**:
+   - **EMAIL**: Gửi qua email đã đăng ký
+   - **SMS**: Gửi qua số điện thoại (cần phone number)
+   - **PUSH**: Push notification trên mobile app
+   - **IN_APP**: Hiển thị trong app (notification center)
 
-5. **UI/UX Recommendations**:
-   - Hiển thị settings dạng bảng với toggle switches
-   - Mỗi hàng là một notification type
-   - Mỗi cột là một channel (Email, SMS, Push, In-App)
-   - Auto-save khi toggle hoặc có nút "Save All"
-
-6. **Notification Delivery**:
-   - Hệ thống check settings trước khi gửi notification
-   - Chỉ gửi qua các channel được bật
-   - Log lại delivery status để tracking
-
-7. **Privacy**:
-   - User có quyền tắt tất cả notification nếu muốn
-   - Không bắt buộc phải bật bất kỳ channel nào
-   - Tuy nhiên nên khuyến nghị bật ít nhất email cho thông báo quan trọng
-
-8. **Validation**:
-   - NotificationType phải hợp lệ (theo enum)
-   - Ít nhất phải có một field enabled trong request
-   - Không thể tạo duplicate settings cho cùng một notification type
-
-## UI Example
-
-Gợi ý layout cho trang Settings:
-
-```
-╔════════════════════════════════════════════════════════════╗
-║  Notification Settings                                      ║
-╠════════════════════════════════════════════════════════════╣
-║  Notification Type          Email   SMS   Push   In-App    ║
-╠────────────────────────────────────────────────────────────╣
-║  Charging Completed          [✓]    [ ]   [✓]    [✓]      ║
-║  Payment Success             [✓]    [✓]   [✓]    [✓]      ║
-║  Subscription Expiring       [✓]    [ ]   [✓]    [✓]      ║
-║  Promotion                   [ ]    [ ]   [ ]    [ ]      ║
-║  ...                                                        ║
-╠────────────────────────────────────────────────────────────╣
-║                                        [Cancel]  [Save All] ║
-╚════════════════════════════════════════════════════════════╝
-```
-
+5. **Best Practices**:
+   - Cho phép user tắt PROMOTION nhưng nên giữ bật các thông báo quan trọng như PAYMENT_SUCCESS
+   - Các thông báo hệ thống quan trọng (PAYMENT_FAILED) không nên cho phép tắt hoàn toàn

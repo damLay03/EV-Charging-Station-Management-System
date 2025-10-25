@@ -24,30 +24,30 @@ API quản lý người dùng cho phép đăng ký tài khoản mới, xem và c
 **Request Body**:
 ```json
 {
-  "fullName": "Nguyễn Văn A",
   "email": "nguyenvana@example.com",
   "password": "Password123!",
-  "phoneNumber": "0901234567",
-  "address": "123 Đường ABC, Quận 1, TP.HCM"
+  "confirmPassword": "Password123!"
 }
 ```
 
 **Request Fields**:
-- `fullName` (string, required): Họ và tên đầy đủ
 - `email` (string, required): Email (phải unique, format hợp lệ)
-- `password` (string, required): Mật khẩu (tối thiểu 8 ký tự)
-- `phoneNumber` (string, required): Số điện thoại
-- `address` (string, optional): Địa chỉ
+- `password` (string, required): Mật khẩu (tối thiểu 6 ký tự)
+- `confirmPassword` (string, required): Xác nhận mật khẩu (phải khớp với password)
 
 **Response Success** (200 OK):
 ```json
 {
   "code": 1000,
   "result": {
-    "id": "user-uuid-123",
-    "fullName": "Nguyễn Văn A",
+    "userId": "user-uuid-123",
     "email": "nguyenvana@example.com",
-    "phoneNumber": "0901234567",
+    "phone": null,
+    "dateOfBirth": null,
+    "gender": null,
+    "firstName": null,
+    "lastName": null,
+    "fullName": null,
     "role": "DRIVER"
   }
 }
@@ -78,15 +78,33 @@ API quản lý người dùng cho phép đăng ký tài khoản mới, xem và c
 {
   "code": 1000,
   "result": {
-    "id": "user-uuid-123",
-    "fullName": "Nguyễn Văn A",
+    "userId": "user-uuid-123",
     "email": "nguyenvana@example.com",
-    "phoneNumber": "0901234567",
+    "phone": "0901234567",
+    "dateOfBirth": "1990-01-15",
+    "gender": "MALE",
+    "firstName": "Văn",
+    "lastName": "Nguyễn",
+    "fullName": "Nguyễn Văn A",
+    "role": "DRIVER",
     "address": "123 Đường ABC, Quận 1, TP.HCM",
     "joinDate": "2024-01-15T10:30:00"
   }
 }
 ```
+
+**Response Fields**:
+- `userId` (string): ID của user
+- `email` (string): Email
+- `phone` (string, nullable): Số điện thoại
+- `dateOfBirth` (string, nullable): Ngày sinh (yyyy-MM-dd)
+- `gender` (string, nullable): Giới tính (MALE | FEMALE | OTHER)
+- `firstName` (string, nullable): Tên
+- `lastName` (string, nullable): Họ
+- `fullName` (string, nullable): Họ và tên đầy đủ
+- `role` (string): Vai trò
+- `address` (string, nullable): Địa chỉ (chỉ có trong DriverResponse)
+- `joinDate` (string, nullable): Ngày tham gia (chỉ có trong DriverResponse)
 
 ---
 
@@ -101,27 +119,37 @@ API quản lý người dùng cho phép đăng ký tài khoản mới, xem và c
 **Request Body** (tất cả các field đều optional):
 ```json
 {
-  "fullName": "Nguyễn Văn A Updated",
-  "phoneNumber": "0912345678",
+  "phone": "0912345678",
+  "dateOfBirth": "1990-01-15",
+  "gender": "MALE",
+  "firstName": "Văn",
+  "lastName": "Nguyễn",
   "address": "456 Đường XYZ, Quận 2, TP.HCM"
 }
 ```
 
 **Request Fields**:
-- `fullName` (string, optional): Họ tên mới
-- `phoneNumber` (string, optional): Số điện thoại mới
+- `phone` (string, optional): Số điện thoại mới
+- `dateOfBirth` (string, optional): Ngày sinh (yyyy-MM-dd)
+- `gender` (string, optional): Giới tính (MALE | FEMALE | OTHER)
+- `firstName` (string, optional): Tên
+- `lastName` (string, optional): Họ
 - `address` (string, optional): Địa chỉ mới
-- `password` (string, optional): Mật khẩu mới (nếu muốn đổi)
 
 **Response Success** (200 OK):
 ```json
 {
   "code": 1000,
   "result": {
-    "id": "user-uuid-123",
-    "fullName": "Nguyễn Văn A Updated",
+    "userId": "user-uuid-123",
     "email": "nguyenvana@example.com",
-    "phoneNumber": "0912345678",
+    "phone": "0912345678",
+    "dateOfBirth": "1990-01-15",
+    "gender": "MALE",
+    "firstName": "Văn",
+    "lastName": "Nguyễn",
+    "fullName": "Nguyễn Văn",
+    "role": "DRIVER",
     "address": "456 Đường XYZ, Quận 2, TP.HCM",
     "joinDate": "2024-01-15T10:30:00"
   }
@@ -146,28 +174,41 @@ API quản lý người dùng cho phép đăng ký tài khoản mới, xem và c
   "code": 1000,
   "result": [
     {
-      "id": "user-uuid-123",
       "fullName": "Nguyễn Văn A",
       "email": "nguyenvana@example.com",
-      "phoneNumber": "0901234567",
-      "role": "DRIVER",
-      "joinDate": "2024-01-15T10:30:00",
-      "totalSessions": 25,
-      "totalSpent": 1250000.0
+      "phone": "0901234567",
+      "joinDate": "2024-01-15",
+      "planName": "Gói Tiêu chuẩn",
+      "sessionCount": 25,
+      "totalSpent": 1250000.0,
+      "status": "Hoạt động",
+      "isActive": true
     },
     {
-      "id": "user-uuid-456",
       "fullName": "Trần Thị B",
       "email": "tranthib@example.com",
-      "phoneNumber": "0987654321",
-      "role": "DRIVER",
-      "joinDate": "2024-02-20T14:15:00",
-      "totalSessions": 10,
-      "totalSpent": 500000.0
+      "phone": "0987654321",
+      "joinDate": "2024-02-20",
+      "planName": "Gói Premium",
+      "sessionCount": 10,
+      "totalSpent": 500000.0,
+      "status": "Hoạt động",
+      "isActive": true
     }
   ]
 }
 ```
+
+**Response Fields** (mỗi user):
+- `fullName` (string, nullable): Họ và tên đầy đủ
+- `email` (string): Email
+- `phone` (string, nullable): Số điện thoại
+- `joinDate` (string, nullable): Ngày tham gia (yyyy-MM-dd)
+- `planName` (string, nullable): Tên gói dịch vụ đang sử dụng
+- `sessionCount` (integer, nullable): Số phiên sạc đã thực hiện
+- `totalSpent` (number, nullable): Tổng chi tiêu
+- `status` (string, nullable): Trạng thái text
+- `isActive` (boolean, nullable): Trạng thái hoạt động
 
 ---
 
@@ -187,10 +228,15 @@ API quản lý người dùng cho phép đăng ký tài khoản mới, xem và c
 {
   "code": 1000,
   "result": {
-    "id": "user-uuid-123",
-    "fullName": "Nguyễn Văn A",
+    "userId": "user-uuid-123",
     "email": "nguyenvana@example.com",
-    "phoneNumber": "0901234567",
+    "phone": "0901234567",
+    "dateOfBirth": "1990-01-15",
+    "gender": "MALE",
+    "firstName": "Văn",
+    "lastName": "Nguyễn",
+    "fullName": "Nguyễn Văn A",
+    "role": "DRIVER",
     "address": "123 Đường ABC, Quận 1, TP.HCM",
     "joinDate": "2024-01-15T10:30:00"
   }
@@ -203,37 +249,48 @@ API quản lý người dùng cho phép đăng ký tài khoản mới, xem và c
 
 **Endpoint**: `PUT /api/users/driver/{driverId}`
 
-**Mô tả**: ADMIN cập nhật thông tin của driver (không thể sửa email, password, joinDate).
+**Mô tả**: ADMIN cập nhật thông tin driver (không thể sửa email, password, joinDate).
 
 **Quyền truy cập**: ADMIN (Bearer token)
 
 **Path Parameters**:
-- `driverId` (string, required): ID của driver cần cập nhật
+- `driverId` (string, required): ID của driver
 
-**Request Body**:
+**Request Body** (tất cả fields đều optional):
 ```json
 {
-  "fullName": "Nguyễn Văn A Modified",
-  "phoneNumber": "0909090909",
-  "address": "789 Đường MNO, Quận 3, TP.HCM"
+  "phone": "0912345678",
+  "dateOfBirth": "1990-01-15",
+  "gender": "MALE",
+  "firstName": "Văn",
+  "lastName": "Nguyễn",
+  "address": "456 Đường XYZ, Quận 2, TP.HCM"
 }
 ```
 
 **Request Fields**:
-- `fullName` (string, optional): Họ tên mới
-- `phoneNumber` (string, optional): Số điện thoại mới
-- `address` (string, optional): Địa chỉ mới
+- `phone` (string, optional): Số điện thoại
+- `dateOfBirth` (string, optional): Ngày sinh (yyyy-MM-dd)
+- `gender` (string, optional): Giới tính (MALE | FEMALE | OTHER)
+- `firstName` (string, optional): Tên
+- `lastName` (string, optional): Họ
+- `address` (string, optional): Địa chỉ
 
 **Response Success** (200 OK):
 ```json
 {
   "code": 1000,
   "result": {
-    "id": "user-uuid-123",
-    "fullName": "Nguyễn Văn A Modified",
+    "userId": "user-uuid-123",
     "email": "nguyenvana@example.com",
-    "phoneNumber": "0909090909",
-    "address": "789 Đường MNO, Quận 3, TP.HCM",
+    "phone": "0912345678",
+    "dateOfBirth": "1990-01-15",
+    "gender": "MALE",
+    "firstName": "Văn",
+    "lastName": "Nguyễn",
+    "fullName": "Nguyễn Văn",
+    "role": "DRIVER",
+    "address": "456 Đường XYZ, Quận 2, TP.HCM",
     "joinDate": "2024-01-15T10:30:00"
   }
 }
@@ -241,11 +298,42 @@ API quản lý người dùng cho phép đăng ký tài khoản mới, xem và c
 
 ---
 
-#### 7. Xóa người dùng
+#### 7. Xem thông tin một user bất kỳ
+
+**Endpoint**: `GET /api/users/{userId}`
+
+**Mô tả**: Lấy thông tin cơ bản của một user.
+
+**Quyền truy cập**: Authenticated
+
+**Path Parameters**:
+- `userId` (string, required): ID của user
+
+**Response Success** (200 OK):
+```json
+{
+  "code": 1000,
+  "result": {
+    "userId": "user-uuid-123",
+    "email": "nguyenvana@example.com",
+    "phone": "0901234567",
+    "dateOfBirth": "1990-01-15",
+    "gender": "MALE",
+    "firstName": "Văn",
+    "lastName": "Nguyễn",
+    "fullName": "Nguyễn Văn A",
+    "role": "DRIVER"
+  }
+}
+```
+
+---
+
+#### 8. Xóa user
 
 **Endpoint**: `DELETE /api/users/{userId}`
 
-**Mô tả**: ADMIN xóa người dùng khỏi hệ thống (hard delete).
+**Mô tả**: ADMIN xóa user khỏi hệ thống (hard delete).
 
 **Quyền truy cập**: ADMIN (Bearer token)
 
@@ -260,72 +348,6 @@ API quản lý người dùng cho phép đăng ký tài khoản mới, xem và c
 }
 ```
 
-**Lưu ý**: Việc xóa user sẽ ảnh hưởng đến dữ liệu liên quan (vehicles, charging sessions, etc.). Cần cân nhắc kỹ trước khi xóa.
-
----
-
-#### 8. Gán role cho người dùng
-
-**Endpoint**: `PUT /api/users/{userId}/role`
-
-**Mô tả**: ADMIN gán role (DRIVER, STAFF, ADMIN) cho người dùng.
-
-**Quyền truy cập**: ADMIN (Bearer token)
-
-**Path Parameters**:
-- `userId` (string, required): ID của user cần gán role
-
-**Request Body**:
-```json
-{
-  "role": "STAFF"
-}
-```
-
-**Request Fields**:
-- `role` (string, required): Role mới (DRIVER | STAFF | ADMIN)
-
-**Response Success** (200 OK):
-```json
-{
-  "code": 1000,
-  "result": {
-    "id": "user-uuid-123",
-    "fullName": "Nguyễn Văn A",
-    "email": "nguyenvana@example.com",
-    "phoneNumber": "0901234567",
-    "role": "STAFF"
-  }
-}
-```
-
----
-
-#### 9. Lấy thông tin user theo ID
-
-**Endpoint**: `GET /api/users/{userId}`
-
-**Mô tả**: Lấy thông tin cơ bản của một user theo ID.
-
-**Quyền truy cập**: Authenticated (Bearer token)
-
-**Path Parameters**:
-- `userId` (string, required): ID của user
-
-**Response Success** (200 OK):
-```json
-{
-  "code": 1000,
-  "result": {
-    "id": "user-uuid-123",
-    "fullName": "Nguyễn Văn A",
-    "email": "nguyenvana@example.com",
-    "phoneNumber": "0901234567",
-    "role": "DRIVER"
-  }
-}
-```
-
 ---
 
 ## Error Codes
@@ -333,29 +355,17 @@ API quản lý người dùng cho phép đăng ký tài khoản mới, xem và c
 | Code | Message | Description |
 |------|---------|-------------|
 | 1000 | Success | Request thành công |
-| 1002 | Invalid data | Dữ liệu không hợp lệ (email đã tồn tại, format sai, v.v.) |
+| 1002 | Invalid data | Dữ liệu không hợp lệ |
 | 1004 | Unauthenticated | Chưa đăng nhập |
 | 1005 | Unauthorized | Không có quyền truy cập |
-| 1006 | User not found | Không tìm thấy người dùng |
+| 1006 | Not found | Không tìm thấy user |
 
 ---
 
-## Lưu ý
+## Lưu ý khi sử dụng
 
-1. **Email unique**: Email phải là duy nhất trong hệ thống, không được trùng lặp.
-
-2. **Password security**: 
-   - Mật khẩu được mã hóa (hash) trước khi lưu vào database
-   - Không thể xem mật khẩu gốc của người dùng
-   - Driver chỉ có thể đổi mật khẩu của chính mình
-
-3. **Role hierarchy**:
-   - ADMIN: Có quyền cao nhất, quản lý toàn bộ hệ thống
-   - STAFF: Quản lý trạm sạc được gán
-   - DRIVER: Người dùng thông thường, sử dụng dịch vụ sạc xe
-
-4. **Self-update vs Admin-update**:
-   - Driver tự update: dùng `PATCH /api/users/driver/myInfo`
-   - Admin update driver: dùng `PUT /api/users/driver/{driverId}`
-   - Không cho phép driver tự thay đổi role hoặc email
-
+1. **Đăng ký**: Chỉ cần email và password, các thông tin khác có thể cập nhật sau
+2. **fullName**: Được tự động tạo từ firstName + lastName
+3. **Gender**: Phải là một trong các giá trị: MALE, FEMALE, OTHER
+4. **Partial Update**: PATCH endpoint chỉ cập nhật các field được gửi lên, field null sẽ không thay đổi
+5. **Admin Privileges**: Admin có thể xem và sửa thông tin tất cả driver nhưng không thể thay đổi email và password

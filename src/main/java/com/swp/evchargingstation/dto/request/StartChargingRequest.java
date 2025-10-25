@@ -10,13 +10,12 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class StartChargingRequest {
-    @NotBlank(message = "Charging Point ID is required")
+    @NotBlank(message = "CHARGING_POINT_ID_REQUIRED")
     String chargingPointId;
 
-    @NotBlank(message = "Vehicle ID is required")
+    @NotBlank(message = "VEHICLE_ID_REQUIRED")
     String vehicleId;
 
     // Optional, default to 100 if null in service
     Integer targetSocPercent;
 }
-

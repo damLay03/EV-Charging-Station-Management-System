@@ -37,7 +37,18 @@ API xác thực sử dụng JWT (JSON Web Token) để bảo mật. Sau khi đă
   "code": 1000,
   "result": {
     "token": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ1c2VyQGV4YW1wbGUuY29tIiwiaWF0IjoxNjk...",
-    "authenticated": true
+    "authenticated": true,
+    "userInfo": {
+      "userId": "user-uuid-123",
+      "email": "user@example.com",
+      "phone": "0901234567",
+      "dateOfBirth": "1990-01-15",
+      "gender": "MALE",
+      "firstName": "Văn",
+      "lastName": "Nguyễn",
+      "fullName": "Nguyễn Văn A",
+      "role": "DRIVER"
+    }
   }
 }
 ```
@@ -45,6 +56,16 @@ API xác thực sử dụng JWT (JSON Web Token) để bảo mật. Sau khi đă
 **Response Fields**:
 - `token` (string): JWT token để sử dụng cho các request tiếp theo
 - `authenticated` (boolean): Trạng thái xác thực
+- `userInfo` (object): Thông tin chi tiết của user
+  - `userId` (string): ID của user
+  - `email` (string): Email
+  - `phone` (string, nullable): Số điện thoại
+  - `dateOfBirth` (string, nullable): Ngày sinh (yyyy-MM-dd)
+  - `gender` (string, nullable): Giới tính (MALE | FEMALE | OTHER)
+  - `firstName` (string, nullable): Tên
+  - `lastName` (string, nullable): Họ
+  - `fullName` (string, nullable): Họ và tên đầy đủ
+  - `role` (string): Vai trò (ADMIN | STAFF | DRIVER)
 
 **Error Response** (401 Unauthorized):
 ```json
@@ -134,4 +155,3 @@ Authorization: Bearer {token}
    - `scope`: Các quyền (roles) của người dùng (ADMIN, STAFF, DRIVER)
    - `iat`: Thời gian phát hành
    - `exp`: Thời gian hết hạn
-

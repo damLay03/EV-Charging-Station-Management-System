@@ -40,7 +40,11 @@ public class ChargingSimulatorService {
     @Transactional
     public void simulateChargingTick() {
         List<ChargingSession> activeSessions = chargingSessionRepository.findByStatus(ChargingSessionStatus.IN_PROGRESS);
-        log.info("Running charging simulation for {} active sessions", activeSessions.size());
+
+        // Only log when there are active sessions to avoid console spam
+        if (!activeSessions.isEmpty()) {
+            log.debug("Running charging simulation for {} active sessions", activeSessions.size());
+        }
 
         for (ChargingSession session : activeSessions) {
             try {
