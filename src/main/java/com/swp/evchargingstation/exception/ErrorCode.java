@@ -9,9 +9,10 @@ public enum ErrorCode {
     UNAUTHENTICATED(1005,"Unauthenticated"),
     VALIDATION_FAILED(1006, "Validation Failed"), // generic validation error
     STATION_NOT_FOUND(2001, "Station Not Found"), // added for station module
-    PLAN_NOT_FOUND(3001, "Plan Not Found"),
-    PLAN_NAME_EXISTED(3002, "Plan Name Existed"),
-    INVALID_PLAN_CONFIG(3003, "Invalid Plan Configuration"),
+    // --- Plan related ---
+    PLAN_NOT_FOUND(6001, "Plan Not Found"),
+    PLAN_NAME_EXISTED(6002, "Plan Name Already Exists"),
+    INVALID_PLAN_CONFIG(6003, "Invalid Plan Configuration"),
     PLAN_IN_USE(3004, "Plan Is Being Used And Cannot Be Deleted"),
     // --- Staff assignment related ---
     STAFF_NOT_FOUND(4001, "Staff Not Found"),
@@ -24,12 +25,8 @@ public enum ErrorCode {
     INVALID_VEHICLE_MODEL_FOR_BRAND(5004, "Vehicle Model Does Not Match Selected Brand"),
     // --- Driver related ---
     DRIVER_NOT_FOUND(6001, "Driver Not Found"),
-    // --- Subscription related ---
-    SUBSCRIPTION_NOT_FOUND(7001, "Subscription Not Found"),
-    SUBSCRIPTION_ALREADY_ACTIVE(7002, "Subscription Already Active"),
-    SUBSCRIPTION_NOT_ACTIVE(7003, "Subscription Not Active"),
-    // --- Payment Method related ---
-    PAYMENT_METHOD_NOT_FOUND(8001, "Payment Method Not Found"),
+    // --- Payment related ---
+    PAYMENT_NOT_FOUND(8001, "Payment Not Found"),
     PAYMENT_METHOD_REQUIRED(8002, "Payment Method Required For Paid Plan"),
     // --- Charging Session related ---
     SESSION_NOT_FOUND(9001, "Charging Session Not Found"),

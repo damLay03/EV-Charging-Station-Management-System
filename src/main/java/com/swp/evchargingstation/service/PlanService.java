@@ -9,7 +9,6 @@ import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
 import com.swp.evchargingstation.mapper.PlanMapper;
 import com.swp.evchargingstation.repository.PlanRepository;
-import com.swp.evchargingstation.repository.SubscriptionRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -26,7 +25,6 @@ import java.util.List;
 public class PlanService {
     PlanRepository planRepository;
     PlanMapper planMapper;
-    SubscriptionRepository subscriptionRepository;
 
     // NOTE: Tạo plan theo billingType truyền trong request (dùng cho endpoint generic). Áp dụng rule validate theo loại.
     @Transactional
@@ -112,12 +110,6 @@ public class PlanService {
         log.info("Deleting plan id='{}'", planId);
         Plan plan = planRepository.findById(planId)
                 .orElseThrow(() -> new AppException(ErrorCode.PLAN_NOT_FOUND));
-
-        // Kiểm tra xem plan có đang được sử dụng bởi subscription nào không
-        if (subscriptionRepository.existsByPlanId(planId)) {
-            log.warn("Cannot delete plan id='{}' because it is being used by subscriptions", planId);
-            throw new AppException(ErrorCode.PLAN_IN_USE);
-        }
 
         planRepository.delete(plan);
         log.info("Plan id='{}' deleted successfully", planId);

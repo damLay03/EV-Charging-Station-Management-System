@@ -37,7 +37,6 @@ public class UserService {
     UserRepository userRepository;
     UserMapper userMapper;
     PasswordEncoder passwordEncoder; //nhan passwordEncoder tu SecurityConfig
-    SubscriptionRepository subscriptionRepository;
     ChargingSessionRepository chargingSessionRepository;
 
     DriverRepository driverRepository;
@@ -292,16 +291,8 @@ public class UserService {
     // Helper method: map Driver sang AdminUserResponse
     private AdminUserResponse mapToAdminUserResponse(Driver driver) {
         User user = driver.getUser();
-        String planName = null;
         Integer sessionCount = 0;
         Double totalSpent = 0.0;
-
-        // Lay thong tin subscription (goi dich vu)
-        Optional<Subscription> activeSubscription = subscriptionRepository
-                .findActiveSubscriptionByDriverId(user.getUserId());
-        if (activeSubscription.isPresent() && activeSubscription.get().getPlan() != null) {
-            planName = activeSubscription.get().getPlan().getName();
-        }
 
         // Lay so phien sac
         sessionCount = chargingSessionRepository.countByDriverId(user.getUserId());
@@ -326,7 +317,7 @@ public class UserService {
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .joinDate(joinDate) // Lay tu Driver entity
-                .planName(planName)
+                .planName(null) // Removed subscription support
                 .sessionCount(sessionCount)
                 .totalSpent(totalSpent)
                 .status("Hoạt động") // Mac dinh "Hoat dong", co the customize sau

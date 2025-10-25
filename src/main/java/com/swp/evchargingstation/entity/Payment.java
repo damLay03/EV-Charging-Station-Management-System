@@ -47,8 +47,4 @@ public class Payment {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_id")
     ChargingSession session;
-
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "subscription_id")
-    Subscription subscription;
 }

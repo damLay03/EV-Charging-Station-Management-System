@@ -25,8 +25,8 @@
 ### 4. Charging Session
 - **[Charging Simulation API](./charging-simulation-api.md)** - Start/Stop phiên sạc, mô phỏng sạc, lịch sử
 
-### 5. Plan & Subscription
-- **[Plan & Subscription API](./plan-subscription-api.md)** - Quản lý gói dịch vụ, đăng ký subscription
+### 5. Plan Management
+- **[Plan API](./plan-api.md)** - Quản lý gói dịch vụ (CRUD plans)
 
 ### 6. Payment
 - **[Payment Method API](./payment-method-api.md)** - Quản lý phương thức thanh toán của driver
@@ -126,7 +126,6 @@ Hệ thống có 3 roles chính:
 
 ### DRIVER
 - Quản lý xe và thông tin cá nhân
-- Đăng ký subscription
 - Bắt đầu/kết thúc phiên sạc
 - Xem dashboard và lịch sử
 - Quản lý phương thức thanh toán
@@ -302,4 +301,3 @@ Headers: Authorization: Bearer {token}
 ---
 
 Chúc các bạn develop thuận lợi! 🚗⚡
-

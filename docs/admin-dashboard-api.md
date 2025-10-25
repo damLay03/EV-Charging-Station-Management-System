@@ -356,7 +356,7 @@ GET /api/station-usage/all?date=2025-10-20
 3. **Revenue Aggregation**:
    - Revenue chỉ tính từ các session có status = COMPLETED
    - Payment status không ảnh hưởng đến số liệu thống kê
-   - Discount từ subscription được tính vào
+   - Sử dụng plan mặc định để tính toán
 
 4. **Usage Percentage Calculation**:
    - usagePercent = (số trụ đang sử dụng / tổng số trụ) * 100
@@ -381,4 +381,3 @@ GET /api/station-usage/all?date=2025-10-20
    - Tất cả datetime đều theo UTC
    - Week/Month/Year boundaries theo UTC timezone
    - Frontend cần convert sang local timezone khi hiển thị
-

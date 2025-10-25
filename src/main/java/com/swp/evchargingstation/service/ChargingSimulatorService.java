@@ -5,7 +5,6 @@ import com.swp.evchargingstation.entity.ChargingSession;
 import com.swp.evchargingstation.entity.Driver;
 import com.swp.evchargingstation.entity.Payment;
 import com.swp.evchargingstation.entity.Plan;
-import com.swp.evchargingstation.entity.Subscription;
 import com.swp.evchargingstation.entity.Vehicle;
 import com.swp.evchargingstation.enums.ChargingPointStatus;
 import com.swp.evchargingstation.enums.ChargingSessionStatus;
@@ -34,7 +33,6 @@ public class ChargingSimulatorService {
     VehicleRepository vehicleRepository;
     ChargingPointRepository chargingPointRepository;
     PaymentRepository paymentRepository;
-    SubscriptionRepository subscriptionRepository;
     PlanRepository planRepository;
 
     // Phase 2: background simulation tick, runs every 2 seconds
@@ -100,14 +98,8 @@ public class ChargingSimulatorService {
         session.setStatus(finalStatus);
         session.setEndTime(LocalDateTime.now());
 
-        // Calculate cost
-        String driverId = session.getDriver().getUserId();
-        Subscription sub = subscriptionRepository.findActiveSubscriptionByDriverId(driverId).orElse(null);
-        Plan plan = (sub != null ? sub.getPlan() : null);
-        if (plan == null) {
-            // fallback: try default "Linh hoạt"
-            plan = planRepository.findByNameIgnoreCase("Linh hoạt").orElse(null);
-        }
+        // Calculate cost - use default plan or fallback
+        Plan plan = planRepository.findByNameIgnoreCase("Linh hoạt").orElse(null);
         float cost = 0f;
         if (plan != null) {
             cost = (session.getEnergyKwh() * plan.getPricePerKwh()) + (session.getDurationMin() * plan.getPricePerMinute());

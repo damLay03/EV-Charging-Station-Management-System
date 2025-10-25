@@ -140,11 +140,11 @@ API quản lý phương thức thanh toán cho phép DRIVER thêm, xem và xóa 
 ```json
 {
   "code": 1002,
-  "message": "Cannot delete payment method in use by active subscription"
+  "message": "Cannot delete payment method that is in use"
 }
 ```
 
-**Lưu ý**: Không thể xóa phương thức thanh toán đang được sử dụng cho subscription đang hoạt động.
+**Lưu ý**: Không thể xóa phương thức thanh toán đang được sử dụng cho các giao dịch đang xử lý.
 
 ---
 
@@ -191,4 +191,3 @@ API quản lý phương thức thanh toán cho phép DRIVER thêm, xem và xóa 
    - Trong production, cần tích hợp với payment gateway thực (Stripe, VNPay, etc.)
    - API này chỉ lưu thông tin, không xử lý thanh toán thực tế
    - Payment processing được thực hiện ở service layer
-

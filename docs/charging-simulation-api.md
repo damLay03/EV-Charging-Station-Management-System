@@ -39,9 +39,16 @@ Tài liệu này mô tả đầy đủ API cho tính năng giả lập sạc đi
   - `vehicleModel`: string (tên model dễ đọc)
   - `licensePlate`: string
 
-## 4) Endpoints
+## 4) Cách tính chi phí
+- Khi phiên sạc kết thúc (COMPLETED hoặc CANCELLED), hệ thống tính chi phí:
+  - Tìm plan mặc định "Linh hoạt" (PAY_AS_YOU_GO)
+  - Công thức: `cost = (energyKwh × pricePerKwh) + (durationMin × pricePerMinute)`
+  - Tạo bản ghi Payment với status PENDING
+  - Driver thanh toán sau
 
-### 4.1) Bắt đầu sạc
+## 5) Endpoints
+
+### 5.1) Bắt đầu sạc
 - `POST /api/charging-sessions/start`
 - Quyền: `DRIVER` (Bearer token)
 - Mô tả: Tạo phiên sạc mới trạng thái `IN_PROGRESS` tại trụ chỉ định, gắn vào xe của driver.
@@ -61,7 +68,7 @@ Tài liệu này mô tả đầy đủ API cho tính năng giả lập sạc đi
   - `INVALID_SOC_RANGE`: SOC hiện tại của xe đã >= target
 - Kết quả: Trả về `ChargingSessionResponse` của phiên vừa tạo.
 
-### 4.2) Dừng sạc thủ công
+### 5.2) Dừng sạc thủ công
 - `POST /api/charging-sessions/{sessionId}/stop`
 - Quyền: `DRIVER` (Bearer token)
 - Mô tả: Dừng phiên sạc đang hoạt động do người dùng chủ động. Trạng thái kết thúc là `CANCELLED`.
@@ -71,25 +78,18 @@ Tài liệu này mô tả đầy đủ API cho tính năng giả lập sạc đi
   - `CHARGING_SESSION_NOT_ACTIVE`: phiên không còn ở trạng thái `IN_PROGRESS`
 - Kết quả: Thực hiện stop logic (cập nhật trạng thái, endTime, tính chi phí, giải phóng trụ, tạo Payment `PENDING`). Trả về `ChargingSessionResponse` sau cập nhật.
 
-### 4.3) Xem chi tiết phiên sạc
+### 5.3) Xem chi tiết phiên sạc
 - `GET /api/charging-sessions/{sessionId}`
 - Quyền: `DRIVER` (Bearer token)
 - Mô tả: Trả về thông tin chi tiết phiên sạc. Nếu phiên đang IN_PROGRESS, các giá trị `durationMin`, `endSocPercent`, `energyKwh` sẽ phản ánh tiến trình đã mô phỏng đến thời điểm gọi.
 - Validate: `UNAUTHORIZED` nếu phiên không thuộc driver.
 - Kết quả: `ChargingSessionResponse`.
 
-### 4.4) Lịch sử các phiên sạc của tôi
+### 5.4) Lịch sử các phiên sạc của tôi
 - `GET /api/charging-sessions/my-sessions`
 - Quyền: `DRIVER` (Bearer token)
 - Mô tả: Trả về danh sách phiên sạc của driver, sắp xếp mới nhất trước.
 - Trường hợp chưa có dữ liệu: trả về `200 OK` với mảng rỗng `[]` (không phải lỗi) để FE hiển thị trạng thái "chưa có phiên sạc".
-
-## 5) Tính phí khi Stop
-- Khi stop (do mô phỏng tự hoàn thành hoặc người dùng dừng thủ công), hệ thống:
-  - Tìm subscription `ACTIVE` của driver (nếu có) và dùng `plan` kèm theo
-  - Nếu không có subscription, fallback thử plan tên "Linh hoạt"
-  - `costTotal = energyKwh * plan.pricePerKwh + durationMin * plan.pricePerMinute`
-  - Tạo `Payment` trạng thái `PENDING` nếu chưa tồn tại Payment cho session này
 
 ## 6) Ví dụ cURL (Windows cmd)
 
@@ -142,4 +142,3 @@ curl -X GET "%BASE_URL%/api/charging-sessions/my-sessions" -H "Authorization: Be
 - Bạn có thể điều chỉnh tốc độ mô phỏng bằng cách đổi giá trị `fixedRate` trong `ChargingSimulatorService.simulateChargingTick()`.
 - Nếu muốn cấu hình qua file, có thể chuyển `fixedRate` sang property (ví dụ: `app.simulator.fixedRateMs`) và dùng `@Scheduled(fixedRateString = "${app.simulator.fixedRateMs:2000}")`.
 - Khi DB không có dữ liệu, các API collection trả về `[]` thay vì lỗi 500 để FE hiển thị "chưa có dữ liệu".
-
