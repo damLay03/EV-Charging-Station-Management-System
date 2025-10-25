@@ -299,5 +299,3 @@ Headers: Authorization: Bearer {token}
 ```
 
 ---
-
-Chúc các bạn develop thuận lợi! 🚗⚡
