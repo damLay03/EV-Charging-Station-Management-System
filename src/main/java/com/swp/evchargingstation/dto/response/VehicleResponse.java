@@ -15,6 +15,7 @@ public class VehicleResponse {
     String licensePlate;
     VehicleModel model;
     String ownerId;
+    Integer currentSocPercent;
 
     // Computed fields from model enum
     public VehicleBrand getBrand() {
@@ -35,5 +36,13 @@ public class VehicleResponse {
 
     public String getBatteryType() {
         return model != null ? model.getBatteryType() : null;
+    }
+
+    public String getMaxChargingPower() {
+        return model != null ? model.getMaxChargingPower() : null;
+    }
+
+    public float getMaxChargingPowerKw() {
+        return model != null ? model.getMaxChargingPowerKw() : 0f;
     }
 }

@@ -16,4 +16,6 @@ public class VehicleModelResponse {
     VehicleBrand brand;
     float batteryCapacityKwh;
     String batteryType;
+    String maxChargingPower;
+    float maxChargingPowerKw;
 }

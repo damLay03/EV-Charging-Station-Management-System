@@ -56,15 +56,27 @@ public class VehicleService {
         log.info("Driver '{}' creating vehicle with license plate '{}', model '{}'",
                 user.getUserId(), request.getLicensePlate(), request.getModel());
 
+        VehicleModel model = request.getModel();
+
+        // Random current SOC percent từ 20-80 để giả lập
+        int randomSoc = 20 + (int) (Math.random() * 61); // Random từ 20 đến 80
+
         Vehicle vehicle = Vehicle.builder()
                 .licensePlate(request.getLicensePlate())
-                .model(request.getModel())
+                .model(model)
                 .owner(driver)
+                .currentSocPercent(randomSoc)
+                // Lưu các giá trị từ enum vào database
+                .batteryCapacityKwhValue(model.getBatteryCapacityKwh())
+                .batteryTypeValue(model.getBatteryType())
+                .brandValue(model.getBrand())
+                .maxChargingPowerValue(model.getMaxChargingPower())
+                .maxChargingPowerKwValue(model.getMaxChargingPowerKw())
                 .build();
 
         Vehicle saved = vehicleRepository.save(vehicle);
-        log.info("Vehicle '{}' created successfully with brand '{}' auto-detected from model",
-                saved.getVehicleId(), saved.getBrand());
+        log.info("Vehicle '{}' created successfully with brand '{}', SOC {}%, max charging power {} auto-detected from model",
+                saved.getVehicleId(), saved.getBrand(), saved.getCurrentSocPercent(), saved.getMaxChargingPower());
 
         return vehicleMapper.toVehicleResponse(saved);
     }
@@ -140,7 +152,14 @@ public class VehicleService {
 
         // Update model (nếu có) - brand sẽ tự động được xác định từ model
         if (request.getModel() != null) {
-            vehicle.setModel(request.getModel());
+            VehicleModel newModel = request.getModel();
+            vehicle.setModel(newModel);
+            // Cập nhật các giá trị vào database
+            vehicle.setBatteryCapacityKwhValue(newModel.getBatteryCapacityKwh());
+            vehicle.setBatteryTypeValue(newModel.getBatteryType());
+            vehicle.setBrandValue(newModel.getBrand());
+            vehicle.setMaxChargingPowerValue(newModel.getMaxChargingPower());
+            vehicle.setMaxChargingPowerKwValue(newModel.getMaxChargingPowerKw());
             log.info("Vehicle '{}' model updated to '{}', brand auto-updated to '{}'",
                     vehicleId, request.getModel(), vehicle.getBrand());
         }
@@ -215,6 +234,8 @@ public class VehicleService {
                         .brand(model.getBrand())
                         .batteryCapacityKwh(model.getBatteryCapacityKwh())
                         .batteryType(model.getBatteryType())
+                        .maxChargingPower(model.getMaxChargingPower())
+                        .maxChargingPowerKw(model.getMaxChargingPowerKw())
                         .build())
                 .toList();
     }
@@ -229,6 +250,8 @@ public class VehicleService {
                         .brand(model.getBrand())
                         .batteryCapacityKwh(model.getBatteryCapacityKwh())
                         .batteryType(model.getBatteryType())
+                        .maxChargingPower(model.getMaxChargingPower())
+                        .maxChargingPowerKw(model.getMaxChargingPowerKw())
                         .build())
                 .toList();
     }

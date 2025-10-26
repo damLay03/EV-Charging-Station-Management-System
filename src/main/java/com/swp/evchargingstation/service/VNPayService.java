@@ -1,7 +1,6 @@
 package com.swp.evchargingstation.service;
 
 import com.swp.evchargingstation.configuration.payment.VNPAYConfig;
-import com.swp.evchargingstation.dto.request.VNPayPaymentRequest;
 import com.swp.evchargingstation.entity.ChargingSession;
 import com.swp.evchargingstation.entity.Payment;
 import com.swp.evchargingstation.enums.PaymentStatus;
@@ -19,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,9 +28,21 @@ public class VNPayService {
     private final ChargingSessionRepository chargingSessionRepository;
     private final PaymentRepository paymentRepository;
 
-    public String createVnPayPayment(VNPayPaymentRequest request, HttpServletRequest httpRequest) {
+    public String createVnPayPayment(HttpServletRequest request) {
+        // Lấy parameters từ request - GIỐNG CODE MẪU VNPAY
+        String sessionId = request.getParameter("sessionId");
+        String bankCode = request.getParameter("bankCode");
+
+        // Validate sessionId không được null hoặc rỗng
+        if (sessionId == null || sessionId.trim().isEmpty()) {
+            log.error("SessionId parameter is missing or empty");
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        log.info("Creating VNPay payment for sessionId: {}, bankCode: {}", sessionId, bankCode);
+
         // Tìm charging session
-        ChargingSession session = chargingSessionRepository.findById(request.getSessionId())
+        ChargingSession session = chargingSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new AppException(ErrorCode.CHARGING_SESSION_NOT_FOUND));
 
         // Kiểm tra session đã hoàn thành chưa
@@ -54,21 +64,34 @@ public class VNPayService {
         // Lấy cấu hình VNPay
         Map<String, String> vnpParamsMap = vnPayConfig.getVNPayConfig();
 
-        // Thêm thông tin thanh toán
+        // QUAN TRỌNG: XÓA các giá trị random cũ từ config
+        vnpParamsMap.remove("vnp_TxnRef");
+        vnpParamsMap.remove("vnp_OrderInfo");
+
+        // Thêm thông tin thanh toán - ĐÚNG THỨ TỰ
         vnpParamsMap.put("vnp_Amount", String.valueOf(amount));
-        vnpParamsMap.put("vnp_IpAddr", VNPayUtil.getIpAddress(httpRequest));
+        vnpParamsMap.put("vnp_IpAddr", VNPayUtil.getIpAddress(request));
         vnpParamsMap.put("vnp_TxnRef", session.getSessionId()); // Dùng sessionId làm mã giao dịch
         vnpParamsMap.put("vnp_OrderInfo", "Thanh toan phien sac " + session.getSessionId());
 
         // Thêm bank code nếu có
-        if (request.getBankCode() != null && !request.getBankCode().isEmpty()) {
-            vnpParamsMap.put("vnp_BankCode", request.getBankCode());
+        if (bankCode != null && !bankCode.isEmpty()) {
+            vnpParamsMap.put("vnp_BankCode", bankCode);
         }
 
-        // Build query string và tạo secure hash
-        String queryUrl = buildQueryUrl(vnpParamsMap);
-        String hashData = buildHashData(vnpParamsMap);
+        // Log params để debug
+        log.info("VNPay params: {}", vnpParamsMap);
+
+        // Build query URL và hash data - GIỐNG CODE MẪU VNPAY
+        String queryUrl = VNPayUtil.getPaymentURL(vnpParamsMap, true);
+        String hashData = VNPayUtil.getPaymentURL(vnpParamsMap, false);
+
+        log.info("Hash data string: {}", hashData);
+
         String vnpSecureHash = VNPayUtil.hmacSHA512(vnPayConfig.getSecretKey(), hashData);
+
+        log.info("Secure hash: {}", vnpSecureHash);
+
         queryUrl += "&vnp_SecureHash=" + vnpSecureHash;
 
         // Tạo hoặc cập nhật payment record
@@ -98,12 +121,8 @@ public class VNPayService {
         params.remove("vnp_SecureHash");
         params.remove("vnp_SecureHashType");
 
-        String hashData = params.entrySet().stream()
-                .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> entry.getKey() + "=" + entry.getValue())
-                .collect(Collectors.joining("&"));
-
+        // Build hash data - GIỐNG CODE MẪU VNPAY
+        String hashData = VNPayUtil.getPaymentURL(params, false);
         String calculatedHash = VNPayUtil.hmacSHA512(vnPayConfig.getSecretKey(), hashData);
 
         if (!calculatedHash.equals(vnpSecureHash)) {
@@ -157,21 +176,4 @@ public class VNPayService {
 
         paymentRepository.save(payment);
     }
-
-    private String buildQueryUrl(Map<String, String> params) {
-        return params.entrySet().stream()
-                .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> entry.getKey() + "=" + VNPayUtil.encodeValue(entry.getValue()))
-                .collect(Collectors.joining("&"));
-    }
-
-    private String buildHashData(Map<String, String> params) {
-        return params.entrySet().stream()
-                .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> entry.getKey() + "=" + entry.getValue())
-                .collect(Collectors.joining("&"));
-    }
 }
-

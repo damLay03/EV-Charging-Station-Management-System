@@ -8,6 +8,7 @@ import com.swp.evchargingstation.service.VNPayService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -26,16 +27,14 @@ public class PaymentController {
 
     VNPayService vnPayService;
 
-    @PostMapping("/vnpay/create")
+    @GetMapping("/vnpay/create")
     @Operation(summary = "Create VNPay payment URL",
                description = "Create payment URL for charging session, driver will be redirected to VNPay")
-    public ApiResponse<VNPayPaymentResponse> createPayment(
-            @RequestBody VNPayPaymentRequest paymentRequest,
-            HttpServletRequest httpRequest) {
+    public ApiResponse<VNPayPaymentResponse> createPayment(HttpServletRequest request) {
 
-        log.info("Creating VNPay payment for session: {}", paymentRequest.getSessionId());
+        log.info("Creating VNPay payment for session: {}", request.getParameter("sessionId"));
 
-        String paymentUrl = vnPayService.createVnPayPayment(paymentRequest, httpRequest);
+        String paymentUrl = vnPayService.createVnPayPayment(request);
 
         VNPayPaymentResponse response = VNPayPaymentResponse.builder()
                 .code("00")

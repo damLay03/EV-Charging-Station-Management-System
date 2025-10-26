@@ -7,7 +7,9 @@ import javax.crypto.spec.SecretKeySpec;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 public class VNPayUtil {
 
@@ -55,12 +57,31 @@ public class VNPayUtil {
         return sb.toString();
     }
 
-    public static String encodeValue(String value) {
-        try {
-            return URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
-        } catch (UnsupportedEncodingException e) {
-            return value;
-        }
+    // FIX THEO HƯỚNG DẪN VNPAY: %20 => + và dùng UTF-8
+    public static String getPaymentURL(Map<String, String> paramsMap, boolean encodeKey) {
+        return paramsMap.entrySet().stream()
+                .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> {
+                    try {
+                        String key = entry.getKey();
+                        String value = entry.getValue();
+
+                        // Encode key nếu cần
+                        if (encodeKey) {
+                            key = URLEncoder.encode(key, StandardCharsets.UTF_8.toString())
+                                    .replace("%20", "+");  // FIX: Thay %20 thành +
+                        }
+
+                        // Encode value và thay %20 thành + (QUAN TRỌNG!)
+                        String encodedValue = URLEncoder.encode(value, StandardCharsets.UTF_8.toString())
+                                .replace("%20", "+");  // FIX: Thay %20 thành +
+
+                        return key + "=" + encodedValue;
+                    } catch (UnsupportedEncodingException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .collect(Collectors.joining("&"));
     }
 }
-
