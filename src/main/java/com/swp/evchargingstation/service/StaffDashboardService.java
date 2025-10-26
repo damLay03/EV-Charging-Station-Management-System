@@ -244,7 +244,7 @@ public class StaffDashboardService {
      */
     public List<IncidentResponse> getStaffIncidents() {
         String staffUserId = getCurrentStaffUserId();
-        Staff staff = staffRepository.findById(staffUserId)
+        Staff staff = staffRepository.findByIdWithStation(staffUserId)
                 .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
 
         Station station = staff.getStation();
