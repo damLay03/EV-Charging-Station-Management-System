@@ -35,16 +35,20 @@ public class VNPayUtil {
     }
 
     public static String getIpAddress(HttpServletRequest request) {
-        String ipAdress;
+        String ipAddress;
         try {
-            ipAdress = request.getHeader("X-FORWARDED-FOR");
-            if (ipAdress == null) {
-                ipAdress = request.getRemoteAddr();
+            ipAddress = request.getHeader("X-FORWARDED-FOR");
+            if (ipAddress == null) {
+                ipAddress = request.getRemoteAddr();
+            }
+            // FIX: Chuyển IPv6 localhost thành IPv4 - THEO HƯỚNG DẪN VNPAY
+            if ("0:0:0:0:0:0:0:1".equals(ipAddress) || "::1".equals(ipAddress)) {
+                ipAddress = "127.0.0.1";
             }
         } catch (Exception e) {
-            ipAdress = "Invalid IP:" + e.getMessage();
+            ipAddress = "127.0.0.1"; // Default IPv4
         }
-        return ipAdress;
+        return ipAddress;
     }
 
     public static String getRandomNumber(int len) {
@@ -57,29 +61,31 @@ public class VNPayUtil {
         return sb.toString();
     }
 
-    // FIX THEO HƯỚNG DẪN VNPAY: %20 => + và dùng UTF-8
+    // ĐÚNG THEO CODE MẪU VNPAY VÀ HƯỚNG DẪN CỘNG ĐỒNG
+    // encodeKey = true: cho query URL (encode cả key và value)
+    // encodeKey = false: cho hash data (KHÔNG encode key, KHÔNG encode value)
     public static String getPaymentURL(Map<String, String> paramsMap, boolean encodeKey) {
         return paramsMap.entrySet().stream()
                 .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
                 .sorted(Map.Entry.comparingByKey())
                 .map(entry -> {
-                    try {
-                        String key = entry.getKey();
-                        String value = entry.getValue();
+                    String key = entry.getKey();
+                    String value = entry.getValue();
 
-                        // Encode key nếu cần
-                        if (encodeKey) {
-                            key = URLEncoder.encode(key, StandardCharsets.UTF_8.toString())
-                                    .replace("%20", "+");  // FIX: Thay %20 thành +
+                    if (encodeKey) {
+                        // CHO QUERY URL: Encode và replace %20 thành +
+                        try {
+                            String encodedKey = URLEncoder.encode(key, StandardCharsets.UTF_8.toString())
+                                    .replace("%20", "+");
+                            String encodedValue = URLEncoder.encode(value, StandardCharsets.UTF_8.toString())
+                                    .replace("%20", "+");
+                            return encodedKey + "=" + encodedValue;
+                        } catch (UnsupportedEncodingException e) {
+                            return key + "=" + value;
                         }
-
-                        // Encode value và thay %20 thành + (QUAN TRỌNG!)
-                        String encodedValue = URLEncoder.encode(value, StandardCharsets.UTF_8.toString())
-                                .replace("%20", "+");  // FIX: Thay %20 thành +
-
-                        return key + "=" + encodedValue;
-                    } catch (UnsupportedEncodingException e) {
-                        throw new RuntimeException(e);
+                    } else {
+                        // CHO HASH DATA: KHÔNG ENCODE, giữ nguyên
+                        return key + "=" + value;
                     }
                 })
                 .collect(Collectors.joining("&"));

@@ -22,7 +22,13 @@ public interface IncidentRepository extends JpaRepository<Incident, String> {
     List<Incident> findByStationIdAndStatus(@Param("stationId") String stationId, @Param("status") String status);
 
     // Tìm tất cả incidents của một station, sắp xếp theo thời gian
-    @Query("SELECT i FROM Incident i WHERE i.station.stationId = :stationId ORDER BY i.reportedAt DESC")
+    @Query("SELECT i FROM Incident i " +
+           "LEFT JOIN FETCH i.reporter " +
+           "LEFT JOIN FETCH i.station " +
+           "LEFT JOIN FETCH i.chargingPoint " +
+           "LEFT JOIN FETCH i.assignedStaff s " +
+           "LEFT JOIN FETCH s.user " +
+           "WHERE i.station.stationId = :stationId " +
+           "ORDER BY i.reportedAt DESC")
     List<Incident> findByStationIdOrderByReportedAtDesc(@Param("stationId") String stationId);
 }
-

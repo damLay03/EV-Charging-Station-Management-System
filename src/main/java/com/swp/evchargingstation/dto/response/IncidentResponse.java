@@ -15,7 +15,7 @@ public class IncidentResponse {
     String incidentId;
     String reporterName;
     String stationName;
-    String chargingPointId;
+    String chargingPointName;
     LocalDateTime reportedAt;
     String description;
     IncidentSeverity severity;

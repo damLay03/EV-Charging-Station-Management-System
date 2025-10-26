@@ -33,7 +33,7 @@ public interface StaffDashboardMapper {
     // Map Incident to IncidentResponse
     @Mapping(target = "reporterName", expression = "java(incident.getReporter() != null ? incident.getReporter().getFullName() : \"N/A\")")
     @Mapping(target = "stationName", expression = "java(incident.getStation() != null ? incident.getStation().getName() : \"N/A\")")
-    @Mapping(target = "chargingPointId", expression = "java(incident.getChargingPoint() != null ? incident.getChargingPoint().getPointId() : null)")
+    @Mapping(target = "chargingPointName", expression = "java(incident.getChargingPoint() != null ? incident.getChargingPoint().getName() : null)")
     @Mapping(target = "assignedStaffName", expression = "java(incident.getAssignedStaff() != null && incident.getAssignedStaff().getUser() != null ? incident.getAssignedStaff().getUser().getFullName() : null)")
     IncidentResponse toIncidentResponse(Incident incident);
 }
