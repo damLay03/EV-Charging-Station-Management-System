@@ -61,18 +61,18 @@ public class VNPayService {
         // Lấy số tiền cần thanh toán
         long amount = (long) (session.getCostTotal() * 100); // VNPay yêu cầu nhân 100
 
-        // Lấy cấu hình VNPay
+        // Lấy cấu hình VNPay - GIỮ NGUYÊN các giá trị random như code mẫu VNPay
         Map<String, String> vnpParamsMap = vnPayConfig.getVNPayConfig();
 
-        // QUAN TRỌNG: XÓA các giá trị random cũ từ config
-        vnpParamsMap.remove("vnp_TxnRef");
-        vnpParamsMap.remove("vnp_OrderInfo");
+        // GHI ĐÈ vnp_TxnRef bằng sessionId (theo tài liệu VNPay: mã giao dịch unique của merchant)
+        vnpParamsMap.put("vnp_TxnRef", sessionId);
 
-        // Thêm thông tin thanh toán - ĐÚNG THỨ TỰ
+        // Cập nhật vnp_OrderInfo với thông tin session
+        vnpParamsMap.put("vnp_OrderInfo", "ThanhToanPhienSac" + sessionId);
+
+        // Chỉ thêm các thông tin bắt buộc - GIỐNG CODE MẪU VNPAY
         vnpParamsMap.put("vnp_Amount", String.valueOf(amount));
         vnpParamsMap.put("vnp_IpAddr", VNPayUtil.getIpAddress(request));
-        vnpParamsMap.put("vnp_TxnRef", session.getSessionId()); // Dùng sessionId làm mã giao dịch
-        vnpParamsMap.put("vnp_OrderInfo", "Thanh toan phien sac " + session.getSessionId());
 
         // Thêm bank code nếu có
         if (bankCode != null && !bankCode.isEmpty()) {
@@ -82,9 +82,9 @@ public class VNPayService {
         // Log params để debug
         log.info("VNPay params: {}", vnpParamsMap);
 
-        // Build query URL và hash data - GIỐNG CODE MẪU VNPAY
-        String queryUrl = VNPayUtil.getPaymentURL(vnpParamsMap, true);
-        String hashData = VNPayUtil.getPaymentURL(vnpParamsMap, false);
+        // Build query URL và hash data - THEO ĐÚNG TÀI LIỆU VNPAY
+        String queryUrl = VNPayUtil.getPaymentURL(vnpParamsMap, true);  // CÓ encode
+        String hashData = VNPayUtil.getPaymentURL(vnpParamsMap, false); // KHÔNG encode
 
         log.info("Hash data string: {}", hashData);
 

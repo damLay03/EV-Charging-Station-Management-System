@@ -66,7 +66,10 @@ public enum ErrorCode {
     CHARGING_SESSION_NOT_COMPLETED(16001, "Charging Session Not Completed Yet"),
     PAYMENT_ALREADY_COMPLETED(16002, "Payment Already Completed"),
     INVALID_PAYMENT_SIGNATURE(16003, "Invalid Payment Signature"),
-    PAYMENT_PROCESSING_FAILED(16004, "Payment Processing Failed")
+    PAYMENT_PROCESSING_FAILED(16004, "Payment Processing Failed"),
+
+    // Active Session related
+    NO_ACTIVE_SESSION(17001, "No Active Charging Session Found")
     ;
 
     private int code;

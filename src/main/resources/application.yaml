@@ -31,9 +31,9 @@ jwt:
 # VNPay Configuration
 vnpay:
   url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-  returnUrl: http://localhost:8084/evchargingstation/api/payment/vnpay-callback
+  returnUrl: https://unendued-somnolent-rosemarie.ngrok-free.dev/evchargingstation/api/payment/vnpay-callback
   tmnCode: D18XZYI3
-  secretKey: WR0KM5KKY943UDP1SNZMFP5ZNH5ODCGU
+  secretKey: 8HGLY907AM8PDUELLFTQ1O3LT04DPX1X
   version: 2.1.0
   command: pay
   orderType: other

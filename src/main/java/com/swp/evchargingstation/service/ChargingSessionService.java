@@ -324,4 +324,106 @@ public class ChargingSessionService {
         log.info("Driver {} stopped session {} manually", driverId, sessionId);
         return convertToResponse(session);
     }
+
+    /**
+     * Lấy thông tin real-time của phiên sạc đang diễn ra
+     * API này được gọi liên tục từ frontend (polling mỗi 3-5 giây) để cập nhật UI
+     *
+     * @param sessionId - ID của session cần lấy thông tin (từ frontend)
+     */
+    public com.swp.evchargingstation.dto.response.ActiveChargingSessionResponse getActiveSession(String sessionId) {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        String userId = null;
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            userId = jwt.getClaim("userId");
+        }
+
+        if (userId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        log.info("Getting active charging session {} for driver: {}", sessionId, userId);
+
+        // Tìm session theo ID
+        ChargingSession activeSession = chargingSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new AppException(ErrorCode.CHARGING_SESSION_NOT_FOUND));
+
+        // Kiểm tra quyền truy cập - session phải thuộc về driver này
+        if (!activeSession.getDriver().getUserId().equals(userId)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        // Kiểm tra session phải đang IN_PROGRESS
+        if (activeSession.getStatus() != ChargingSessionStatus.IN_PROGRESS) {
+            throw new AppException(ErrorCode.CHARGING_SESSION_NOT_ACTIVE);
+        }
+
+        // Tính toán các giá trị real-time
+        LocalDateTime now = LocalDateTime.now();
+        long elapsedMinutes = ChronoUnit.MINUTES.between(activeSession.getStartTime(), now);
+
+        // Lấy current SOC từ vehicle (được cập nhật bởi simulator)
+        int currentSoc = activeSession.getVehicle().getCurrentSocPercent();
+
+        // Tính năng lượng đã tiêu thụ (giả sử mỗi 1% pin = energyPerPercent kWh)
+        float batteryCapacity = activeSession.getVehicle().getModel().getBatteryCapacityKwh();
+        float energyPerPercent = batteryCapacity / 100f;
+        int socGained = currentSoc - activeSession.getStartSocPercent();
+        float energyConsumed = socGained * energyPerPercent;
+
+        // Lấy giá điện (giả sử default là 3000 VND/kWh, sau này sẽ lấy từ plan)
+        float pricePerKwh = 3000f; // TODO: Lấy từ plan của driver
+
+        // Tính chi phí hiện tại
+        float currentCost = energyConsumed * pricePerKwh;
+
+        // Ước tính thời gian còn lại
+        Integer estimatedTimeRemaining = null;
+        if (currentSoc < activeSession.getTargetSocPercent() && socGained > 0 && elapsedMinutes > 0) {
+            int remainingSoc = activeSession.getTargetSocPercent() - currentSoc;
+            float avgSocPerMinute = (float) socGained / elapsedMinutes;
+            if (avgSocPerMinute > 0) {
+                estimatedTimeRemaining = (int) (remainingSoc / avgSocPerMinute);
+            }
+        }
+
+        // Lấy thông tin trạm và charging point
+        String stationName = "";
+        String stationLocation = "";
+        String chargingPointName = "";
+        String powerOutput = "N/A";
+
+        if (activeSession.getChargingPoint() != null) {
+            ChargingPoint point = activeSession.getChargingPoint();
+            chargingPointName = point.getName() != null ? point.getName() : point.getPointId();
+
+            if (point.getChargingPower() != null) {
+                powerOutput = point.getChargingPower().name().replace("_", " ");
+            }
+
+            if (point.getStation() != null) {
+                stationName = point.getStation().getName();
+                stationLocation = point.getStation().getAddress();
+            }
+        }
+
+        return com.swp.evchargingstation.dto.response.ActiveChargingSessionResponse.builder()
+                .sessionId(activeSession.getSessionId())
+                .stationName(stationName)
+                .chargingPointName(chargingPointName)
+                .stationLocation(stationLocation)
+                .status(activeSession.getStatus().name())
+                .currentSocPercent(currentSoc)
+                .targetSocPercent(activeSession.getTargetSocPercent())
+                .startSocPercent(activeSession.getStartSocPercent())
+                .startTime(activeSession.getStartTime().toString())
+                .elapsedTimeMinutes((int) elapsedMinutes)
+                .estimatedTimeRemainingMinutes(estimatedTimeRemaining)
+                .pricePerKwh(pricePerKwh)
+                .energyConsumedKwh(energyConsumed)
+                .currentCost(currentCost)
+                .powerOutput(powerOutput)
+                .build();
+    }
 }

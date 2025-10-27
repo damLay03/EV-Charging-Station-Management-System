@@ -7,9 +7,11 @@ import javax.crypto.spec.SecretKeySpec;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.stream.Collectors;
 
 public class VNPayUtil {
 
@@ -61,33 +63,45 @@ public class VNPayUtil {
         return sb.toString();
     }
 
-    // ĐÚNG THEO CODE MẪU VNPAY VÀ HƯỚNG DẪN CỘNG ĐỒNG
-    // encodeKey = true: cho query URL (encode cả key và value)
-    // encodeKey = false: cho hash data (KHÔNG encode key, KHÔNG encode value)
+    /**
+     * THEO ĐÚNG TÀI LIỆU VNPAY CHÍNH THỨC:
+     * https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html
+     *
+     * - Sắp xếp các tham số theo thứ tự alphabet (A-Z)
+     * - encodeKey = true: cho query URL (encode cả key và value)
+     * - encodeKey = false: cho hash data (KHÔNG encode gì cả, giữ nguyên)
+     */
     public static String getPaymentURL(Map<String, String> paramsMap, boolean encodeKey) {
-        return paramsMap.entrySet().stream()
-                .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> {
-                    String key = entry.getKey();
-                    String value = entry.getValue();
+        // Tạo danh sách các field name và sắp xếp theo alphabet
+        List<String> fieldNames = new ArrayList<>(paramsMap.keySet());
+        Collections.sort(fieldNames);
 
-                    if (encodeKey) {
-                        // CHO QUERY URL: Encode và replace %20 thành +
-                        try {
-                            String encodedKey = URLEncoder.encode(key, StandardCharsets.UTF_8.toString())
-                                    .replace("%20", "+");
-                            String encodedValue = URLEncoder.encode(value, StandardCharsets.UTF_8.toString())
-                                    .replace("%20", "+");
-                            return encodedKey + "=" + encodedValue;
-                        } catch (UnsupportedEncodingException e) {
-                            return key + "=" + value;
-                        }
-                    } else {
-                        // CHO HASH DATA: KHÔNG ENCODE, giữ nguyên
-                        return key + "=" + value;
+        StringBuilder sb = new StringBuilder();
+        for (String fieldName : fieldNames) {
+            String fieldValue = paramsMap.get(fieldName);
+            if (fieldValue != null && !fieldValue.isEmpty()) {
+                if (sb.length() > 0) {
+                    sb.append("&");
+                }
+
+                if (encodeKey) {
+                    // Cho query URL: encode cả key và value
+                    try {
+                        sb.append(URLEncoder.encode(fieldName, StandardCharsets.UTF_8.toString()));
+                        sb.append("=");
+                        sb.append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString()));
+                    } catch (UnsupportedEncodingException e) {
+                        sb.append(fieldName).append("=").append(fieldValue);
                     }
-                })
-                .collect(Collectors.joining("&"));
+                } else {
+                    // Cho hash data: KHÔNG encode gì cả (theo tài liệu VNPay)
+                    sb.append(fieldName);
+                    sb.append("=");
+                    sb.append(fieldValue);
+                }
+            }
+        }
+
+        return sb.toString();
     }
 }

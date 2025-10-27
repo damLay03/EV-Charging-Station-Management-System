@@ -34,7 +34,7 @@ const ChargingHistory = () => {
   const handlePayment = async (sessionId) => {
     try {
       const response = await axios.post(
-        'http://localhost:8084/evchargingstation/api/payment/vnpay/create',
+        'http://localhost:8080/evchargingstation/api/payment/vnpay/create',
         {
           sessionId: sessionId,
           bankCode: '' // Để trống để VNPay hiển thị tất cả phương thức

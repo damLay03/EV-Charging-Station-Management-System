@@ -208,7 +208,7 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
     List<Object[]> getFavoriteStationsByDriver(@Param("driverId") String driverId);
 
     /**
-     * Tính thời gian sạc trung bình
+     * Tính th���i gian sạc trung bình
      */
     @Query("SELECT AVG(cs.durationMin) " +
             "FROM ChargingSession cs " +
@@ -263,4 +263,20 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
      * Lấy danh sách phiên sạc đang hoạt động theo trạng thái
      */
     List<ChargingSession> findByStatus(ChargingSessionStatus status);
+
+    /**
+     * Tìm session đang IN_PROGRESS của driver
+     */
+    @Query("SELECT cs FROM ChargingSession cs " +
+            "LEFT JOIN FETCH cs.chargingPoint cp " +
+            "LEFT JOIN FETCH cp.station " +
+            "LEFT JOIN FETCH cs.vehicle v " +
+            "LEFT JOIN FETCH v.model " +
+            "WHERE cs.driver.userId = :driverId " +
+            "AND cs.status = :status " +
+            "ORDER BY cs.startTime DESC")
+    java.util.Optional<ChargingSession> findFirstByDriverUserIdAndStatusOrderByStartTimeDesc(
+            @Param("driverId") String driverId,
+            @Param("status") ChargingSessionStatus status
+    );
 }
