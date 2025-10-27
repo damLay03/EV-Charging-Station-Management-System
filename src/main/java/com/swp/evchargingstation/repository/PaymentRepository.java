@@ -2,6 +2,7 @@ package com.swp.evchargingstation.repository;
 
 import com.swp.evchargingstation.entity.ChargingSession;
 import com.swp.evchargingstation.entity.Payment;
+import com.swp.evchargingstation.enums.PaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,6 +15,8 @@ import java.util.Optional;
 public interface PaymentRepository extends JpaRepository<Payment, String> {
     // Thêm method tìm payment theo charging session
     Optional<Payment> findByChargingSession(ChargingSession chargingSession);
+
+    Optional<Payment> findByTxnReference(String txnReference);
 
     // Query lấy doanh thu theo tuần của từng trạm
     @Query("SELECT s.stationId, s.name, s.address, " +
@@ -69,6 +72,15 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
             "AND MONTH(p.paymentTime) = :month " +
             "AND p.status = 'COMPLETED'")
     Float findCurrentMonthRevenue(@Param("year") int year, @Param("month") int month);
+
+    // Tìm payments theo status và station
+    @Query("SELECT p FROM Payment p " +
+            "JOIN p.chargingSession cs " +
+            "JOIN cs.chargingPoint cp " +
+            "WHERE cp.station.stationId = :stationId " +
+            "AND p.status = :status " +
+            "ORDER BY p.createdAt DESC")
+    List<Payment> findByStationIdAndStatus(@Param("stationId") String stationId, @Param("status") PaymentStatus status);
 
     // Check if payment exists for a session
     boolean existsByChargingSession_SessionId(String sessionId);

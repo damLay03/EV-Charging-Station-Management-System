@@ -1,4 +1,4 @@
-package com.swp.evchargingstation.dto.response.driver;
+package com.swp.evchargingstation.dto.response;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;

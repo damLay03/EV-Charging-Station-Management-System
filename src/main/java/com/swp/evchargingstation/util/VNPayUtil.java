@@ -64,44 +64,56 @@ public class VNPayUtil {
     }
 
     /**
-     * THEO ĐÚNG TÀI LIỆU VNPAY CHÍNH THỨC:
-     * https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html
-     *
-     * - Sắp xếp các tham số theo thứ tự alphabet (A-Z)
-     * - encodeKey = true: cho query URL (encode cả key và value)
-     * - encodeKey = false: cho hash data (KHÔNG encode gì cả, giữ nguyên)
+     * Legacy API used in VNPayService. When encodeKey = true, build query (encode keys and values).
+     * When encodeKey = false, build hash data (encode values only). Keys sorted A-Z in both cases.
      */
     public static String getPaymentURL(Map<String, String> paramsMap, boolean encodeKey) {
-        // Tạo danh sách các field name và sắp xếp theo alphabet
+        return encodeKey ? buildQuery(paramsMap) : buildHashData(paramsMap);
+    }
+
+    /**
+     * Build query string for VNPay URL: encode both key and value, sort A-Z
+     * Encoding must be US-ASCII like VNPay sample.
+     */
+    public static String buildQuery(Map<String, String> paramsMap) {
         List<String> fieldNames = new ArrayList<>(paramsMap.keySet());
         Collections.sort(fieldNames);
-
-        StringBuilder sb = new StringBuilder();
+        StringBuilder query = new StringBuilder();
         for (String fieldName : fieldNames) {
             String fieldValue = paramsMap.get(fieldName);
             if (fieldValue != null && !fieldValue.isEmpty()) {
-                if (sb.length() > 0) {
-                    sb.append("&");
-                }
-
-                if (encodeKey) {
-                    // Cho query URL: encode cả key và value
-                    try {
-                        sb.append(URLEncoder.encode(fieldName, StandardCharsets.UTF_8.toString()));
-                        sb.append("=");
-                        sb.append(URLEncoder.encode(fieldValue, StandardCharsets.UTF_8.toString()));
-                    } catch (UnsupportedEncodingException e) {
-                        sb.append(fieldName).append("=").append(fieldValue);
-                    }
-                } else {
-                    // Cho hash data: KHÔNG encode gì cả (theo tài liệu VNPay)
-                    sb.append(fieldName);
-                    sb.append("=");
-                    sb.append(fieldValue);
+                if (query.length() > 0) query.append('&');
+                try {
+                    query.append(URLEncoder.encode(fieldName, "US-ASCII"));
+                    query.append('=');
+                    query.append(URLEncoder.encode(fieldValue, "US-ASCII"));
+                } catch (UnsupportedEncodingException e) {
+                    query.append(fieldName).append('=').append(fieldValue);
                 }
             }
         }
+        return query.toString();
+    }
 
-        return sb.toString();
+    /**
+     * Build hash data string for VNPay HMAC: sort A-Z, encode ONLY values with US-ASCII.
+     */
+    public static String buildHashData(Map<String, String> paramsMap) {
+        List<String> fieldNames = new ArrayList<>(paramsMap.keySet());
+        Collections.sort(fieldNames);
+        StringBuilder hashData = new StringBuilder();
+        for (String fieldName : fieldNames) {
+            String fieldValue = paramsMap.get(fieldName);
+            if (fieldValue != null && !fieldValue.isEmpty()) {
+                if (hashData.length() > 0) hashData.append('&');
+                hashData.append(fieldName).append('=');
+                try {
+                    hashData.append(URLEncoder.encode(fieldValue, "US-ASCII"));
+                } catch (UnsupportedEncodingException e) {
+                    hashData.append(fieldValue);
+                }
+            }
+        }
+        return hashData.toString();
     }
 }

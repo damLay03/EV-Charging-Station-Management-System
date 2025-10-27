@@ -31,4 +31,14 @@ public interface IncidentRepository extends JpaRepository<Incident, String> {
            "WHERE i.station.stationId = :stationId " +
            "ORDER BY i.reportedAt DESC")
     List<Incident> findByStationIdOrderByReportedAtDesc(@Param("stationId") String stationId);
+
+    // Tìm TẤT CẢ incidents (dành cho ADMIN)
+    @Query("SELECT i FROM Incident i " +
+           "LEFT JOIN FETCH i.reporter " +
+           "LEFT JOIN FETCH i.station " +
+           "LEFT JOIN FETCH i.chargingPoint " +
+           "LEFT JOIN FETCH i.assignedStaff s " +
+           "LEFT JOIN FETCH s.user " +
+           "ORDER BY i.reportedAt DESC")
+    List<Incident> findAllByOrderByReportedAtDesc();
 }

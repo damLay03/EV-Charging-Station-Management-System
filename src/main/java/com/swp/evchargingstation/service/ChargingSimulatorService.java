@@ -2,15 +2,10 @@ package com.swp.evchargingstation.service;
 
 import com.swp.evchargingstation.entity.ChargingPoint;
 import com.swp.evchargingstation.entity.ChargingSession;
-import com.swp.evchargingstation.entity.Driver;
-import com.swp.evchargingstation.entity.Payment;
 import com.swp.evchargingstation.entity.Plan;
 import com.swp.evchargingstation.entity.Vehicle;
 import com.swp.evchargingstation.enums.ChargingPointStatus;
 import com.swp.evchargingstation.enums.ChargingSessionStatus;
-import com.swp.evchargingstation.enums.PaymentStatus;
-import com.swp.evchargingstation.exception.AppException;
-import com.swp.evchargingstation.exception.ErrorCode;
 import com.swp.evchargingstation.repository.*;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +27,6 @@ public class ChargingSimulatorService {
     ChargingSessionRepository chargingSessionRepository;
     VehicleRepository vehicleRepository;
     ChargingPointRepository chargingPointRepository;
-    PaymentRepository paymentRepository;
     PlanRepository planRepository;
 
     // Phase 2: background simulation tick, runs every 2 seconds
@@ -96,6 +90,7 @@ public class ChargingSimulatorService {
         // Sanity checks
         if (session.getStatus() != ChargingSessionStatus.IN_PROGRESS) {
             // Already stopped; no-op
+            log.warn("Attempted to stop session {} which is already in status {}", session.getSessionId(), session.getStatus());
             return;
         }
 
@@ -118,17 +113,7 @@ public class ChargingSimulatorService {
             chargingPointRepository.save(point);
         }
 
-        // Create payment if not exists
-        if (!paymentRepository.existsByChargingSession_SessionId(session.getSessionId())) {
-            Payment payment = Payment.builder()
-                    .chargingSession(session)
-                    .payer(session.getDriver())
-                    .amount(cost)
-                    .paymentTime(LocalDateTime.now())
-                    .status(PaymentStatus.PENDING)
-                    .build();
-            paymentRepository.save(payment);
-        }
+        // Remove payment creation here; it will be created when user initiates VNPay payment
 
         chargingSessionRepository.save(session);
         log.info("Session {} stopped. Status: {}. Cost: {}", session.getSessionId(), finalStatus, cost);

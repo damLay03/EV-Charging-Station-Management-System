@@ -66,4 +66,16 @@ public class Payment {
 
     @Column(name = "paid_at")
     LocalDateTime paidAt;
+
+    // Cash payment specific fields
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_staff_id")
+    Staff assignedStaff; // Staff được assign xử lý thanh toán tiền mặt
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "confirmed_by_staff_id")
+    Staff confirmedByStaff; // Staff đã xác nhận thanh toán tiền mặt
+
+    @Column(name = "confirmed_at")
+    LocalDateTime confirmedAt; // Thời gian staff xác nhận thanh toán tiền mặt
 }

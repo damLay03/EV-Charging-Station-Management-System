@@ -1,9 +1,11 @@
 package com.swp.evchargingstation.controller;
 
+import com.swp.evchargingstation.dto.request.CashPaymentRequest;
 import com.swp.evchargingstation.dto.request.VNPayPaymentRequest;
 import com.swp.evchargingstation.dto.response.ApiResponse;
 import com.swp.evchargingstation.dto.response.VNPayCallbackResponse;
 import com.swp.evchargingstation.dto.response.VNPayPaymentResponse;
+import com.swp.evchargingstation.service.CashPaymentService;
 import com.swp.evchargingstation.service.VNPayService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,10 +24,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-@Tag(name = "Payment", description = "VNPay Payment APIs")
+@Tag(name = "Payment", description = "Payment APIs")
 public class PaymentController {
 
     VNPayService vnPayService;
+    CashPaymentService cashPaymentService;
 
     @GetMapping("/vnpay/create")
     @Operation(summary = "Create VNPay payment URL",
@@ -79,6 +82,22 @@ public class PaymentController {
 
         return ApiResponse.<VNPayCallbackResponse>builder()
                 .result(response)
+                .build();
+    }
+
+    @PostMapping("/cash/request")
+    @Operation(summary = "Request cash payment",
+               description = "Driver requests to pay in cash - payment will be sent to station staff for confirmation")
+    public ApiResponse<String> requestCashPayment(@RequestBody @Valid CashPaymentRequest request,
+                                                   @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.oauth2.jwt.Jwt jwt) {
+        String driverId = jwt.getClaim("userId");
+        log.info("Driver {} requesting cash payment for session {}", driverId, request.getSessionId());
+
+        cashPaymentService.requestCashPayment(request.getSessionId());
+
+        return ApiResponse.<String>builder()
+                .message("Yêu cầu thanh toán tiền mặt đã được gửi đến nhân viên trạm")
+                .result("PENDING_CASH")
                 .build();
     }
 }

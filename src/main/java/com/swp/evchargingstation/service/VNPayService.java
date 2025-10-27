@@ -12,6 +12,7 @@ import com.swp.evchargingstation.util.VNPayUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,12 +29,12 @@ public class VNPayService {
     private final ChargingSessionRepository chargingSessionRepository;
     private final PaymentRepository paymentRepository;
 
+    @Transactional
     public String createVnPayPayment(HttpServletRequest request) {
         // Lấy parameters từ request - GIỐNG CODE MẪU VNPAY
         String sessionId = request.getParameter("sessionId");
         String bankCode = request.getParameter("bankCode");
 
-        // Validate sessionId không được null hoặc rỗng
         if (sessionId == null || sessionId.trim().isEmpty()) {
             log.error("SessionId parameter is missing or empty");
             throw new AppException(ErrorCode.INVALID_REQUEST);
@@ -45,72 +46,67 @@ public class VNPayService {
         ChargingSession session = chargingSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new AppException(ErrorCode.CHARGING_SESSION_NOT_FOUND));
 
-        // Kiểm tra session đã hoàn thành chưa
+        // Phiên sạc phải kết thúc mới được thanh toán
         if (session.getEndTime() == null) {
             throw new AppException(ErrorCode.CHARGING_SESSION_NOT_COMPLETED);
         }
 
-        // Kiểm tra đã có payment chưa
-        Payment existingPayment = paymentRepository.findByChargingSession(session)
-                .orElse(null);
-
-        if (existingPayment != null && existingPayment.getStatus() == PaymentStatus.COMPLETED) {
-            throw new AppException(ErrorCode.PAYMENT_ALREADY_COMPLETED);
-        }
-
-        // Lấy số tiền cần thanh toán
-        long amount = (long) (session.getCostTotal() * 100); // VNPay yêu cầu nhân 100
+        // Lấy số tiền cần thanh toán (nhân 100 theo quy định VNPay)
+        long amount = (long) (session.getCostTotal() * 100);
 
         // Lấy cấu hình VNPay - GIỮ NGUYÊN các giá trị random như code mẫu VNPay
         Map<String, String> vnpParamsMap = vnPayConfig.getVNPayConfig();
 
-        // GHI ĐÈ vnp_TxnRef bằng sessionId (theo tài liệu VNPay: mã giao dịch unique của merchant)
-        vnpParamsMap.put("vnp_TxnRef", sessionId);
+        // KHÔNG ghi đè vnp_TxnRef - giữ nguyên random theo mẫu VNPay
+        // Lưu OrderInfo có sessionId để tiện hiển thị/trace
+        vnpParamsMap.put("vnp_OrderInfo", "Thanh toan phien sac " + sessionId);
 
-        // Cập nhật vnp_OrderInfo với thông tin session
-        vnpParamsMap.put("vnp_OrderInfo", "ThanhToanPhienSac" + sessionId);
-
-        // Chỉ thêm các thông tin bắt buộc - GIỐNG CODE MẪU VNPAY
+        // Bắt buộc: số tiền, IP, bank code nếu có
         vnpParamsMap.put("vnp_Amount", String.valueOf(amount));
         vnpParamsMap.put("vnp_IpAddr", VNPayUtil.getIpAddress(request));
-
-        // Thêm bank code nếu có
         if (bankCode != null && !bankCode.isEmpty()) {
             vnpParamsMap.put("vnp_BankCode", bankCode);
         }
 
-        // Log params để debug
+        // Debug tham số
         log.info("VNPay params: {}", vnpParamsMap);
 
-        // Build query URL và hash data - THEO ĐÚNG TÀI LIỆU VNPAY
-        String queryUrl = VNPayUtil.getPaymentURL(vnpParamsMap, true);  // CÓ encode
-        String hashData = VNPayUtil.getPaymentURL(vnpParamsMap, false); // KHÔNG encode
-
-        log.info("Hash data string: {}", hashData);
-
+        // Build query và hash theo đúng tài liệu VNPay
+        String queryUrl = VNPayUtil.getPaymentURL(vnpParamsMap, true);   // encode keys/values
+        String hashData = VNPayUtil.getPaymentURL(vnpParamsMap, false);  // encode values only
         String vnpSecureHash = VNPayUtil.hmacSHA512(vnPayConfig.getSecretKey(), hashData);
-
-        log.info("Secure hash: {}", vnpSecureHash);
-
         queryUrl += "&vnp_SecureHash=" + vnpSecureHash;
 
-        // Tạo hoặc cập nhật payment record
-        if (existingPayment == null) {
-            Payment payment = Payment.builder()
+        // Tạo/cập nhật payment record: gắn txnReference = vnp_TxnRef random
+        String txnRef = vnpParamsMap.get("vnp_TxnRef");
+        Payment payment = paymentRepository.findByChargingSession(session).orElse(null);
+        if (payment != null && payment.getStatus() == PaymentStatus.COMPLETED) {
+            throw new AppException(ErrorCode.PAYMENT_ALREADY_COMPLETED);
+        }
+        if (payment == null) {
+            payment = Payment.builder()
                     .chargingSession(session)
+                    .payer(session.getDriver())
                     .amount(session.getCostTotal())
                     .status(PaymentStatus.PENDING)
+                    .txnReference(txnRef)
                     .createdAt(LocalDateTime.now())
                     .build();
-            paymentRepository.save(payment);
         } else {
-            existingPayment.setStatus(PaymentStatus.PENDING);
-            existingPayment.setUpdatedAt(LocalDateTime.now());
-            paymentRepository.save(existingPayment);
+            payment.setStatus(PaymentStatus.PENDING);
+            payment.setTxnReference(txnRef); // cập nhật txnRef cho lần thanh toán mới
+            payment.setUpdatedAt(LocalDateTime.now());
+        }
+        try {
+            paymentRepository.save(payment);
+        } catch (DataIntegrityViolationException ex) {
+            // Another concurrent request just created the row; reuse it
+            log.warn("Payment row already exists for session {}. Reusing existing.", session.getSessionId());
+            payment = paymentRepository.findByChargingSession(session)
+                    .orElse(payment); // fallback to current reference
         }
 
-        log.info("Created VNPay payment URL for session: {}, amount: {}", session.getSessionId(), amount);
-
+        log.info("Created VNPay payment URL for session: {}, amount: {}, txnRef: {}", session.getSessionId(), amount, txnRef);
         return vnPayConfig.getVnp_PayUrl() + "?" + queryUrl;
     }
 
@@ -121,10 +117,8 @@ public class VNPayService {
         params.remove("vnp_SecureHash");
         params.remove("vnp_SecureHashType");
 
-        // Build hash data - GIỐNG CODE MẪU VNPAY
         String hashData = VNPayUtil.getPaymentURL(params, false);
         String calculatedHash = VNPayUtil.hmacSHA512(vnPayConfig.getSecretKey(), hashData);
-
         if (!calculatedHash.equals(vnpSecureHash)) {
             log.error("Invalid VNPay signature");
             throw new AppException(ErrorCode.INVALID_PAYMENT_SIGNATURE);
@@ -132,18 +126,15 @@ public class VNPayService {
 
         // Lấy thông tin giao dịch
         String responseCode = params.get("vnp_ResponseCode");
-        String sessionId = params.get("vnp_TxnRef");
+        String txnRef = params.get("vnp_TxnRef");
         String transactionId = params.get("vnp_TransactionNo");
         String bankCode = params.get("vnp_BankCode");
         String cardType = params.get("vnp_CardType");
         String payDate = params.get("vnp_PayDate");
+        String amountStr = params.get("vnp_Amount");
 
-        // Tìm charging session
-        ChargingSession session = chargingSessionRepository.findById(sessionId)
-                .orElseThrow(() -> new AppException(ErrorCode.CHARGING_SESSION_NOT_FOUND));
-
-        // Tìm payment
-        Payment payment = paymentRepository.findByChargingSession(session)
+        // Tìm payment theo txnReference
+        Payment payment = paymentRepository.findByTxnReference(txnRef)
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
 
         // Cập nhật payment status
@@ -154,7 +145,7 @@ public class VNPayService {
             payment.setPaymentDetails("BankCode: " + bankCode + ", CardType: " + cardType);
             payment.setUpdatedAt(LocalDateTime.now());
 
-            // Parse payDate (format: yyyyMMddHHmmss)
+            // Update paidAt từ vnp_PayDate (yyyyMMddHHmmss)
             if (payDate != null && !payDate.isEmpty()) {
                 try {
                     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
@@ -163,15 +154,19 @@ public class VNPayService {
                     log.error("Error parsing pay date: {}", payDate, e);
                     payment.setPaidAt(LocalDateTime.now());
                 }
+            } else {
+                payment.setPaidAt(LocalDateTime.now());
             }
 
-            log.info("Payment completed for session: {}, transaction: {}", sessionId, transactionId);
+            // Ghi nhận thời điểm paymentTime theo quy ước
+            payment.setPaymentTime(LocalDateTime.now());
+
+            log.info("Payment completed: txnRef={}, transaction={}, amount={}", txnRef, transactionId, amountStr);
         } else {
             payment.setStatus(PaymentStatus.FAILED);
             payment.setPaymentDetails("Failed with code: " + responseCode);
             payment.setUpdatedAt(LocalDateTime.now());
-
-            log.warn("Payment failed for session: {}, response code: {}", sessionId, responseCode);
+            log.warn("Payment failed: txnRef={}, response code={}", txnRef, responseCode);
         }
 
         paymentRepository.save(payment);

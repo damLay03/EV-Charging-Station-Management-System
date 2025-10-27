@@ -3,7 +3,7 @@ package com.swp.evchargingstation.controller;
 import com.swp.evchargingstation.dto.response.ApiResponse;
 import com.swp.evchargingstation.dto.request.StartChargingRequest;
 import com.swp.evchargingstation.dto.response.ChargingSessionResponse;
-import com.swp.evchargingstation.dto.response.driver.DriverDashboardResponse;
+import com.swp.evchargingstation.dto.response.DriverDashboardResponse;
 import com.swp.evchargingstation.dto.response.MonthlyAnalyticsResponse;
 import com.swp.evchargingstation.service.ChargingSessionService;
 import jakarta.validation.Valid;
@@ -110,22 +110,6 @@ public class ChargingSessionController {
         String driverId = jwt.getClaim("userId");
         return ApiResponse.<ChargingSessionResponse>builder()
                 .result(chargingSessionService.stopSessionByUser(sessionId, driverId))
-                .build();
-    }
-
-    /**
-     * Lấy thông tin real-time của phiên sạc đang diễn ra
-     * Frontend gọi API này liên tục (polling mỗi 3-5 giây) để cập nhật UI
-     *
-     * Endpoint: GET /api/charging-sessions/{sessionId}/active
-     */
-    @GetMapping("/{sessionId}/active")
-    @PreAuthorize("hasRole('DRIVER')")
-    public ApiResponse<com.swp.evchargingstation.dto.response.ActiveChargingSessionResponse> getActiveSession(
-            @PathVariable String sessionId) {
-        log.info("Driver requesting active charging session data for sessionId: {}", sessionId);
-        return ApiResponse.<com.swp.evchargingstation.dto.response.ActiveChargingSessionResponse>builder()
-                .result(chargingSessionService.getActiveSession(sessionId))
                 .build();
     }
 }

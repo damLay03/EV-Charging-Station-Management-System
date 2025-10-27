@@ -168,7 +168,8 @@ public class StationController {
 
     // NOTE: Cập nhật thông tin trụ sạc (status, price, power, connectorType)
     @PutMapping("/{stationId}/charging-points/{chargingPointId}")
-    @PreAuthorize("hasRole('ADMIN')")
+//    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     public ApiResponse<ChargingPointResponse> updateChargingPoint(
             @PathVariable String stationId,
             @PathVariable String chargingPointId,

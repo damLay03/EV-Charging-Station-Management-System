@@ -69,7 +69,15 @@ public enum ErrorCode {
     PAYMENT_PROCESSING_FAILED(16004, "Payment Processing Failed"),
 
     // Active Session related
-    NO_ACTIVE_SESSION(17001, "No Active Charging Session Found")
+    NO_ACTIVE_SESSION(17001, "No Active Charging Session Found"),
+
+    // Cash Payment related
+    SESSION_NOT_COMPLETED(18001, "Charging Session Not Completed"),
+    CASH_PAYMENT_REQUEST_ALREADY_EXISTS(18002, "Cash Payment Request Already Exists"),
+    STATION_NO_STAFF(18003, "Station Has No Assigned Staff"),
+    STAFF_NO_MANAGED_STATION(18004, "Staff Does Not Manage Any Station"),
+    CASH_PAYMENT_REQUEST_NOT_FOUND(18005, "Cash Payment Request Not Found"),
+    CASH_PAYMENT_REQUEST_ALREADY_PROCESSED(18006, "Cash Payment Request Already Processed")
     ;
 
     private int code;

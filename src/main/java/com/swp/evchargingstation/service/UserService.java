@@ -3,8 +3,8 @@ import com.swp.evchargingstation.dto.request.UserCreationRequest;
 import com.swp.evchargingstation.dto.request.UserUpdateRequest;
 import com.swp.evchargingstation.dto.request.AdminUpdateDriverRequest;
 import com.swp.evchargingstation.dto.request.RoleAssignmentRequest;
-import com.swp.evchargingstation.dto.response.admin.AdminUserResponse;
-import com.swp.evchargingstation.dto.response.driver.DriverResponse;
+import com.swp.evchargingstation.dto.response.AdminUserResponse;
+import com.swp.evchargingstation.dto.response.DriverResponse;
 import com.swp.evchargingstation.dto.response.UserResponse;
 import com.swp.evchargingstation.entity.*;
 import com.swp.evchargingstation.enums.Role;
@@ -25,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service

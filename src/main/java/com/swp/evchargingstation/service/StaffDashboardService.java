@@ -40,6 +40,7 @@ public class StaffDashboardService {
     IncidentRepository incidentRepository;
     UserRepository userRepository;
     StaffDashboardMapper staffDashboardMapper;
+    CashPaymentService cashPaymentService;
 
     /**
      * Lấy thông tin dashboard cho staff đang đăng nhập
@@ -241,19 +242,43 @@ public class StaffDashboardService {
 
     /**
      * Lấy danh sách sự cố của station
+     * - ADMIN: xem tất cả incidents của tất cả stations
+     * - STAFF: chỉ xem incidents của station mình quản lý
      */
     public List<IncidentResponse> getStaffIncidents() {
-        String staffUserId = getCurrentStaffUserId();
-        Staff staff = staffRepository.findByIdWithStation(staffUserId)
-                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+        var context = SecurityContextHolder.getContext();
+        var authentication = context.getAuthentication();
 
-        Station station = staff.getStation();
-        if (station == null) {
-            throw new AppException(ErrorCode.STATION_NOT_FOUND);
+        String userId = null;
+        if (authentication != null && authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            userId = jwt.getClaim("userId");
         }
 
-        List<Incident> incidents = incidentRepository
-                .findByStationIdOrderByReportedAtDesc(station.getStationId());
+        if (userId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        // Check if user is ADMIN
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+
+        List<Incident> incidents;
+
+        if (isAdmin) {
+            // ADMIN: lấy tất cả incidents
+            incidents = incidentRepository.findAllByOrderByReportedAtDesc();
+        } else {
+            // STAFF: chỉ lấy incidents của station mình quản lý
+            Staff staff = staffRepository.findByIdWithStation(userId)
+                    .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+            Station station = staff.getStation();
+            if (station == null) {
+                throw new AppException(ErrorCode.STATION_NOT_FOUND);
+            }
+
+            incidents = incidentRepository.findByStationIdOrderByReportedAtDesc(station.getStationId());
+        }
 
         return incidents.stream()
                 .map(staffDashboardMapper::toIncidentResponse)
@@ -313,6 +338,85 @@ public class StaffDashboardService {
                 .stationId(station != null ? station.getStationId() : null)
                 .stationName(station != null ? station.getName() : null)
                 .stationAddress(station != null ? station.getAddress() : null)
+                .build();
+    }
+
+    /**
+     * Lấy danh sách payments đang chờ xác nhận thanh toán tiền mặt
+     */
+    public List<PendingPaymentResponse> getPendingCashPayments(String staffId) {
+        Staff staff = staffRepository.findById(staffId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+        Station station = staff.getStation();
+        if (station == null) {
+            throw new AppException(ErrorCode.STATION_NOT_FOUND);
+        }
+
+        // Lấy tất cả payments có status = PENDING_CASH của station này
+        List<Payment> pendingPayments = paymentRepository.findByStationIdAndStatus(
+                station.getStationId(),
+                PaymentStatus.PENDING_CASH
+        );
+
+        return pendingPayments.stream()
+                .map(this::convertToPendingPaymentResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Staff xác nhận đã nhận tiền mặt từ driver
+     */
+    @Transactional
+    public ApiResponse<String> confirmCashPayment(String paymentId, String staffId) {
+        // Kiểm tra staff có quyền không (payment phải thuộc station của staff)
+        Staff staff = staffRepository.findById(staffId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
+
+        // Kiểm tra payment thuộc station của staff
+        String paymentStationId = payment.getChargingSession().getChargingPoint().getStation().getStationId();
+        if (!paymentStationId.equals(staff.getStation().getStationId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        // Xác nhận thanh toán
+        cashPaymentService.confirmCashPayment(paymentId);
+
+        return ApiResponse.<String>builder()
+                .message("Đã xác nhận thanh toán tiền mặt thành công")
+                .result("COMPLETED")
+                .build();
+    }
+
+    /**
+     * Convert Payment entity sang PendingPaymentResponse
+     */
+    private PendingPaymentResponse convertToPendingPaymentResponse(Payment payment) {
+        ChargingSession session = payment.getChargingSession();
+        Driver driver = session.getDriver();
+        User driverUser = driver.getUser();
+        Vehicle vehicle = session.getVehicle();
+        ChargingPoint point = session.getChargingPoint();
+        Station station = point.getStation();
+
+        return PendingPaymentResponse.builder()
+                .paymentId(payment.getPaymentId())
+                .sessionId(session.getSessionId())
+                .driverName(driverUser != null ? driverUser.getFullName() : "N/A")
+                .driverPhone(driverUser != null ? driverUser.getPhone() : "N/A")
+                .licensePlate(vehicle != null ? vehicle.getLicensePlate() : "N/A")
+                .sessionStartTime(session.getStartTime())
+                .sessionEndTime(session.getEndTime())
+                .durationMin(session.getDurationMin())
+                .energyKwh(session.getEnergyKwh())
+                .amount(payment.getAmount())
+                .paymentStatus(payment.getStatus().name())
+                .requestedAt(payment.getCreatedAt())
+                .stationName(station != null ? station.getName() : "N/A")
+                .chargingPointName(point.getName() != null ? point.getName() : point.getPointId())
                 .build();
     }
 

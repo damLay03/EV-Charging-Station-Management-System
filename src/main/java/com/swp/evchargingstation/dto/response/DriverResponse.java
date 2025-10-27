@@ -1,4 +1,4 @@
-package com.swp.evchargingstation.dto.response.driver;
+package com.swp.evchargingstation.dto.response;
 
 import com.swp.evchargingstation.enums.Gender;
 import com.swp.evchargingstation.enums.Role;

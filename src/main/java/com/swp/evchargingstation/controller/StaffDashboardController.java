@@ -85,7 +85,8 @@ public class StaffDashboardController {
     }
 
     @GetMapping("/incidents")
-    @PreAuthorize("hasRole('STAFF')")
+//    @PreAuthorize("hasRole('STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Get incidents of staff's station",
                description = "Get all incidents reported for the station")
     public ApiResponse<List<IncidentResponse>> getIncidents() {
@@ -123,5 +124,29 @@ public class StaffDashboardController {
         return ApiResponse.<StaffProfileResponse>builder()
                 .result(staffDashboardService.getMyProfile())
                 .build();
+    }
+
+    @GetMapping("/pending-payments")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(summary = "Get pending cash payments",
+               description = "Get all cash payments awaiting staff confirmation at this station")
+    public ApiResponse<List<PendingPaymentResponse>> getPendingPayments(@AuthenticationPrincipal Jwt jwt) {
+        String staffId = jwt.getClaim("userId");
+        log.info("Staff {} requesting pending cash payments", staffId);
+        return ApiResponse.<List<PendingPaymentResponse>>builder()
+                .result(staffDashboardService.getPendingCashPayments(staffId))
+                .build();
+    }
+
+    @PostMapping("/payments/{paymentId}/confirm")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(summary = "Confirm cash payment",
+               description = "Staff confirms that driver has paid in cash")
+    public ApiResponse<String> confirmCashPayment(
+            @PathVariable String paymentId,
+            @AuthenticationPrincipal Jwt jwt) {
+        String staffId = jwt.getClaim("userId");
+        log.info("Staff {} confirming cash payment {}", staffId, paymentId);
+        return staffDashboardService.confirmCashPayment(paymentId, staffId);
     }
 }

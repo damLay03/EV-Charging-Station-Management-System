@@ -38,4 +38,18 @@ public class ChargingSessionResponse {
     // Thông tin xe
     String vehicleModel;            // Model xe
     String licensePlate;            // Biển số xe
+
+    // Các field realtime (được chuyển từ ActiveChargingSessionResponse)
+    Integer currentSocPercent;              // Mức pin hiện tại
+    Integer targetSocPercent;               // Mục tiêu SOC
+    Integer elapsedTimeMinutes;             // Thời gian đã sạc (phút)
+    Integer estimatedTimeRemainingMinutes;  // Thời gian còn lại ước tính (phút)
+    Float pricePerKwh;                      // Giá điện theo plan
+    Float energyConsumedKwh;                // Năng lượng tiêu thụ (kWh) - realtime
+    Float currentCost;                      // Chi phí hiện tại (realtime)
+    String powerOutput;                     // Công suất đầu ra (ví dụ: "50 kW")
+
+    // Trạng thái thanh toán
+    Boolean isPaid;                         // Đã thanh toán chưa
+    String paymentStatus;                   // Trạng thái thanh toán (PENDING_CASH, COMPLETED, etc.)
 }
