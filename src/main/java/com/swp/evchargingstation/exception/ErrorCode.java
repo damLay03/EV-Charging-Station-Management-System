@@ -61,12 +61,8 @@ public enum ErrorCode {
     CHARGING_SESSION_NOT_FOUND(15003, "Charging Session Not Found"),
     CHARGING_SESSION_NOT_ACTIVE(15004, "Charging Session Is Not Active"),
 
-    // VNPay Payment related
-    INVALID_REQUEST(16000, "Invalid Request - Missing Required Parameters"),
-    CHARGING_SESSION_NOT_COMPLETED(16001, "Charging Session Not Completed Yet"),
+    // Payment related
     PAYMENT_ALREADY_COMPLETED(16002, "Payment Already Completed"),
-    INVALID_PAYMENT_SIGNATURE(16003, "Invalid Payment Signature"),
-    PAYMENT_PROCESSING_FAILED(16004, "Payment Processing Failed"),
 
     // Active Session related
     NO_ACTIVE_SESSION(17001, "No Active Charging Session Found"),

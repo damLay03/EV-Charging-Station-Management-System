@@ -20,33 +20,36 @@ public class RevenueService {
 
     PaymentRepository paymentRepository;
 
-    public List<StationRevenueResponse> getWeeklyRevenue(Integer year, Integer month, Integer week) {
+    public List<StationRevenueResponse> getWeeklyRevenue(Integer year, Integer week) {
         // Nếu không truyền tham số, lấy tuần hiện tại
-        if (year == null || month == null || week == null) {
+        if (year == null || week == null) {
             LocalDate now = LocalDate.now();
             year = now.getYear();
-            month = now.getMonthValue();
-            week = (now.getDayOfMonth() - 1) / 7 + 1; // Tính tuần trong tháng
+            // Tính số tuần trong năm (mode 1: Thứ 2 là ngày đầu tuần)
+            week = now.get(java.time.temporal.WeekFields.ISO.weekOfYear());
         }
 
-        log.info("Fetching revenue for year: {}, month: {}, week: {}", year, month, week);
+        log.info("Fetching revenue for year: {}, week: {}", year, week);
 
-        List<Object[]> results = paymentRepository.findWeeklyRevenueByStation(year, month, week);
+        List<Object[]> results = paymentRepository.findWeeklyRevenueByStation(year, week);
         List<StationRevenueResponse> responses = new ArrayList<>();
 
         for (Object[] result : results) {
+            // Native query returns: station_id, name, address, week, year, sum, count
+            // Need to handle potential type differences from native query
             StationRevenueResponse response = StationRevenueResponse.builder()
                     .stationId((String) result[0])
                     .stationName((String) result[1])
                     .address((String) result[2])
-                    .month((Integer) result[3])
-                    .year((Integer) result[4])
-                    .week((Integer) result[5])
-                    .totalRevenue(((Number) result[6]).floatValue())
-                    .totalSessions(((Number) result[7]).intValue())
+                    .week(((Number) result[3]).intValue())      // ← Cast to Number first
+                    .year(((Number) result[4]).intValue())      // ← Cast to Number first
+                    .totalRevenue(((Number) result[5]).floatValue())
+                    .totalSessions(((Number) result[6]).intValue())
                     .build();
             responses.add(response);
         }
+
+        log.info("Found {} stations with revenue for week {} of year {}", responses.size(), week, year);
 
         return responses;
     }

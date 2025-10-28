@@ -28,16 +28,6 @@ spring:
 jwt:
   singerKey: 0a58c8b134bc3d3e7a853dc8a49bcd3895e02c20d39d29d2d976e87300dc23fa
 
-# VNPay Configuration
-vnpay:
-  url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-  returnUrl: https://unendued-somnolent-rosemarie.ngrok-free.dev/evchargingstation/api/payment/vnpay-callback
-  tmnCode: D18XZYI3
-  secretKey: 8HGLY907AM8PDUELLFTQ1O3LT04DPX1X
-  version: 2.1.0
-  command: pay
-  orderType: other
-
 logging:
   level:
     root: INFO

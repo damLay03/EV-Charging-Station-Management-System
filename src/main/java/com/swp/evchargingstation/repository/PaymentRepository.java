@@ -18,58 +18,59 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
 
     Optional<Payment> findByTxnReference(String txnReference);
 
-    // Query lấy doanh thu theo tuần của từng trạm
-    @Query("SELECT s.stationId, s.name, s.address, " +
-            "MONTH(p.paymentTime), YEAR(p.paymentTime), " +
-            "FLOOR((DAY(p.paymentTime) - 1) / 7) + 1 AS weekOfMonth, " +
-            "SUM(p.amount), COUNT(p.paymentId) " +
-            "FROM Payment p " +
-            "JOIN p.chargingSession cs " +
-            "JOIN cs.chargingPoint cp " +
-            "JOIN cp.station s " +
-            "WHERE YEAR(p.paymentTime) = :year " +
-            "AND MONTH(p.paymentTime) = :month " +
-            "AND FLOOR((DAY(p.paymentTime) - 1) / 7) + 1 = :week " +
+    // Query lấy doanh thu theo tuần của từng trạm (Thứ 2 - Chủ Nhật)
+    // Sử dụng native query vì HQL không hỗ trợ WEEK() function với mode parameter
+    @Query(value = "SELECT s.station_id, s.name, s.address, " +
+            "WEEK(p.paid_at, 1) AS weekOfYear, " +
+            "YEAR(p.paid_at), " +
+            "SUM(p.amount), COUNT(p.payment_id) " +
+            "FROM payments p " +
+            "JOIN charging_sessions cs ON p.session_id = cs.session_id " +
+            "JOIN charging_points cp ON cs.point_id = cp.point_id " +
+            "JOIN stations s ON cp.station_id = s.station_id " +
+            "WHERE WEEK(p.paid_at, 1) = :week " +
+            "AND YEAR(p.paid_at) = :year " +
             "AND p.status = 'COMPLETED' " +
-            "GROUP BY s.stationId, s.name, s.address, " +
-            "MONTH(p.paymentTime), YEAR(p.paymentTime), weekOfMonth")
-    List<Object[]> findWeeklyRevenueByStation(@Param("year") int year, @Param("month") int month, @Param("week") int week);
+            "GROUP BY s.station_id, s.name, s.address, " +
+            "WEEK(p.paid_at, 1), YEAR(p.paid_at) " +
+            "ORDER BY s.name", nativeQuery = true)
+    List<Object[]> findWeeklyRevenueByStation(@Param("year") int year, @Param("week") int week);
 
     // Query lấy doanh thu theo tháng của từng trạm
     @Query("SELECT s.stationId, s.name, s.address, " +
-            "MONTH(p.paymentTime), YEAR(p.paymentTime), " +
+            "MONTH(p.paidAt), YEAR(p.paidAt), " +
             "SUM(p.amount), COUNT(p.paymentId) " +
             "FROM Payment p " +
             "JOIN p.chargingSession cs " +
             "JOIN cs.chargingPoint cp " +
             "JOIN cp.station s " +
-            "WHERE YEAR(p.paymentTime) = :year " +
-            "AND MONTH(p.paymentTime) = :month " +
+            "WHERE YEAR(p.paidAt) = :year " +
+            "AND MONTH(p.paidAt) = :month " +
             "AND p.status = 'COMPLETED' " +
             "GROUP BY s.stationId, s.name, s.address, " +
-            "MONTH(p.paymentTime), YEAR(p.paymentTime)")
+            "MONTH(p.paidAt), YEAR(p.paidAt)")
     List<Object[]> findMonthlyRevenueByStation(@Param("year") int year, @Param("month") int month);
 
     // Query lấy doanh thu theo năm của từng trạm (tất cả các tháng)
     @Query("SELECT s.stationId, s.name, s.address, " +
-            "MONTH(p.paymentTime), YEAR(p.paymentTime), " +
+            "MONTH(p.paidAt), YEAR(p.paidAt), " +
             "SUM(p.amount), COUNT(p.paymentId) " +
             "FROM Payment p " +
             "JOIN p.chargingSession cs " +
             "JOIN cs.chargingPoint cp " +
             "JOIN cp.station s " +
-            "WHERE YEAR(p.paymentTime) = :year " +
+            "WHERE YEAR(p.paidAt) = :year " +
             "AND p.status = 'COMPLETED' " +
             "GROUP BY s.stationId, s.name, s.address, " +
-            "MONTH(p.paymentTime), YEAR(p.paymentTime) " +
-            "ORDER BY MONTH(p.paymentTime), s.name")
+            "MONTH(p.paidAt), YEAR(p.paidAt) " +
+            "ORDER BY MONTH(p.paidAt), s.name")
     List<Object[]> findYearlyRevenueByStation(@Param("year") int year);
 
     // Query tính tổng doanh thu trong tháng hiện tại (cho overview)
     @Query("SELECT SUM(p.amount) " +
             "FROM Payment p " +
-            "WHERE YEAR(p.paymentTime) = :year " +
-            "AND MONTH(p.paymentTime) = :month " +
+            "WHERE YEAR(p.paidAt) = :year " +
+            "AND MONTH(p.paidAt) = :month " +
             "AND p.status = 'COMPLETED'")
     Float findCurrentMonthRevenue(@Param("year") int year, @Param("month") int month);
 

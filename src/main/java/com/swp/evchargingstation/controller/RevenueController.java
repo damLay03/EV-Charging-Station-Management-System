@@ -25,13 +25,12 @@ public class RevenueController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<StationRevenueResponse>> getWeeklyRevenue(
             @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer month,
             @RequestParam(required = false) Integer week
     ) {
-        log.info("Admin requesting weekly revenue - year: {}, month: {}, week: {}", year, month, week);
+        log.info("Admin requesting weekly revenue - year: {}, week: {}", year, week);
 
         return ApiResponse.<List<StationRevenueResponse>>builder()
-                .result(revenueService.getWeeklyRevenue(year, month, week))
+                .result(revenueService.getWeeklyRevenue(year, week))
                 .build();
     }
     /**

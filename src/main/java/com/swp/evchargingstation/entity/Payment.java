@@ -48,15 +48,15 @@ public class Payment {
     @JoinColumn(name = "session_id")
     ChargingSession chargingSession;
 
-    // VNPay specific fields
+    // Payment fields
     @Column(name = "transaction_id")
-    String transactionId; // VNPay transaction number
+    String transactionId; // Transaction number
 
     @Column(name = "payment_method")
-    String paymentMethod; // VNPAY, CASH, etc.
+    String paymentMethod; // CASH, etc.
 
     @Column(name = "payment_details")
-    String paymentDetails; // Store bank code, card type, etc.
+    String paymentDetails; // Store additional payment details
 
     @Column(name = "created_at")
     LocalDateTime createdAt;
