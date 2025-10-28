@@ -4,8 +4,10 @@ import com.swp.evchargingstation.entity.ChargingPoint;
 import com.swp.evchargingstation.entity.ChargingSession;
 import com.swp.evchargingstation.entity.Plan;
 import com.swp.evchargingstation.entity.Vehicle;
+import com.swp.evchargingstation.entity.Payment;
 import com.swp.evchargingstation.enums.ChargingPointStatus;
 import com.swp.evchargingstation.enums.ChargingSessionStatus;
+import com.swp.evchargingstation.enums.PaymentStatus;
 import com.swp.evchargingstation.repository.*;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ public class ChargingSimulatorService {
     VehicleRepository vehicleRepository;
     ChargingPointRepository chargingPointRepository;
     PlanRepository planRepository;
+    PaymentRepository paymentRepository;
 
     // Phase 2: background simulation tick, runs every 2 seconds
     @Scheduled(fixedRate = 2000)
@@ -113,7 +116,24 @@ public class ChargingSimulatorService {
             chargingPointRepository.save(point);
         }
 
-        // Remove payment creation here; it will be created when user initiates VNPay payment
+        // Automatically create Payment record with UNPAID status when session is COMPLETED
+        if (finalStatus == ChargingSessionStatus.COMPLETED) {
+            // Check if payment already exists (avoid duplicate)
+            boolean paymentExists = paymentRepository.findByChargingSession(session).isPresent();
+
+            if (!paymentExists) {
+                Payment payment = Payment.builder()
+                        .payer(session.getDriver())
+                        .amount(cost)
+                        .status(PaymentStatus.UNPAID)
+                        .chargingSession(session)
+                        .createdAt(LocalDateTime.now())
+                        .build();
+
+                paymentRepository.save(payment);
+                log.info("Created UNPAID payment for completed session {}", session.getSessionId());
+            }
+        }
 
         chargingSessionRepository.save(session);
         log.info("Session {} stopped. Status: {}. Cost: {}", session.getSessionId(), finalStatus, cost);

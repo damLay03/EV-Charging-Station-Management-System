@@ -226,7 +226,9 @@ public class ChargingSessionService {
         // Lấy thông tin thanh toán
         com.swp.evchargingstation.entity.Payment payment = paymentRepository.findByChargingSession(session).orElse(null);
         Boolean isPaid = payment != null && payment.getStatus() == com.swp.evchargingstation.enums.PaymentStatus.COMPLETED;
-        String paymentStatus = payment != null ? payment.getStatus().name() : null;
+
+        // paymentStatus: luôn có giá trị vì payment được tạo tự động khi session COMPLETED
+        String paymentStatus = payment != null ? payment.getStatus().name() : "UNPAID";
 
         return com.swp.evchargingstation.dto.response.ChargingSessionResponse.builder()
                 .sessionId(session.getSessionId())

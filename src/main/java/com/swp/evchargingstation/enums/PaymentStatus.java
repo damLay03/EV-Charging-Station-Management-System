@@ -1,8 +1,8 @@
 package com.swp.evchargingstation.enums;
 
 public enum PaymentStatus {
-    PENDING,           // Đang chờ xử lý (VNPay)
-    PENDING_CASH,      // Đang chờ staff xác nhận thanh toán tiền mặt
+    UNPAID,            // Chưa thanh toán (tự động tạo khi session COMPLETED)
+    PENDING,           // Đang chờ xử lý (đã chọn phương thức thanh toán)
     COMPLETED,         // Đã hoàn thành
     FAILED,            // Thất bại
     REFUNDED,          // Đã hoàn tiền

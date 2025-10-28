@@ -52,19 +52,18 @@ public class CashPaymentService {
             throw new AppException(ErrorCode.SESSION_NOT_COMPLETED);
         }
 
-        // Kiểm tra đã có payment chưa
-        Payment existingPayment = paymentRepository.findByChargingSession(session).orElse(null);
+        // Lấy Payment record (phải đã tồn tại với status UNPAID khi session COMPLETED)
+        Payment payment = paymentRepository.findByChargingSession(session)
+                .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
 
-        if (existingPayment != null) {
-            // Nếu đã thanh toán rồi
-            if (existingPayment.getStatus() == PaymentStatus.COMPLETED) {
-                throw new AppException(ErrorCode.PAYMENT_ALREADY_COMPLETED);
-            }
+        // Kiểm tra payment status
+        if (payment.getStatus() == PaymentStatus.COMPLETED) {
+            throw new AppException(ErrorCode.PAYMENT_ALREADY_COMPLETED);
+        }
 
-            // Nếu đã có cash payment request rồi (status = PENDING_CASH)
-            if (existingPayment.getStatus() == PaymentStatus.PENDING_CASH) {
-                throw new AppException(ErrorCode.CASH_PAYMENT_REQUEST_ALREADY_EXISTS);
-            }
+        // Nếu đã có cash payment request rồi (paymentMethod = CASH và assignedStaff != null)
+        if ("CASH".equals(payment.getPaymentMethod()) && payment.getAssignedStaff() != null) {
+            throw new AppException(ErrorCode.CASH_PAYMENT_REQUEST_ALREADY_EXISTS);
         }
 
         // Lấy thông tin station và staff quản lý
@@ -75,29 +74,15 @@ public class CashPaymentService {
             throw new AppException(ErrorCode.STATION_NO_STAFF);
         }
 
-        // Tạo hoặc update payment
-        Payment payment;
-        if (existingPayment == null) {
-            payment = Payment.builder()
-                    .payer(session.getDriver())
-                    .amount(session.getCostTotal())
-                    .paymentMethod("CASH")
-                    .status(PaymentStatus.PENDING_CASH)
-                    .chargingSession(session)
-                    .assignedStaff(assignedStaff)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-        } else {
-            existingPayment.setStatus(PaymentStatus.PENDING_CASH);
-            existingPayment.setPaymentMethod("CASH");
-            existingPayment.setAssignedStaff(assignedStaff);
-            existingPayment.setUpdatedAt(LocalDateTime.now());
-            payment = existingPayment;
-        }
+        // Update payment: UNPAID → PENDING với paymentMethod = CASH
+        payment.setStatus(PaymentStatus.PENDING);
+        payment.setPaymentMethod("CASH");
+        payment.setAssignedStaff(assignedStaff);
+        payment.setUpdatedAt(LocalDateTime.now());
 
         payment = paymentRepository.save(payment);
 
-        log.info("Cash payment request created for session {}", sessionId);
+        log.info("Cash payment request created for session {}, payment updated from UNPAID to PENDING", sessionId);
 
         return convertToResponse(payment);
     }
@@ -122,8 +107,9 @@ public class CashPaymentService {
         }
 
         // Lấy danh sách pending cash payments tại trạm này
+        // Query: status = PENDING AND paymentMethod = CASH AND assignedStaff IS NOT NULL
         List<Payment> pendingPayments = paymentRepository
-                .findByStationIdAndStatus(managedStation.getStationId(), PaymentStatus.PENDING_CASH);
+                .findPendingCashPaymentsByStationId(managedStation.getStationId());
 
         return pendingPayments.stream()
                 .map(this::convertToResponse)
@@ -143,20 +129,36 @@ public class CashPaymentService {
         Staff staff = staffRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
 
+        // Lấy station mà staff quản lý
+        Station managedStation = staff.getManagedStation();
+
+        if (managedStation == null) {
+            log.error("Staff {} does not manage any station", userId);
+            throw new AppException(ErrorCode.STAFF_NO_MANAGED_STATION);
+        }
+
         // Lấy payment
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
 
+        log.info("Payment before update - ID: {}, Status: {}, Method: {}",
+                payment.getPaymentId(), payment.getStatus(), payment.getPaymentMethod());
+
         // Kiểm tra payment có thuộc trạm của staff này không
-        Station managedStation = staff.getManagedStation();
         Station paymentStation = payment.getChargingSession().getChargingPoint().getStation();
 
-        if (managedStation == null || !managedStation.getStationId().equals(paymentStation.getStationId())) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
+        if (!managedStation.getStationId().equals(paymentStation.getStationId())) {
+            log.error("Staff {} (manages station {}) attempted to confirm payment {} from station {}",
+                    userId, managedStation.getStationId(), paymentId, paymentStation.getStationId());
+            throw new AppException(ErrorCode.STAFF_NOT_AUTHORIZED_FOR_STATION);
         }
 
-        // Kiểm tra status
-        if (payment.getStatus() != PaymentStatus.PENDING_CASH) {
+        // Kiểm tra đây có phải cash payment request đang chờ không
+        if (payment.getStatus() != PaymentStatus.PENDING ||
+                !"CASH".equals(payment.getPaymentMethod()) ||
+                payment.getAssignedStaff() == null) {
+            log.error("Invalid payment state - Status: {}, Method: {}, AssignedStaff: {}",
+                    payment.getStatus(), payment.getPaymentMethod(), payment.getAssignedStaff());
             throw new AppException(ErrorCode.CASH_PAYMENT_REQUEST_ALREADY_PROCESSED);
         }
 
@@ -167,11 +169,14 @@ public class CashPaymentService {
         payment.setPaidAt(LocalDateTime.now());
         payment.setUpdatedAt(LocalDateTime.now());
 
-        payment = paymentRepository.save(payment);
+        Payment savedPayment = paymentRepository.save(payment);
+        paymentRepository.flush(); // Force flush to database immediately
 
-        log.info("Cash payment {} confirmed by staff {}", paymentId, userId);
+        log.info("Payment after update - ID: {}, Status: {}, ConfirmedAt: {}, PaidAt: {}",
+                savedPayment.getPaymentId(), savedPayment.getStatus(),
+                savedPayment.getConfirmedAt(), savedPayment.getPaidAt());
 
-        return convertToResponse(payment);
+        return convertToResponse(savedPayment);
     }
 
     /**
@@ -220,7 +225,8 @@ public class CashPaymentService {
      */
     private String mapPaymentStatusToCashStatus(PaymentStatus paymentStatus) {
         return switch (paymentStatus) {
-            case PENDING_CASH -> "PENDING";
+            case UNPAID -> "PENDING";  // UNPAID cũng hiển thị là PENDING cho frontend
+            case PENDING -> "PENDING";
             case COMPLETED -> "CONFIRMED";
             case CANCELLED -> "CANCELLED";
             default -> "PENDING";

@@ -77,7 +77,8 @@ public enum ErrorCode {
     STATION_NO_STAFF(18003, "Station Has No Assigned Staff"),
     STAFF_NO_MANAGED_STATION(18004, "Staff Does Not Manage Any Station"),
     CASH_PAYMENT_REQUEST_NOT_FOUND(18005, "Cash Payment Request Not Found"),
-    CASH_PAYMENT_REQUEST_ALREADY_PROCESSED(18006, "Cash Payment Request Already Processed")
+    CASH_PAYMENT_REQUEST_ALREADY_PROCESSED(18006, "Cash Payment Request Already Processed"),
+    STAFF_NOT_AUTHORIZED_FOR_STATION(18007, "Staff Not Authorized To Process Payments For This Station")
     ;
 
     private int code;

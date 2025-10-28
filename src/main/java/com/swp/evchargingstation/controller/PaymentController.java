@@ -97,7 +97,7 @@ public class PaymentController {
 
         return ApiResponse.<String>builder()
                 .message("Yêu cầu thanh toán tiền mặt đã được gửi đến nhân viên trạm")
-                .result("PENDING_CASH")
+                .result("PENDING")
                 .build();
     }
 }

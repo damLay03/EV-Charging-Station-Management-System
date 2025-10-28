@@ -3,9 +3,9 @@
 ## Tổng quan
 API này cho phép driver yêu cầu thanh toán bằng tiền mặt sau khi hoàn thành phiên sạc, và staff có thể xem danh sách yêu cầu cũng như xác nhận đã nhận tiền.
 
-**Thiết kế tối ưu**: Sử dụng luôn bảng `payments` có sẵn với field `paymentMethod` ("CASH", "VNPAY") thay vì tạo bảng riêng, giúp tiết kiệm tài nguyên và đơn giản hóa database schema.
+**Thiết kế tối ưu**: Sử dụng luôn bảng `payments` có sẵn với field `paymentMethod` ("CASH", "VNPAY") thay vì tạo bảng riêng, giúp tiết kiệm t��i nguyên và đơn giản hóa database schema.
 
-## Flow hoạt động
+## Flow hoạt đ���ng
 
 ### Flow cho Driver:
 1. Driver kết thúc phiên sạc (status = COMPLETED)
@@ -187,9 +187,12 @@ PUT /api/cash-payments/staff/confirm/{paymentId}
 ### Mô tả
 Staff xác nhận driver đã thanh toán tiền mặt. Sau khi xác nhận, payment status sẽ chuyển thành COMPLETED.
 
+**⚠️ Quan trọng**: Staff chỉ được phép xác nhận các payment request tại tr���m mà họ quản lý. Nếu cố gắng xác nhận payment từ trạm khác sẽ bị từ chối với lỗi 18007.
+
 ### Authorization
 - **Role**: STAFF
 - **Header**: `Authorization: Bearer {JWT_TOKEN}`
+- **Ràng buộc**: Staff chỉ có thể xác nhận payment tại station mà họ quản lý
 
 ### Path Parameters
 | Tham số | Kiểu | Bắt buộc | Mô tả |
@@ -230,6 +233,41 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 }
 ```
 
+### Error Responses
+
+#### Payment không tồn tại (404)
+```json
+{
+  "code": 8001,
+  "message": "Payment Not Found"
+}
+```
+
+#### Staff không quản lý station nào (400)
+```json
+{
+  "code": 18004,
+  "message": "Staff Does Not Manage Any Station"
+}
+```
+
+#### Staff không có quyền xử lý payment này (403)
+```json
+{
+  "code": 18007,
+  "message": "Staff Not Authorized To Process Payments For This Station"
+}
+```
+**Mô tả**: Lỗi này xảy ra khi staff cố gắng xác nhận payment từ một station khác (không phải station mà họ quản lý).
+
+#### Payment request đã được xử lý (400)
+```json
+{
+  "code": 18006,
+  "message": "Cash Payment Request Already Processed"
+}
+```
+
 ---
 
 ## Database Schema
@@ -242,7 +280,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 | confirmed_by_staff_id | VARCHAR(36) | Staff đã xác nhận thanh toán tiền mặt |
 | confirmed_at | TIMESTAMP | Thời gian staff xác nhận thanh toán tiền mặt |
 
-**Ưu điểm so với tạo bảng mới:**
+**Ưu đi��m so với tạo bảng mới:**
 - ✅ Tiết kiệm tài nguyên database
 - ✅ Không cần JOIN thêm bảng khi query
 - ✅ Sử dụng lại các field có sẵn: `paymentMethod`, `status`, `amount`
@@ -273,7 +311,7 @@ COMPLETED (Hoàn thành)
 ### Test Case 1: Driver yêu cầu thanh toán thành công
 ```bash
 POST /api/cash-payments/request/{sessionId}
-# Expected: Payment created với status = PENDING_CASH
+# Expected: Payment created v��i status = PENDING_CASH
 ```
 
 ### Test Case 2: Staff xem danh sách pending
@@ -287,4 +325,3 @@ GET /api/cash-payments/staff/pending
 PUT /api/cash-payments/staff/confirm/{paymentId}
 # Expected: Payment status = COMPLETED, confirmedAt được set
 ```
-

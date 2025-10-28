@@ -353,10 +353,10 @@ public class StaffDashboardService {
             throw new AppException(ErrorCode.STATION_NOT_FOUND);
         }
 
-        // Lấy tất cả payments có status = PENDING_CASH của station này
-        List<Payment> pendingPayments = paymentRepository.findByStationIdAndStatus(
-                station.getStationId(),
-                PaymentStatus.PENDING_CASH
+        // Lấy tất cả pending cash payments của station này
+        // Query: status = PENDING AND paymentMethod = CASH AND assignedStaff IS NOT NULL
+        List<Payment> pendingPayments = paymentRepository.findPendingCashPaymentsByStationId(
+                station.getStationId()
         );
 
         return pendingPayments.stream()

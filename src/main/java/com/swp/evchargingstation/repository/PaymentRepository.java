@@ -82,6 +82,17 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
             "ORDER BY p.createdAt DESC")
     List<Payment> findByStationIdAndStatus(@Param("stationId") String stationId, @Param("status") PaymentStatus status);
 
+    // Tìm pending cash payment requests theo station
+    @Query("SELECT p FROM Payment p " +
+            "JOIN p.chargingSession cs " +
+            "JOIN cs.chargingPoint cp " +
+            "WHERE cp.station.stationId = :stationId " +
+            "AND p.status = 'PENDING' " +
+            "AND p.paymentMethod = 'CASH' " +
+            "AND p.assignedStaff IS NOT NULL " +
+            "ORDER BY p.createdAt DESC")
+    List<Payment> findPendingCashPaymentsByStationId(@Param("stationId") String stationId);
+
     // Check if payment exists for a session
     boolean existsByChargingSession_SessionId(String sessionId);
 }
