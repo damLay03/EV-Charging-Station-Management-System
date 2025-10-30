@@ -48,6 +48,18 @@ public class CashPaymentController {
                 .build();
     }
 
+    @GetMapping("/staff/history")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(summary = "Staff xem lịch sử thanh toán tiền mặt đã xác nhận",
+            description = "Lấy danh sách tất cả các thanh toán tiền mặt mà staff đã xác nhận. " +
+                    "Danh sách được sắp xếp theo thời gian xác nhận mới nhất.")
+    public ApiResponse<List<CashPaymentRequestResponse>> getConfirmedCashPaymentHistory() {
+        log.info("Staff getting confirmed cash payment history");
+        return ApiResponse.<List<CashPaymentRequestResponse>>builder()
+                .result(cashPaymentService.getConfirmedCashPaymentHistory())
+                .build();
+    }
+
     @PutMapping("/staff/confirm/{paymentId}")
     @PreAuthorize("hasRole('STAFF')")
     @Operation(summary = "Staff xác nhận đã nhận tiền mặt từ driver",
