@@ -32,6 +32,7 @@ public class SecurityConfig {
             "/api/auth/login",
             "/api/users/register",
             "/api/plans",
+            "/api/payment/zalopay-callback",  // ZaloPay callback - must be public
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",

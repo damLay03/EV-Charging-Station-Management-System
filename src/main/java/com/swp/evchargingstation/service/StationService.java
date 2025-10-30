@@ -352,10 +352,10 @@ public class StationService {
     private StationDetailResponse mapToStationDetailResponse(Station station) {
         String stationId = station.getStationId();
 
-        // Đếm số lượng charging points theo trạng thái - GI�� NGUYÊN NULL nếu không có
+        // Đếm số lượng charging points theo trạng thái - GIỮ NGUYÊN NULL nếu không có
         Integer totalPoints = chargingPointRepository.countByStationId(stationId);
         Integer availablePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.AVAILABLE);
-        Integer inUsePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.OCCUPIED);
+        Integer inUsePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.CHARGING);
         Integer offlinePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.OUT_OF_SERVICE);
         Integer maintenancePoints = chargingPointRepository.countByStationIdAndStatus(stationId, ChargingPointStatus.MAINTENANCE);
 

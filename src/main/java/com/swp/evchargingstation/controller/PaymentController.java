@@ -3,6 +3,9 @@ package com.swp.evchargingstation.controller;
 import com.swp.evchargingstation.dto.request.CashPaymentRequest;
 import com.swp.evchargingstation.dto.response.ApiResponse;
 import com.swp.evchargingstation.service.CashPaymentService;
+import com.swp.evchargingstation.service.ZaloPayService;
+import com.swp.evchargingstation.dto.zalopay.ZaloPayCallbackRequest;
+import org.springframework.http.ResponseEntity;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -11,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payment")
@@ -21,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 public class PaymentController {
 
     CashPaymentService cashPaymentService;
+    ZaloPayService zaloPayService;
 
     @PostMapping("/cash/request")
     @Operation(summary = "Request cash payment",
@@ -36,5 +42,44 @@ public class PaymentController {
                 .message("Yêu cầu thanh toán tiền mặt đã được gửi đến nhân viên trạm")
                 .result("PENDING")
                 .build();
+    }
+
+    /**
+     * Create ZaloPay payment
+     */
+    @PostMapping("/zalopay/create/{sessionId}")
+    public ApiResponse<String> createZaloPayPayment(@PathVariable String sessionId) {
+        String paymentUrl = zaloPayService.createPayment(sessionId);
+        return ApiResponse.<String>builder()
+                .result(paymentUrl)
+                .build();
+    }
+
+    /**
+     * ZaloPay callback endpoint
+     */
+    @PostMapping("/zalopay-callback")
+    public ResponseEntity<Map<String, Object>> zaloPayCallback(
+            @RequestBody ZaloPayCallbackRequest callbackRequest
+    ) {
+        log.info("=== ZaloPay Callback Received ===");
+        log.info("Data: {}", callbackRequest.getData());
+        log.info("MAC: {}", callbackRequest.getMac());
+
+        Map<String, Object> response = zaloPayService.handleCallback(callbackRequest);
+
+        log.info("Callback response: {}", response);
+        log.info("=== End ZaloPay Callback ===");
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Test endpoint to verify callback URL is accessible
+     */
+    @GetMapping("/zalopay-callback/test")
+    public ResponseEntity<String> testCallback() {
+        log.info("ZaloPay callback test endpoint hit!");
+        return ResponseEntity.ok("ZaloPay callback endpoint is accessible. POST to this URL for actual callback.");
     }
 }

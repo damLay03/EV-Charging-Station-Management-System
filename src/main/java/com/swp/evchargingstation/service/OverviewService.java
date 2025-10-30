@@ -32,8 +32,8 @@ public class OverviewService {
         long totalStations = stationRepository.count();
         log.info("Total stations: {}", totalStations);
 
-        // 2. Điểm sạc đang hoạt động (đang được cắm sạc - status = OCCUPIED)
-        long activeChargingPoints = chargingPointRepository.countByStatus(ChargingPointStatus.OCCUPIED);
+        // 2. Điểm sạc đang hoạt động (đang sạc - status = CHARGING)
+        long activeChargingPoints = chargingPointRepository.countByStatus(ChargingPointStatus.CHARGING);
         log.info("Active charging points: {}", activeChargingPoints);
 
         // 3. Tổng số người dùng (driver)

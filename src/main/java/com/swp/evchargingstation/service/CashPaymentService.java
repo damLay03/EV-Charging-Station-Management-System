@@ -62,7 +62,7 @@ public class CashPaymentService {
         }
 
         // Nếu đã có cash payment request rồi (paymentMethod = CASH và assignedStaff != null)
-        if ("CASH".equals(payment.getPaymentMethod()) && payment.getAssignedStaff() != null) {
+        if (Payment.PaymentMethod.CASH.equals(payment.getPaymentMethod()) && payment.getAssignedStaff() != null) {
             throw new AppException(ErrorCode.CASH_PAYMENT_REQUEST_ALREADY_EXISTS);
         }
 
@@ -76,7 +76,7 @@ public class CashPaymentService {
 
         // Update payment: UNPAID → PENDING với paymentMethod = CASH
         payment.setStatus(PaymentStatus.PENDING);
-        payment.setPaymentMethod("CASH");
+        payment.setPaymentMethod(Payment.PaymentMethod.CASH);
         payment.setAssignedStaff(assignedStaff);
         payment.setUpdatedAt(LocalDateTime.now());
 
@@ -155,7 +155,7 @@ public class CashPaymentService {
 
         // Kiểm tra đây có phải cash payment request đang chờ không
         if (payment.getStatus() != PaymentStatus.PENDING ||
-                !"CASH".equals(payment.getPaymentMethod()) ||
+                !Payment.PaymentMethod.CASH.equals(payment.getPaymentMethod()) ||
                 payment.getAssignedStaff() == null) {
             log.error("Invalid payment state - Status: {}, Method: {}, AssignedStaff: {}",
                     payment.getStatus(), payment.getPaymentMethod(), payment.getAssignedStaff());

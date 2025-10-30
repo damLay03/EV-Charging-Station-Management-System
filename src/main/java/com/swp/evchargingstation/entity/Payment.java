@@ -30,10 +30,6 @@ public class Payment {
     @Column(name = "amount")
     float amount;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "method_id")
-    PaymentMethod method;
-
     @Column(name = "payment_time")
     LocalDateTime paymentTime;
 
@@ -52,8 +48,8 @@ public class Payment {
     @Column(name = "transaction_id")
     String transactionId; // Transaction number
 
-    @Column(name = "payment_method")
-    String paymentMethod; // CASH, etc.
+//    @Column(name = "payment_method")
+//    String paymentMethod; // CASH, etc.
 
     @Column(name = "payment_details")
     String paymentDetails; // Store additional payment details
@@ -78,4 +74,16 @@ public class Payment {
 
     @Column(name = "confirmed_at")
     LocalDateTime confirmedAt; // Thời gian staff xác nhận thanh toán tiền mặt
+
+    @Column(name = "zp_trans_token")
+    private String zpTransToken;  // ZaloPay transaction token
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", nullable = false)
+    private PaymentMethod paymentMethod;
+
+    public enum PaymentMethod {
+        CASH,
+        ZALOPAY  // Add this
+    }
 }

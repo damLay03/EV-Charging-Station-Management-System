@@ -18,6 +18,9 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
 
     Optional<Payment> findByTxnReference(String txnReference);
 
+    // Tìm payment theo transaction ID (cho ZaloPay callback)
+    Optional<Payment> findByTransactionId(String transactionId);
+
     // Query lấy doanh thu theo tuần của từng trạm (Thứ 2 - Chủ Nhật)
     // Sử dụng native query vì HQL không hỗ trợ WEEK() function với mode parameter
     @Query(value = "SELECT s.station_id, s.name, s.address, " +
@@ -96,4 +99,6 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
 
     // Check if payment exists for a session
     boolean existsByChargingSession_SessionId(String sessionId);
+
+    boolean existsByChargingSessionAndStatus(ChargingSession chargingSession, PaymentStatus status);
 }

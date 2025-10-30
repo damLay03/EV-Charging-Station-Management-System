@@ -59,7 +59,7 @@ public class StationUsageService {
         List<ChargingPoint> allPoints = chargingPointRepository.findByStation_StationId(stationId);
         int totalPoints = allPoints.size();
         int currentInUse = (int) allPoints.stream()
-                .filter(cp -> cp.getStatus() == ChargingPointStatus.OCCUPIED)
+                .filter(cp -> cp.getStatus() == ChargingPointStatus.CHARGING)
                 .count();
         int currentAvailable = (int) allPoints.stream()
                 .filter(cp -> cp.getStatus() == ChargingPointStatus.AVAILABLE)

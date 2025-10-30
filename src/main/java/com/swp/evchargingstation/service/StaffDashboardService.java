@@ -83,7 +83,7 @@ public class StaffDashboardService {
                 .filter(cp -> cp.getStatus() == ChargingPointStatus.AVAILABLE)
                 .count();
         int chargingPointsCount = (int) chargingPoints.stream()
-                .filter(cp -> cp.getStatus() == ChargingPointStatus.OCCUPIED)
+                .filter(cp -> cp.getStatus() == ChargingPointStatus.CHARGING)
                 .count();
         int offlinePoints = (int) chargingPoints.stream()
                 .filter(cp -> cp.getStatus() == ChargingPointStatus.OUT_OF_SERVICE ||
@@ -172,17 +172,18 @@ public class StaffDashboardService {
             throw new AppException(ErrorCode.PAYMENT_ALREADY_EXISTS);
         }
 
-        PaymentMethod paymentMethod = paymentMethodRepository.findById(request.getPaymentMethodId())
-                .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_METHOD_NOT_FOUND));
-
+        // Payment is now using CASH method (enum based)
         Payment payment = Payment.builder()
                 .payer(session.getDriver())
                 .amount(request.getAmount())
-                .method(paymentMethod)
+                .paymentMethod(Payment.PaymentMethod.CASH)
                 .paymentTime(LocalDateTime.now())
                 .status(PaymentStatus.COMPLETED)
                 .txnReference("STAFF_" + System.currentTimeMillis())
                 .chargingSession(session)
+                .paidAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
         paymentRepository.save(payment);

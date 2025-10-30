@@ -41,6 +41,23 @@
 
 ---
 
+## Recent Updates & Bug Fixes (2025-10-30)
+
+### 🔥 Critical Fixes
+- **[OCCUPIED Status Removal](./OCCUPIED_STATUS_REMOVAL.md)** - Fixed dashboard always showing 0 active charging points
+- **[ZaloPay Duplicate Payment Fix](./ZALOPAY_DUPLICATE_PAYMENT_FIX.md)** - Fixed duplicate key error on payment retry
+- **[Recent Fixes Summary](./RECENT_FIXES_SUMMARY.md)** - Overview of both fixes
+
+### 📚 Developer Guides
+- **[Charging Point Status Guide](./CHARGING_POINT_STATUS_GUIDE.md)** - Complete guide for using ChargingPointStatus
+- **[Verification Checklist](./OCCUPIED_STATUS_VERIFICATION_CHECKLIST.md)** - Testing checklist for OCCUPIED removal
+- **[Commit Messages](./COMMIT_MESSAGES.md)** - Ready-to-use commit message templates
+
+### 🗄️ Database
+- **[Database Verification Script](./database-verification-occupied-cleanup.sql)** - SQL script to verify OCCUPIED cleanup
+
+---
+
 ## Cấu trúc Response chung
 
 Tất cả API response đều tuân theo cấu trúc:

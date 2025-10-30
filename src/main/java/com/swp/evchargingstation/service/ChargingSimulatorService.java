@@ -127,6 +127,7 @@ public class ChargingSimulatorService {
                         .amount(cost)
                         .status(PaymentStatus.UNPAID)
                         .chargingSession(session)
+                        .paymentMethod(Payment.PaymentMethod.CASH) // Set default payment method
                         .createdAt(LocalDateTime.now())
                         .build();
 

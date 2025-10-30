@@ -1,12 +1,12 @@
 package com.swp.evchargingstation.exception;
 
 public enum ErrorCode {
-    UNAUTHORIZED_EXCEPTION(3979,"Unauthorized Exception"),
-    USER_EXISTED(1001,"User Existed"),
-    PASSWORD_NOT_MATCH(1002,"Password Not Match"),
-    EMAIL_EXISTED(1003,"Email Existed"),
-    USER_NOT_FOUND(1004,"User Not Found"),
-    UNAUTHENTICATED(1005,"Unauthenticated"),
+    UNAUTHORIZED_EXCEPTION(3979, "Unauthorized Exception"),
+    USER_EXISTED(1001, "User Existed"),
+    PASSWORD_NOT_MATCH(1002, "Password Not Match"),
+    EMAIL_EXISTED(1003, "Email Existed"),
+    USER_NOT_FOUND(1004, "User Not Found"),
+    UNAUTHENTICATED(1005, "Unauthenticated"),
     VALIDATION_FAILED(1006, "Validation Failed"), // generic validation error
     STATION_NOT_FOUND(2001, "Station Not Found"), // added for station module
     STATION_NAME_REQUIRED(2002, "Station Name Is Required"),
@@ -64,6 +64,11 @@ public enum ErrorCode {
     // Payment related
     PAYMENT_ALREADY_COMPLETED(16002, "Payment Already Completed"),
 
+    // ZaloPay errors (17xxx)
+    ZALOPAY_API_ERROR(17000, "ZaloPay API error"),
+    ZALOPAY_INVALID_MAC(17001, "Invalid ZaloPay MAC signature"),
+    ZALOPAY_CALLBACK_ERROR(17002, "ZaloPay callback processing error"),
+
     // Active Session related
     NO_ACTIVE_SESSION(17001, "No Active Charging Session Found"),
 
@@ -74,8 +79,7 @@ public enum ErrorCode {
     STAFF_NO_MANAGED_STATION(18004, "Staff Does Not Manage Any Station"),
     CASH_PAYMENT_REQUEST_NOT_FOUND(18005, "Cash Payment Request Not Found"),
     CASH_PAYMENT_REQUEST_ALREADY_PROCESSED(18006, "Cash Payment Request Already Processed"),
-    STAFF_NOT_AUTHORIZED_FOR_STATION(18007, "Staff Not Authorized To Process Payments For This Station")
-    ;
+    STAFF_NOT_AUTHORIZED_FOR_STATION(18007, "Staff Not Authorized To Process Payments For This Station");
 
     private int code;
     private String message;
