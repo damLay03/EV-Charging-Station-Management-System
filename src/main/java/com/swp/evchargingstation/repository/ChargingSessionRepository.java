@@ -34,6 +34,13 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
     @Query("SELECT cs.endSocPercent FROM ChargingSession cs WHERE cs.driver.userId = :driverId AND cs.endSocPercent IS NOT NULL ORDER BY cs.endTime DESC LIMIT 1")
     java.util.Optional<Integer> findLatestEndSocByDriverId(@Param("driverId") String driverId);
 
+    // Find active charging session by vehicle
+    @Query("SELECT cs FROM ChargingSession cs WHERE cs.vehicle.vehicleId = :vehicleId AND cs.status = :status")
+    java.util.Optional<ChargingSession> findByVehicleIdAndStatus(
+            @Param("vehicleId") String vehicleId,
+            @Param("status") ChargingSessionStatus status
+    );
+
     // ========== ANALYTICS QUERIES FOR DRIVER ==========
 
     /**

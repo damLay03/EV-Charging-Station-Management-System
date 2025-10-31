@@ -26,6 +26,9 @@ public class User {
     @Column(nullable = false)
     String password;
 
+    @Column(name = "google_id", unique = true)
+    String googleId;
+
     @Column(nullable = true)
     String phone;
 

@@ -30,9 +30,12 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/auth/login",
+            "/api/auth/google/callback",  // Google OAuth2 callback
             "/api/users/register",
             "/api/plans",
             "/api/payment/zalopay-callback",  // ZaloPay callback - must be public
+            "/oauth2/**",  // OAuth2 endpoints
+            "/login/oauth2/**",  // OAuth2 login
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/v3/api-docs/**",
@@ -56,6 +59,9 @@ public class SecurityConfig {
                                 .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                                 // Các request khác cần authentication
                                 .anyRequest().authenticated()
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .defaultSuccessUrl("/api/auth/google/callback", true)
                 )
                 .oauth2ResourceServer(oauth2 ->
                         oauth2.jwt(jwtConfigurer ->

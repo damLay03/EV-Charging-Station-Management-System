@@ -117,6 +117,29 @@ public class CashPaymentService {
     }
 
     /**
+     * Staff lấy lịch sử các thanh toán cash mà mình đã xác nhận
+     */
+    public List<CashPaymentRequestResponse> getConfirmedCashPaymentHistory() {
+        String userId = getUserIdFromToken();
+
+        log.info("Staff {} getting confirmed cash payment history", userId);
+
+        // Lấy thông tin staff
+        Staff staff = staffRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+        // Lấy danh sách cash payments đã được staff này xác nhận
+        List<Payment> confirmedPayments = paymentRepository
+                .findConfirmedCashPaymentsByStaffId(userId);
+
+        log.info("Found {} confirmed cash payments for staff {}", confirmedPayments.size(), userId);
+
+        return confirmedPayments.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Staff xác nhận driver đã thanh toán tiền mặt
      */
     @Transactional

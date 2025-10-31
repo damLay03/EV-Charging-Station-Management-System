@@ -6,6 +6,7 @@ import com.swp.evchargingstation.dto.request.StaffPaymentRequest;
 import com.swp.evchargingstation.dto.response.*;
 import com.swp.evchargingstation.service.StaffDashboardService;
 import com.swp.evchargingstation.service.StationService;
+import com.swp.evchargingstation.service.VehicleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AccessLevel;
@@ -29,6 +30,7 @@ public class StaffDashboardController {
 
     StaffDashboardService staffDashboardService;
     StationService stationService;
+    VehicleService vehicleService;
 
     @GetMapping("/dashboard")
     @PreAuthorize("hasRole('STAFF')")
@@ -148,5 +150,17 @@ public class StaffDashboardController {
         String staffId = jwt.getClaim("userId");
         log.info("Staff {} confirming cash payment {}", staffId, paymentId);
         return staffDashboardService.confirmCashPayment(paymentId, staffId);
+    }
+
+    @GetMapping("/vehicles/lookup")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(summary = "Lookup vehicle by license plate",
+               description = "Staff enters license plate to get all vehicle and owner information needed to start charging session")
+    public ApiResponse<VehicleLookupResponse> lookupVehicleByLicensePlate(
+            @RequestParam String licensePlate) {
+        log.info("Staff looking up vehicle with license plate: {}", licensePlate);
+        return ApiResponse.<VehicleLookupResponse>builder()
+                .result(vehicleService.lookupVehicleByLicensePlate(licensePlate))
+                .build();
     }
 }

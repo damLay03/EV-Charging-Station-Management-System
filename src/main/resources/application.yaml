@@ -25,6 +25,24 @@ spring:
     api-docs:
       path: /api-docs
 
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+#            client-id: ${GOOGLE_CLIENT_ID:102327400957-mlr70knom5iamckfoe80000t402t8mc5.apps.googleusercontent.com}
+#            client-secret: ${GOOGLE_CLIENT_SECRET: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}
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope: email,profile
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
+
 jwt:
   singerKey: 0a58c8b134bc3d3e7a853dc8a49bcd3895e02c20d39d29d2d976e87300dc23fa
 

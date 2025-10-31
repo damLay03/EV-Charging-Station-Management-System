@@ -14,6 +14,7 @@ import com.swp.evchargingstation.mapper.VehicleMapper;
 import com.swp.evchargingstation.repository.DriverRepository;
 import com.swp.evchargingstation.repository.UserRepository;
 import com.swp.evchargingstation.repository.VehicleRepository;
+import com.swp.evchargingstation.repository.ChargingSessionRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -33,6 +35,7 @@ public class VehicleService {
     VehicleRepository vehicleRepository;
     DriverRepository driverRepository;
     UserRepository userRepository;
+    ChargingSessionRepository chargingSessionRepository;
     VehicleMapper vehicleMapper;
 
     // NOTE: Driver tạo xe mới cho chính mình
@@ -224,6 +227,41 @@ public class VehicleService {
                 .toList();
     }
 
+    /**
+     * Normalize license plate format
+     * Converts: 51A12345 -> 51A-12345
+     * Supports formats: 51A12345, 30A11111, 80B99999, etc.
+     */
+    private String normalizeLicensePlate(String licensePlate) {
+        if (licensePlate == null || licensePlate.isEmpty()) {
+            return licensePlate;
+        }
+
+        // Remove all dashes first
+        String clean = licensePlate.replaceAll("-", "").trim().toUpperCase();
+
+        // Pattern: 2-3 digits + 1 letter + 4-5 digits
+        // Examples: 51A12345, 30A11111, 80B99999
+        if (clean.matches("^\\d{2,3}[A-Z]\\d{4,5}$")) {
+            // Find the position of the letter
+            int letterIndex = -1;
+            for (int i = 0; i < clean.length(); i++) {
+                if (Character.isLetter(clean.charAt(i))) {
+                    letterIndex = i;
+                    break;
+                }
+            }
+
+            if (letterIndex > 0) {
+                // Insert dash after the letter: 51A -> 51A-
+                return clean.substring(0, letterIndex + 1) + "-" + clean.substring(letterIndex + 1);
+            }
+        }
+
+        // Return as-is if doesn't match pattern (might already have dash)
+        return licensePlate.trim().toUpperCase();
+    }
+
     // NOTE: Lấy danh sách models theo brand
     public List<com.swp.evchargingstation.dto.response.VehicleModelResponse> getModelsByBrand(com.swp.evchargingstation.enums.VehicleBrand brand) {
         log.info("Fetching models for brand '{}'", brand);
@@ -240,7 +278,75 @@ public class VehicleService {
                 .toList();
     }
 
-    // NOTE: Lấy danh sách tất cả models
+    /**
+     * NOTE: STAFF - Lookup vehicle by license plate
+     * Returns all necessary information to start a charging session
+     */
+    @PreAuthorize("hasRole('STAFF')")
+    @Transactional(readOnly = true)
+    public com.swp.evchargingstation.dto.response.VehicleLookupResponse lookupVehicleByLicensePlate(String licensePlate) {
+        log.info("Staff looking up vehicle with license plate: {}", licensePlate);
+
+        // Normalize license plate: 51A12345 -> 51A-12345
+        String normalizedPlate = normalizeLicensePlate(licensePlate);
+        log.info("Normalized license plate: {} -> {}", licensePlate, normalizedPlate);
+
+        Vehicle vehicle = vehicleRepository.findByLicensePlate(normalizedPlate)
+                .orElseThrow(() -> new AppException(ErrorCode.VEHICLE_NOT_FOUND));
+
+        // Get owner (driver) information
+        Driver owner = vehicle.getOwner();
+        if (owner == null) {
+            throw new AppException(ErrorCode.DRIVER_NOT_FOUND);
+        }
+
+        User ownerUser = owner.getUser();
+        if (ownerUser == null) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // Check if vehicle has an active charging session
+        boolean hasActiveSession = false;
+        String activeSessionId = null;
+
+        Optional<com.swp.evchargingstation.entity.ChargingSession> activeSession =
+            chargingSessionRepository.findByVehicleIdAndStatus(
+                vehicle.getVehicleId(),
+                com.swp.evchargingstation.enums.ChargingSessionStatus.IN_PROGRESS
+            );
+
+        if (activeSession.isPresent()) {
+            hasActiveSession = true;
+            activeSessionId = activeSession.get().getSessionId();
+        }
+
+        log.info("Vehicle found: {} - Owner: {} ({})", vehicle.getVehicleId(),
+                ownerUser.getFullName(), ownerUser.getEmail());
+
+        return com.swp.evchargingstation.dto.response.VehicleLookupResponse.builder()
+                // Vehicle information
+                .vehicleId(vehicle.getVehicleId())
+                .licensePlate(vehicle.getLicensePlate())
+                .model(vehicle.getModel())
+                .modelName(vehicle.getModel() != null ? vehicle.getModel().getModelName() : null)
+                .brand(vehicle.getBrand())
+                .brandDisplayName(vehicle.getBrand() != null ? vehicle.getBrand().getDisplayName() : null)
+                .currentSocPercent(vehicle.getCurrentSocPercent())
+                .batteryCapacityKwh(vehicle.getBatteryCapacityKwh())
+                .batteryType(vehicle.getBatteryType())
+                .maxChargingPower(vehicle.getMaxChargingPower())
+                .maxChargingPowerKw(vehicle.getMaxChargingPowerKw())
+                // Owner information
+                .ownerId(ownerUser.getUserId())
+                .ownerName(ownerUser.getFullName())
+                .ownerEmail(ownerUser.getEmail())
+                .ownerPhone(ownerUser.getPhone())
+                // Session status
+                .hasActiveSession(hasActiveSession)
+                .activeSessionId(activeSessionId)
+                .build();
+    }
+
     public List<com.swp.evchargingstation.dto.response.VehicleModelResponse> getAllModels() {
         log.info("Fetching all vehicle models");
         return java.util.Arrays.stream(VehicleModel.values())
