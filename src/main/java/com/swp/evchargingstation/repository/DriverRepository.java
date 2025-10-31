@@ -14,4 +14,7 @@ public interface DriverRepository extends JpaRepository<Driver, String> {
 
     @Query("SELECT d FROM Driver d JOIN FETCH d.user")
     List<Driver> findAllWithUser();
+
+    @Query("SELECT d FROM Driver d LEFT JOIN FETCH d.plan WHERE d.userId = :userId")
+    Optional<Driver> findByUserIdWithPlan(String userId);
 }

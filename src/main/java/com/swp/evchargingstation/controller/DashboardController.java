@@ -87,4 +87,19 @@ public class DashboardController {
                 .result(dashboardService.getChargingStatistics())
                 .build();
     }
+
+    /**
+     * API 5: Lấy thông tin gói plan hiện tại của driver
+     * GET /api/dashboard/current-plan
+     */
+    @GetMapping("/current-plan")
+    @PreAuthorize("hasRole('DRIVER')")
+    public ApiResponse<PlanResponse> getCurrentPlan() {
+
+        log.info("Driver requesting current plan information");
+
+        return ApiResponse.<PlanResponse>builder()
+                .result(dashboardService.getCurrentPlan())
+                .build();
+    }
 }

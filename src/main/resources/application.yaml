@@ -30,10 +30,10 @@ spring:
       client:
         registration:
           google:
-#            client-id: ${GOOGLE_CLIENT_ID:102327400957-mlr70knom5iamckfoe80000t402t8mc5.apps.googleusercontent.com}
-#            client-secret: ${GOOGLE_CLIENT_SECRET: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}
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
+            client-id: ${GOOGLE_CLIENT_ID:102327400957-mlr70knom5iamckfoe80000t402t8mc5.apps.googleusercontent.com}
+            client-secret: ${GOOGLE_CLIENT_SECRET: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}
+#            client-id: ${GOOGLE_CLIENT_ID}
+#            client-secret: ${GOOGLE_CLIENT_SECRET}
             scope: email,profile
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
         provider:

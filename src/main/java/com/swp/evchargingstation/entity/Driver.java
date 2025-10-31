@@ -27,6 +27,10 @@ public class Driver {
     @Column(name = "join_date")
     LocalDateTime joinDate; // Mốc thời gian đăng ký
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "plan_id")
+    Plan plan; // Gói plan hiện tại của driver
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     @MapsId

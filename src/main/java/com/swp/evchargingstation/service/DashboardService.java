@@ -1,7 +1,12 @@
 package com.swp.evchargingstation.service;
 
 import com.swp.evchargingstation.dto.response.*;
+import com.swp.evchargingstation.entity.Driver;
+import com.swp.evchargingstation.exception.AppException;
+import com.swp.evchargingstation.exception.ErrorCode;
+import com.swp.evchargingstation.mapper.PlanMapper;
 import com.swp.evchargingstation.repository.ChargingSessionRepository;
+import com.swp.evchargingstation.repository.DriverRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -25,6 +30,8 @@ import java.util.stream.Collectors;
 public class DashboardService {
 
     ChargingSessionRepository chargingSessionRepository;
+    DriverRepository driverRepository;
+    PlanMapper planMapper;
 
     /**
      * Lấy thông tin tóm tắt dashboard
@@ -142,6 +149,24 @@ public class DashboardService {
                 .peakHours(peakHours)
                 .mostFrequentDays(mostFrequentDays)
                 .build();
+    }
+
+    /**
+     * Lấy thông tin gói plan hiện tại của driver
+     */
+    public PlanResponse getCurrentPlan() {
+        String driverId = getCurrentDriverId();
+        log.info("Driver {} requesting current plan", driverId);
+
+        Driver driver = driverRepository.findByUserIdWithPlan(driverId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        if (driver.getPlan() == null) {
+            log.warn("Driver {} does not have a plan assigned", driverId);
+            throw new AppException(ErrorCode.PLAN_NOT_FOUND);
+        }
+
+        return planMapper.toPlanResponse(driver.getPlan());
     }
 
     // ========== HELPER METHODS ==========
