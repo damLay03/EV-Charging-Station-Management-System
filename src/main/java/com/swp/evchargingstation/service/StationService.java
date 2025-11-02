@@ -8,6 +8,7 @@ import com.swp.evchargingstation.dto.response.StationResponse;
 import com.swp.evchargingstation.dto.response.StaffSummaryResponse;
 import com.swp.evchargingstation.dto.response.ChargingPointResponse;
 import com.swp.evchargingstation.entity.ChargingPoint;
+import com.swp.evchargingstation.entity.ChargingSession;
 import com.swp.evchargingstation.entity.Station;
 import com.swp.evchargingstation.entity.Staff;
 import com.swp.evchargingstation.enums.ChargingPointStatus;
@@ -19,6 +20,7 @@ import com.swp.evchargingstation.mapper.StaffMapper;
 import com.swp.evchargingstation.mapper.ChargingPointMapper;
 import com.swp.evchargingstation.repository.ChargingPointRepository;
 import com.swp.evchargingstation.repository.ChargingSessionRepository;
+import com.swp.evchargingstation.repository.PaymentRepository;
 import com.swp.evchargingstation.repository.StationRepository;
 import com.swp.evchargingstation.repository.StaffRepository;
 import lombok.AccessLevel;
@@ -44,6 +46,7 @@ public class StationService {
     ChargingPointRepository chargingPointRepository;
     ChargingPointMapper chargingPointMapper;
     ChargingSessionRepository chargingSessionRepository;
+    PaymentRepository paymentRepository;
     GeocodingService geocodingService;
 
     /**
@@ -586,5 +589,128 @@ public class StationService {
         return points.stream()
                 .map(chargingPointMapper::toChargingPointResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy lịch sử thanh toán của một trạm sạc.
+     * ADMIN: Có thể xem lịch sử của bất kỳ trạm nào.
+     * STAFF: Chỉ được xem lịch sử của trạm mình quản lý.
+     *
+     * @param stationId ID của trạm cần xem lịch sử
+     * @param startDate Ngày bắt đầu filter (nullable)
+     * @param endDate Ngày kết thúc filter (nullable)
+     * @param paymentMethod Phương thức thanh toán filter (nullable)
+     * @return Danh sách lịch sử thanh toán
+     */
+    @Transactional(readOnly = true)
+    public List<com.swp.evchargingstation.dto.response.PaymentHistoryResponse> getPaymentHistory(
+            String stationId,
+            java.time.LocalDate startDate,
+            java.time.LocalDate endDate,
+            com.swp.evchargingstation.entity.Payment.PaymentMethod paymentMethod) {
+
+        log.info("Fetching payment history for station {} - startDate: {}, endDate: {}, paymentMethod: {}",
+                stationId, startDate, endDate, paymentMethod);
+
+        // Kiểm tra station có tồn tại không
+        if (!stationRepository.existsById(stationId)) {
+            throw new AppException(ErrorCode.STATION_NOT_FOUND);
+        }
+
+        // Convert LocalDate to LocalDateTime (start of day / end of day)
+        java.time.LocalDateTime startDateTime = startDate != null ? startDate.atStartOfDay() : null;
+        java.time.LocalDateTime endDateTime = endDate != null ? endDate.atTime(23, 59, 59) : null;
+
+        // Lấy danh sách payments
+        List<com.swp.evchargingstation.entity.Payment> payments =
+                paymentRepository.findPaymentHistoryByStationId(stationId, startDateTime, endDateTime, paymentMethod);
+
+        // Map sang response DTO
+        return payments.stream()
+                .map(this::mapToPaymentHistoryResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Helper method: Map Payment entity sang PaymentHistoryResponse
+     */
+    private com.swp.evchargingstation.dto.response.PaymentHistoryResponse mapToPaymentHistoryResponse(
+            com.swp.evchargingstation.entity.Payment payment) {
+
+        ChargingSession session = payment.getChargingSession();
+        String customerName = null;
+        String chargingPointName = null;
+        Integer durationMinutes = null;
+        String durationFormatted = null;
+
+        if (session != null) {
+            // Lấy tên khách hàng
+            if (session.getDriver() != null && session.getDriver().getUser() != null) {
+                customerName = session.getDriver().getUser().getFullName();
+            }
+
+            // Lấy tên điểm sạc
+            if (session.getChargingPoint() != null) {
+                chargingPointName = "Điểm sạc " + session.getChargingPoint().getName();
+            }
+
+            // Tính thời gian sạc
+            durationMinutes = session.getDurationMin();
+            durationFormatted = formatDuration(durationMinutes);
+        }
+
+        // Format payment method display
+        String paymentMethodDisplay = formatPaymentMethodDisplay(payment.getPaymentMethod());
+
+        return com.swp.evchargingstation.dto.response.PaymentHistoryResponse.builder()
+                .paymentId(payment.getPaymentId())
+                .paymentTime(payment.getPaidAt())
+                .chargingPointName(chargingPointName)
+                .customerName(customerName)
+                .durationMinutes(durationMinutes)
+                .durationFormatted(durationFormatted)
+                .amount(payment.getAmount())
+                .paymentMethod(payment.getPaymentMethod())
+                .paymentMethodDisplay(paymentMethodDisplay)
+                .sessionId(session != null ? session.getSessionId() : null)
+                .build();
+    }
+
+    /**
+     * Format duration từ phút sang dạng "35 phút" hoặc "1h 15m"
+     */
+    private String formatDuration(Integer minutes) {
+        if (minutes == null || minutes == 0) {
+            return "0 phút";
+        }
+
+        int hours = minutes / 60;
+        int mins = minutes % 60;
+
+        if (hours == 0) {
+            return mins + " phút";
+        } else if (mins == 0) {
+            return hours + "h";
+        } else {
+            return hours + "h " + mins + "m";
+        }
+    }
+
+    /**
+     * Format payment method display name
+     */
+    private String formatPaymentMethodDisplay(com.swp.evchargingstation.entity.Payment.PaymentMethod method) {
+        if (method == null) {
+            return "N/A";
+        }
+
+        switch (method) {
+            case CASH:
+                return "Tiền mặt";
+            case ZALOPAY:
+                return "ZaloPay";
+            default:
+                return method.name();
+        }
     }
 }

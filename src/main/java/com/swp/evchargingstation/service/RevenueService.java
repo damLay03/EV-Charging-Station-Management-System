@@ -20,6 +20,46 @@ public class RevenueService {
 
     PaymentRepository paymentRepository;
 
+    /**
+     * Lấy thống kê doanh thu theo ngày của từng trạm sạc
+     * @param year Năm cần thống kê (mặc định: năm hiện tại)
+     * @param month Tháng cần thống kê (mặc định: tháng hiện tại)
+     * @param day Ngày cần thống kê (mặc định: ngày hiện tại)
+     * @return Danh sách doanh thu của các trạm trong ngày
+     */
+    public List<StationRevenueResponse> getDailyRevenue(Integer year, Integer month, Integer day) {
+        // Nếu không truyền tham số, lấy ngày hiện tại
+        if (year == null || month == null || day == null) {
+            LocalDate now = LocalDate.now();
+            year = now.getYear();
+            month = now.getMonthValue();
+            day = now.getDayOfMonth();
+        }
+
+        log.info("Fetching revenue for date: {}-{}-{}", year, month, day);
+
+        List<Object[]> results = paymentRepository.findDailyRevenueByStation(year, month, day);
+        List<StationRevenueResponse> responses = new ArrayList<>();
+
+        for (Object[] result : results) {
+            StationRevenueResponse response = StationRevenueResponse.builder()
+                    .stationId((String) result[0])
+                    .stationName((String) result[1])
+                    .address((String) result[2])
+                    .day((Integer) result[3])
+                    .month((Integer) result[4])
+                    .year((Integer) result[5])
+                    .totalRevenue(((Number) result[6]).floatValue())
+                    .totalSessions(((Number) result[7]).intValue())
+                    .build();
+            responses.add(response);
+        }
+
+        log.info("Found {} stations with revenue for date {}-{}-{}", responses.size(), year, month, day);
+
+        return responses;
+    }
+
     public List<StationRevenueResponse> getWeeklyRevenue(Integer year, Integer week) {
         // Nếu không truyền tham số, lấy tuần hiện tại
         if (year == null || week == null) {

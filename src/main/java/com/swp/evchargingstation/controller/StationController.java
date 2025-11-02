@@ -17,7 +17,6 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -190,6 +189,34 @@ public class StationController {
         stationService.deleteChargingPoint(stationId, chargingPointId);
         return ApiResponse.<Void>builder()
                 .message("Charging point deleted successfully")
+                .build();
+    }
+
+    // ========== PAYMENT HISTORY ==========
+    /**
+     * Lấy lịch sử thanh toán của một trạm sạc.
+     * ADMIN: Có thể xem lịch sử của bất kỳ trạm nào.
+     * STAFF: Chỉ được xem lịch sử của trạm mình quản lý (logic check trong service).
+     *
+     * @param stationId ID của trạm cần xem lịch sử
+     * @param startDate Ngày bắt đầu filter (format: yyyy-MM-dd) (optional)
+     * @param endDate Ngày kết thúc filter (format: yyyy-MM-dd) (optional)
+     * @param paymentMethod Phương thức thanh toán (CASH, ZALOPAY) (optional)
+     * @return Danh sách lịch sử thanh toán đã hoàn thành, sắp xếp theo thời gian mới nhất trước
+     */
+    @GetMapping("/{stationId}/payment-history")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ApiResponse<List<com.swp.evchargingstation.dto.response.PaymentHistoryResponse>> getPaymentHistory(
+            @PathVariable String stationId,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate startDate,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate endDate,
+            @RequestParam(required = false) com.swp.evchargingstation.entity.Payment.PaymentMethod paymentMethod) {
+
+        log.info("Fetching payment history for station {} - startDate: {}, endDate: {}, paymentMethod: {}",
+                stationId, startDate, endDate, paymentMethod);
+
+        return ApiResponse.<List<com.swp.evchargingstation.dto.response.PaymentHistoryResponse>>builder()
+                .result(stationService.getPaymentHistory(stationId, startDate, endDate, paymentMethod))
                 .build();
     }
 }

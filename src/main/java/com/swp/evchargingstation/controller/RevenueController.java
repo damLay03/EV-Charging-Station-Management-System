@@ -21,6 +21,27 @@ public class RevenueController {
 
     RevenueService revenueService;
 
+    /**
+     * Lấy thống kê doanh thu theo ngày của từng trạm sạc
+     * @param year Năm cần thống kê (mặc định: năm hiện tại)
+     * @param month Tháng cần thống kê (mặc định: tháng hiện tại)
+     * @param day Ngày cần thống kê (mặc định: ngày hiện tại)
+     * @return Danh sách doanh thu của các trạm trong ngày
+     */
+    @GetMapping("/daily")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<List<StationRevenueResponse>> getDailyRevenue(
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer day) {
+
+        log.info("Admin requesting daily revenue - year: {}, month: {}, day: {}", year, month, day);
+
+        return ApiResponse.<List<StationRevenueResponse>>builder()
+                .result(revenueService.getDailyRevenue(year, month, day))
+                .build();
+    }
+
     @GetMapping("/weekly")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<StationRevenueResponse>> getWeeklyRevenue(

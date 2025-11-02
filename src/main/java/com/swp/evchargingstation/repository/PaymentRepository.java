@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,6 +21,23 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
 
     // Tìm payment theo transaction ID (cho ZaloPay callback)
     Optional<Payment> findByTransactionId(String transactionId);
+
+    // Query lấy doanh thu theo ngày của từng trạm
+    @Query("SELECT s.stationId, s.name, s.address, " +
+            "DAY(p.paidAt), MONTH(p.paidAt), YEAR(p.paidAt), " +
+            "SUM(p.amount), COUNT(p.paymentId) " +
+            "FROM Payment p " +
+            "JOIN p.chargingSession cs " +
+            "JOIN cs.chargingPoint cp " +
+            "JOIN cp.station s " +
+            "WHERE YEAR(p.paidAt) = :year " +
+            "AND MONTH(p.paidAt) = :month " +
+            "AND DAY(p.paidAt) = :day " +
+            "AND p.status = 'COMPLETED' " +
+            "GROUP BY s.stationId, s.name, s.address, " +
+            "DAY(p.paidAt), MONTH(p.paidAt), YEAR(p.paidAt) " +
+            "ORDER BY s.name")
+    List<Object[]> findDailyRevenueByStation(@Param("year") int year, @Param("month") int month, @Param("day") int day);
 
     // Query lấy doanh thu theo tuần của từng trạm (Thứ 2 - Chủ Nhật)
     // Sử dụng native query vì HQL không hỗ trợ WEEK() function với mode parameter
@@ -109,4 +127,21 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     boolean existsByChargingSession_SessionId(String sessionId);
 
     boolean existsByChargingSessionAndStatus(ChargingSession chargingSession, PaymentStatus status);
+
+    // Lấy lịch sử thanh toán của một trạm (đã hoàn thành) với filter
+    @Query("SELECT p FROM Payment p " +
+            "JOIN p.chargingSession cs " +
+            "JOIN cs.chargingPoint cp " +
+            "WHERE cp.station.stationId = :stationId " +
+            "AND p.status = 'COMPLETED' " +
+            "AND (:startDate IS NULL OR p.paidAt >= :startDate) " +
+            "AND (:endDate IS NULL OR p.paidAt <= :endDate) " +
+            "AND (:paymentMethod IS NULL OR p.paymentMethod = :paymentMethod) " +
+            "ORDER BY p.paidAt DESC")
+    List<Payment> findPaymentHistoryByStationId(
+            @Param("stationId") String stationId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("paymentMethod") Payment.PaymentMethod paymentMethod
+    );
 }

@@ -12,9 +12,10 @@ public class StationRevenueResponse {
     String stationId;
     String stationName;
     String address;
-    int month;
-    int year;
-    int week;
-    float totalRevenue;
-    int totalSessions;
+    Integer day;    // Ngày trong tháng (1-31)
+    Integer month;
+    Integer year;
+    Integer week;
+    Float totalRevenue;
+    Integer totalSessions;
 }
