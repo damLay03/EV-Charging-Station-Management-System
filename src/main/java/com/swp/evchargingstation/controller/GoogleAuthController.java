@@ -80,7 +80,7 @@ public class GoogleAuthController {
                     .user(user)
                     .joinDate(LocalDateTime.now())
                     .build();
-            driver.setUserId(user.getUserId());
+//            driver.setUserId(user.getUserId());
             driverRepository.save(driver);
 
             log.info("Created new user and driver profile: {}", user.getUserId());

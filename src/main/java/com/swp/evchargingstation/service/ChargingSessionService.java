@@ -240,7 +240,7 @@ public class ChargingSessionService {
                 .chargingPointName(chargingPointName)
                 .startSocPercent(session.getStartSocPercent())
                 .endSocPercent(session.getEndSocPercent())
-                .energyKwh(session.getEnergyKwh())
+                .energyKwh(session.getEnergyKwh() * 2)
                 .costTotal(session.getCostTotal())
                 .status(session.getStatus())
                 .vehicleModel(session.getVehicle() != null && session.getVehicle().getModel() != null ? session.getVehicle().getModel().getModelName() : "")
