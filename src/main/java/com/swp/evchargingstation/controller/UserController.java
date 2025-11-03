@@ -28,7 +28,7 @@ public class UserController {
 //    private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class); //da co @Slf4j, khong can nua
     UserService userService;
 //=====================================================DRIVER===========================================================
-    @PostMapping
+    @PostMapping("/register")
     ApiResponse<UserResponse> createUser(@RequestBody @Valid UserCreationRequest request) {
         return ApiResponse.<UserResponse>builder()
                 .result(userService.register(request))
