@@ -72,32 +72,32 @@ public class StationController {
                 .build();
     }
 
-    // Đặt trạng thái hoạt động (OPERATIONAL)
-    @PatchMapping("/{stationId}/activate")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<StationResponse> activate(@PathVariable String stationId) {
-        return ApiResponse.<StationResponse>builder()
-                .result(stationService.activate(stationId))
-                .build();
-    }
-
-    // Đặt trạng thái OUT_OF_SERVICE (ngưng hoạt động)
-    @PatchMapping("/{stationId}/deactivate")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<StationResponse> deactivate(@PathVariable String stationId) {
-        return ApiResponse.<StationResponse>builder()
-                .result(stationService.deactivate(stationId))
-                .build();
-    }
-
-    // Toggle giữa OPERATIONAL và OUT_OF_SERVICE
-    @PatchMapping("/{stationId}/toggle")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<StationResponse> toggle(@PathVariable String stationId) {
-        return ApiResponse.<StationResponse>builder()
-                .result(stationService.toggle(stationId))
-                .build();
-    }
+//    // Đặt trạng thái hoạt động (OPERATIONAL)
+//    @PatchMapping("/{stationId}/activate")
+//    @PreAuthorize("hasRole('ADMIN')")
+//    public ApiResponse<StationResponse> activate(@PathVariable String stationId) {
+//        return ApiResponse.<StationResponse>builder()
+//                .result(stationService.activate(stationId))
+//                .build();
+//    }
+//
+//    // Đặt trạng thái OUT_OF_SERVICE (ngưng hoạt động)
+//    @PatchMapping("/{stationId}/deactivate")
+//    @PreAuthorize("hasRole('ADMIN')")
+//    public ApiResponse<StationResponse> deactivate(@PathVariable String stationId) {
+//        return ApiResponse.<StationResponse>builder()
+//                .result(stationService.deactivate(stationId))
+//                .build();
+//    }
+//
+//    // Toggle giữa OPERATIONAL và OUT_OF_SERVICE
+//    @PatchMapping("/{stationId}/toggle")
+//    @PreAuthorize("hasRole('ADMIN')")
+//    public ApiResponse<StationResponse> toggle(@PathVariable String stationId) {
+//        return ApiResponse.<StationResponse>builder()
+//                .result(stationService.toggle(stationId))
+//                .build();
+//    }
 
     // ========== STAFF ==========
     // NOTE: Lấy danh sách tất cả nhân viên để chọn khi tạo/cập nhật station
@@ -111,7 +111,7 @@ public class StationController {
     }
 
     // Tạo trạm sạc mới
-    @PostMapping("/create")
+    @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<StationResponse> createStation(@Valid @RequestBody StationCreationRequest request) {
         log.info("Admin creating new station: {}", request.getName());

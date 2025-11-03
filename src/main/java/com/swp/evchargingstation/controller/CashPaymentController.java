@@ -24,7 +24,7 @@ public class CashPaymentController {
 
     CashPaymentService cashPaymentService;
 
-    @PostMapping("/request/{sessionId}")
+    @PostMapping("/{sessionId}")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(summary = "Driver yêu cầu thanh toán bằng tiền mặt",
             description = "Driver gửi yêu cầu thanh toán bằng tiền mặt cho session đã hoàn thành. " +
@@ -60,7 +60,7 @@ public class CashPaymentController {
                 .build();
     }
 
-    @PutMapping("/staff/confirm/{paymentId}")
+    @PutMapping("/staff/{paymentId}/confirm")
     @PreAuthorize("hasRole('STAFF')")
     @Operation(summary = "Staff xác nhận đã nhận tiền mặt từ driver",
             description = "Staff xác nhận driver đã thanh toán tiền mặt. " +

@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/payment")
+@RequestMapping("/api/payments")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
@@ -47,7 +47,7 @@ public class PaymentController {
     /**
      * Create ZaloPay payment
      */
-    @PostMapping("/zalopay/create/{sessionId}")
+    @PostMapping("/sessions/{sessionId}/zalopay")
     public ApiResponse<String> createZaloPayPayment(@PathVariable String sessionId) {
         String paymentUrl = zaloPayService.createPayment(sessionId);
         return ApiResponse.<String>builder()
@@ -58,7 +58,7 @@ public class PaymentController {
     /**
      * ZaloPay callback endpoint
      */
-    @PostMapping("/zalopay-callback")
+    @PostMapping("/callbacks/zalopay")
     public ResponseEntity<Map<String, Object>> zaloPayCallback(
             @RequestBody ZaloPayCallbackRequest callbackRequest
     ) {
@@ -77,7 +77,7 @@ public class PaymentController {
     /**
      * Test endpoint to verify callback URL is accessible
      */
-    @GetMapping("/zalopay-callback/test")
+    @GetMapping("/callbacks/zalopay/test")
     public ResponseEntity<String> testCallback() {
         log.info("ZaloPay callback test endpoint hit!");
         return ResponseEntity.ok("ZaloPay callback endpoint is accessible. POST to this URL for actual callback.");

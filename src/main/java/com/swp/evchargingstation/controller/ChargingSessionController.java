@@ -91,8 +91,8 @@ public class ChargingSessionController {
                 .build();
     }
 
-    // Phase 1: Start Charging
-    @PostMapping("/start")
+    //Start Charging
+    @PostMapping
     @PreAuthorize("hasRole('DRIVER')")
     public ApiResponse<ChargingSessionResponse> startCharging(@RequestBody @Valid StartChargingRequest request,
                                                               @AuthenticationPrincipal Jwt jwt) {
@@ -102,7 +102,7 @@ public class ChargingSessionController {
                 .build();
     }
 
-    // Phase 3: Stop Charging by user
+    //Stop Charging by user
     @PostMapping("/{sessionId}/stop")
     @PreAuthorize("hasRole('DRIVER')")
     public ApiResponse<ChargingSessionResponse> stopCharging(@PathVariable String sessionId,
