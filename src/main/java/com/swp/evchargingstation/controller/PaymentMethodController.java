@@ -4,6 +4,8 @@ import com.swp.evchargingstation.dto.response.ApiResponse;
 import com.swp.evchargingstation.dto.request.PaymentMethodCreationRequest;
 import com.swp.evchargingstation.dto.response.PaymentMethodResponse;
 import com.swp.evchargingstation.service.PaymentMethodService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -20,12 +22,17 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
+@Tag(name = "Payment Methods", description = "API quản lý phương thức thanh toán của driver")
 public class PaymentMethodController {
     PaymentMethodService paymentMethodService;
 
     // NOTE: Driver thêm phương thức thanh toán (Credit Card, E-Wallet, ...)
     @PostMapping
     @PreAuthorize("hasRole('DRIVER')")
+    @Operation(
+            summary = "Thêm phương thức thanh toán mới",
+            description = "Driver thêm một phương thức thanh toán mới (thẻ tín dụng, ví điện tử, ...) vào tài khoản của mình"
+    )
     public ApiResponse<PaymentMethodResponse> create(
             Authentication authentication,
             @RequestBody @Valid PaymentMethodCreationRequest request) {
@@ -40,6 +47,10 @@ public class PaymentMethodController {
     // NOTE: Driver xem danh sách phương thức thanh toán của mình
     @GetMapping
     @PreAuthorize("hasRole('DRIVER')")
+    @Operation(
+            summary = "Lấy danh sách phương thức thanh toán",
+            description = "Trả về danh sách tất cả các phương thức thanh toán mà driver đã lưu, bao gồm thẻ tín dụng, ví điện tử và các phương thức khác"
+    )
     public ApiResponse<List<PaymentMethodResponse>> getMyPaymentMethods(Authentication authentication) {
         String driverId = authentication.getName();
         log.info("Driver {} fetching payment methods", driverId);
@@ -52,6 +63,10 @@ public class PaymentMethodController {
     // NOTE: Driver xóa phương thức thanh toán
     @DeleteMapping("/{pmId}")
     @PreAuthorize("hasRole('DRIVER')")
+    @Operation(
+            summary = "Xóa phương thức thanh toán",
+            description = "Xóa một phương thức thanh toán khỏi tài khoản của driver. Driver chỉ có thể xóa các phương thức thanh toán của chính mình"
+    )
     public ApiResponse<Void> delete(
             Authentication authentication,
             @PathVariable String pmId) {

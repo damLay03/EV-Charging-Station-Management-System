@@ -3,6 +3,8 @@ package com.swp.evchargingstation.controller;
 import com.swp.evchargingstation.dto.response.ApiResponse;
 import com.swp.evchargingstation.dto.response.StationUsageResponse;
 import com.swp.evchargingstation.service.StationUsageService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -19,6 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
+@Tag(name = "Station Usage", description = "API thống kê mức độ sử dụng trạm sạc theo ngày")
 public class StationUsageController {
 
     StationUsageService stationUsageService;
@@ -33,6 +36,10 @@ public class StationUsageController {
      */
     @GetMapping("/{stationId}/today")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @Operation(
+            summary = "Lấy mức độ sử dụng trạm trong ngày hôm nay",
+            description = "Trả về mức độ sử dụng của một trạm sạc trong ngày hôm nay bao gồm số phiên sạc, tỷ lệ sử dụng, năng lượng tiêu thụ"
+    )
     public ApiResponse<StationUsageResponse> getStationUsageToday(@PathVariable String stationId) {
         log.info("Fetching today's usage for station: {}", stationId);
 
@@ -52,6 +59,10 @@ public class StationUsageController {
      */
     @GetMapping("/{stationId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @Operation(
+            summary = "Lấy mức độ sử dụng trạm theo ngày cụ thể",
+            description = "Trả về mức độ sử dụng của một trạm sạc theo ngày chỉ định. Mặc định lấy dữ liệu ngày hôm nay nếu không chỉ định ngày"
+    )
     public ApiResponse<StationUsageResponse> getStationUsageByDate(
             @PathVariable String stationId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
@@ -73,6 +84,10 @@ public class StationUsageController {
      */
     @GetMapping("/all/today")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Lấy mức độ sử dụng tất cả trạm trong ngày hôm nay",
+            description = "Trả về mức độ sử dụng của tất cả các trạm sạc trong ngày hôm nay. Chỉ quản trị viên có quyền truy cập"
+    )
     public ApiResponse<List<StationUsageResponse>> getAllStationsUsageToday() {
         log.info("Fetching today's usage for all stations");
 
@@ -91,6 +106,10 @@ public class StationUsageController {
      */
     @GetMapping("/all")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Lấy mức độ sử dụng tất cả trạm theo ngày cụ thể",
+            description = "Trả về mức độ sử dụng của tất cả các trạm sạc theo ngày chỉ định. Mặc định lấy dữ liệu ngày hôm nay nếu không chỉ định ngày. Chỉ quản trị viên có quyền truy cập"
+    )
     public ApiResponse<List<StationUsageResponse>> getAllStationsUsageByDate(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 

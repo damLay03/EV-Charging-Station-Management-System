@@ -3,6 +3,8 @@ package com.swp.evchargingstation.controller;
 import com.swp.evchargingstation.dto.response.ApiResponse;
 import com.swp.evchargingstation.dto.response.StationRevenueResponse;
 import com.swp.evchargingstation.service.RevenueService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -17,6 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
+@Tag(name = "Revenue", description = "API thống kê doanh thu theo ngày, tuần, tháng, năm dành cho quản trị viên")
 public class RevenueController {
 
     RevenueService revenueService;
@@ -30,6 +33,10 @@ public class RevenueController {
      */
     @GetMapping("/daily")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Lấy thống kê doanh thu theo ngày",
+            description = "Trả về thống kê doanh thu của từng trạm sạc theo ngày. Mặc định lấy dữ liệu ngày hiện tại nếu không chỉ định. Chỉ quản trị viên có quyền truy cập"
+    )
     public ApiResponse<List<StationRevenueResponse>> getDailyRevenue(
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month,
@@ -44,6 +51,10 @@ public class RevenueController {
 
     @GetMapping("/weekly")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Lấy thống kê doanh thu theo tuần",
+            description = "Trả về thống kê doanh thu của từng trạm sạc theo tuần. Mặc định lấy dữ liệu tuần hiện tại nếu không chỉ định. Chỉ quản trị viên có quyền truy cập"
+    )
     public ApiResponse<List<StationRevenueResponse>> getWeeklyRevenue(
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer week
@@ -62,6 +73,10 @@ public class RevenueController {
      */
     @GetMapping("/monthly")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Lấy thống kê doanh thu theo tháng",
+            description = "Trả về thống kê doanh thu của từng trạm sạc theo tháng. Mặc định lấy dữ liệu tháng hiện tại nếu không chỉ định. Chỉ quản trị viên có quyền truy cập"
+    )
     public ApiResponse<List<StationRevenueResponse>> getMonthlyRevenue(
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month) {
@@ -80,6 +95,10 @@ public class RevenueController {
      */
     @GetMapping("/yearly")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Lấy thống kê doanh thu theo năm",
+            description = "Trả về thống kê doanh thu của từng trạm sạc theo năm (tất cả các tháng). Mặc định lấy dữ liệu năm hiện tại nếu không chỉ định. Chỉ quản trị viên có quyền truy cập"
+    )
     public ApiResponse<List<StationRevenueResponse>> getYearlyRevenue(
             @RequestParam(required = false) Integer year) {
 
