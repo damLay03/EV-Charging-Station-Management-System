@@ -1,7 +1,5 @@
 package com.swp.evchargingstation.service;
 
-import com.swp.evchargingstation.dto.request.IncidentCreationRequest;
-import com.swp.evchargingstation.dto.request.IncidentUpdateRequest;
 import com.swp.evchargingstation.dto.request.StaffPaymentRequest;
 import com.swp.evchargingstation.dto.response.*;
 import com.swp.evchargingstation.entity.*;
@@ -37,8 +35,6 @@ public class StaffDashboardService {
     ChargingSessionRepository chargingSessionRepository;
     PaymentRepository paymentRepository;
     PaymentMethodRepository paymentMethodRepository;
-    IncidentRepository incidentRepository;
-    UserRepository userRepository;
     StaffDashboardMapper staffDashboardMapper;
     CashPaymentService cashPaymentService;
 
@@ -192,129 +188,6 @@ public class StaffDashboardService {
                 .code(200)
                 .message("Thanh toán thành công")
                 .result("Payment ID: " + payment.getPaymentId())
-                .build();
-    }
-
-    /**
-     * Tạo báo cáo sự cố
-     */
-    @Transactional
-    public ApiResponse<IncidentResponse> createIncident(IncidentCreationRequest request) {
-        String staffUserId = getCurrentStaffUserId();
-        User staffUser = userRepository.findById(staffUserId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-        Staff staff = staffRepository.findById(staffUserId)
-                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
-
-        Station station = stationRepository.findById(request.getStationId())
-                .orElseThrow(() -> new AppException(ErrorCode.STATION_NOT_FOUND));
-
-        // Kiểm tra staff có quản lý station này không
-        if (!station.getStationId().equals(staff.getStation().getStationId())) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
-        }
-
-        ChargingPoint chargingPoint = null;
-        if (request.getChargingPointId() != null) {
-            chargingPoint = chargingPointRepository.findById(request.getChargingPointId())
-                    .orElseThrow(() -> new AppException(ErrorCode.CHARGING_POINT_NOT_FOUND));
-        }
-
-        Incident incident = Incident.builder()
-                .reporter(staffUser)
-                .station(station)
-                .chargingPoint(chargingPoint)
-                .reportedAt(LocalDateTime.now())
-                .description(request.getDescription())
-                .severity(request.getSeverity())
-                .status("REPORTED")
-                .assignedStaff(staff)
-                .build();
-
-        incident = incidentRepository.save(incident);
-
-        return ApiResponse.<IncidentResponse>builder()
-                .code(200)
-                .message("Báo cáo sự cố thành công")
-                .result(staffDashboardMapper.toIncidentResponse(incident))
-                .build();
-    }
-
-    /**
-     * Lấy danh sách sự cố của station
-     * - ADMIN: xem tất cả incidents của tất cả stations
-     * - STAFF: chỉ xem incidents của station mình quản lý
-     */
-    public List<IncidentResponse> getStaffIncidents() {
-        var context = SecurityContextHolder.getContext();
-        var authentication = context.getAuthentication();
-
-        String userId = null;
-        if (authentication != null && authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
-            userId = jwt.getClaim("userId");
-        }
-
-        if (userId == null) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
-        // Check if user is ADMIN
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
-
-        List<Incident> incidents;
-
-        if (isAdmin) {
-            // ADMIN: lấy tất cả incidents
-            incidents = incidentRepository.findAllByOrderByReportedAtDesc();
-        } else {
-            // STAFF: chỉ lấy incidents của station mình quản lý
-            Staff staff = staffRepository.findByIdWithStation(userId)
-                    .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
-
-            Station station = staff.getStation();
-            if (station == null) {
-                throw new AppException(ErrorCode.STATION_NOT_FOUND);
-            }
-
-            incidents = incidentRepository.findByStationIdOrderByReportedAtDesc(station.getStationId());
-        }
-
-        return incidents.stream()
-                .map(staffDashboardMapper::toIncidentResponse)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Cập nhật trạng thái sự cố
-     */
-    @Transactional
-    public ApiResponse<IncidentResponse> updateIncident(String incidentId, IncidentUpdateRequest request) {
-        String staffUserId = getCurrentStaffUserId();
-        Staff staff = staffRepository.findById(staffUserId)
-                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
-
-        Incident incident = incidentRepository.findById(incidentId)
-                .orElseThrow(() -> new AppException(ErrorCode.INCIDENT_NOT_FOUND));
-
-        // Kiểm tra incident thuộc station của staff
-        if (!incident.getStation().getStationId().equals(staff.getStation().getStationId())) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
-        }
-
-        incident.setStatus(request.getStatus());
-
-        if ("RESOLVED".equals(request.getStatus()) || "CLOSED".equals(request.getStatus())) {
-            incident.setResolvedAt(LocalDateTime.now());
-        }
-
-        incident = incidentRepository.save(incident);
-
-        return ApiResponse.<IncidentResponse>builder()
-                .code(200)
-                .message("Cập nhật sự cố thành công")
-                .result(staffDashboardMapper.toIncidentResponse(incident))
                 .build();
     }
 

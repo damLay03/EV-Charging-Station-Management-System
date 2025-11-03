@@ -1,7 +1,5 @@
 package com.swp.evchargingstation.controller;
 
-import com.swp.evchargingstation.dto.request.IncidentCreationRequest;
-import com.swp.evchargingstation.dto.request.IncidentUpdateRequest;
 import com.swp.evchargingstation.dto.request.StaffPaymentRequest;
 import com.swp.evchargingstation.dto.response.*;
 import com.swp.evchargingstation.service.StaffDashboardService;
@@ -86,37 +84,6 @@ public class StaffDashboardController {
         return staffDashboardService.processPaymentForDriver(request);
     }
 
-    @GetMapping("/incidents")
-//    @PreAuthorize("hasRole('STAFF')")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
-    @Operation(summary = "Get incidents of staff's station",
-               description = "Get all incidents reported for the station")
-    public ApiResponse<List<IncidentResponse>> getIncidents() {
-        log.info("Staff requesting incidents list");
-        return ApiResponse.<List<IncidentResponse>>builder()
-                .result(staffDashboardService.getStaffIncidents())
-                .build();
-    }
-
-    @PostMapping("/incidents")
-    @PreAuthorize("hasRole('STAFF')")
-    @Operation(summary = "Create incident report",
-               description = "Staff can report incidents at their station")
-    public ApiResponse<IncidentResponse> createIncident(@RequestBody IncidentCreationRequest request) {
-        log.info("Staff creating incident report for station: {}", request.getStationId());
-        return staffDashboardService.createIncident(request);
-    }
-
-    @PutMapping("/incidents/{incidentId}")
-    @PreAuthorize("hasRole('STAFF')")
-    @Operation(summary = "Update incident status",
-               description = "Staff can update incident status and resolution")
-    public ApiResponse<IncidentResponse> updateIncident(
-            @PathVariable String incidentId,
-            @RequestBody IncidentUpdateRequest request) {
-        log.info("Staff updating incident: {} to status: {}", incidentId, request.getStatus());
-        return staffDashboardService.updateIncident(incidentId, request);
-    }
 
     @GetMapping("/profile")
     @PreAuthorize("hasRole('STAFF')")

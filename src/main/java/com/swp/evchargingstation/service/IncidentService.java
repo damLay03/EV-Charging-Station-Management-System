@@ -1,0 +1,249 @@
+package com.swp.evchargingstation.service;
+
+import com.swp.evchargingstation.dto.request.IncidentCreationRequest;
+import com.swp.evchargingstation.dto.request.IncidentUpdateRequest;
+import com.swp.evchargingstation.dto.response.ApiResponse;
+import com.swp.evchargingstation.dto.response.IncidentResponse;
+import com.swp.evchargingstation.entity.*;
+import com.swp.evchargingstation.enums.IncidentStatus;
+import com.swp.evchargingstation.exception.AppException;
+import com.swp.evchargingstation.exception.ErrorCode;
+import com.swp.evchargingstation.mapper.StaffDashboardMapper;
+import com.swp.evchargingstation.repository.*;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
+public class IncidentService {
+
+    IncidentRepository incidentRepository;
+    StaffRepository staffRepository;
+    UserRepository userRepository;
+    ChargingPointRepository chargingPointRepository;
+    StaffDashboardMapper staffDashboardMapper;
+
+    /**
+     * Get current user ID from JWT token
+     */
+    private String getCurrentUserId() {
+        var context = SecurityContextHolder.getContext();
+        var authentication = context.getAuthentication();
+
+        if (authentication != null && authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            return jwt.getClaim("userId");
+        }
+        throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
+    /**
+     * Check if current user is ADMIN
+     */
+    private boolean isAdmin() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    //=====================================================STAFF============================================================
+
+    /**
+     * STAFF: Tạo báo cáo sự cố tại station của mình
+     * Trạng thái mặc định: WAITING (chờ admin duyệt)
+     */
+    @Transactional
+    public ApiResponse<IncidentResponse> createIncident(IncidentCreationRequest request) {
+        String staffUserId = getCurrentUserId();
+
+        Staff staff = staffRepository.findById(staffUserId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+        User staffUser = userRepository.findById(staffUserId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Station station = staff.getStation();
+        if (station == null) {
+            throw new AppException(ErrorCode.STATION_NOT_FOUND);
+        }
+
+        // Validate station ID matches staff's station
+        if (!station.getStationId().equals(request.getStationId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        ChargingPoint chargingPoint = null;
+        if (request.getChargingPointId() != null) {
+            chargingPoint = chargingPointRepository.findById(request.getChargingPointId())
+                    .orElseThrow(() -> new AppException(ErrorCode.CHARGING_POINT_NOT_FOUND));
+        }
+
+        Incident incident = Incident.builder()
+                .reporter(staffUser)
+                .station(station)
+                .chargingPoint(chargingPoint)
+                .reportedAt(LocalDateTime.now())
+                .description(request.getDescription())
+                .severity(request.getSeverity())
+                .status(IncidentStatus.WAITING)  // Mặc định là WAITING
+                .assignedStaff(staff)
+                .build();
+
+        incident = incidentRepository.save(incident);
+
+        log.info("Staff {} created incident {} with status WAITING", staffUserId, incident.getIncidentId());
+
+        return ApiResponse.<IncidentResponse>builder()
+                .code(200)
+                .message("Báo cáo sự cố thành công, đang chờ admin duyệt")
+                .result(staffDashboardMapper.toIncidentResponse(incident))
+                .build();
+    }
+
+    /**
+     * STAFF: Xem danh sách incidents của station mình quản lý
+     */
+    public List<IncidentResponse> getMyStationIncidents() {
+        String staffUserId = getCurrentUserId();
+
+        Staff staff = staffRepository.findByIdWithStation(staffUserId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+        Station station = staff.getStation();
+        if (station == null) {
+            throw new AppException(ErrorCode.STATION_NOT_FOUND);
+        }
+
+        List<Incident> incidents = incidentRepository.findByStationIdOrderByReportedAtDesc(station.getStationId());
+
+        return incidents.stream()
+                .map(staffDashboardMapper::toIncidentResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * STAFF: Cập nhật mô tả của incident (không thể thay đổi status)
+     */
+    @Transactional
+    public ApiResponse<IncidentResponse> updateIncidentDescription(String incidentId, IncidentUpdateRequest request) {
+        String staffUserId = getCurrentUserId();
+
+        Staff staff = staffRepository.findById(staffUserId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+        Incident incident = incidentRepository.findById(incidentId)
+                .orElseThrow(() -> new AppException(ErrorCode.INCIDENT_NOT_FOUND));
+
+        // Kiểm tra incident thuộc station của staff
+        if (!incident.getStation().getStationId().equals(staff.getStation().getStationId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        // Staff chỉ có thể cập nhật description
+        if (request.getDescription() != null) {
+            incident.setDescription(request.getDescription());
+        }
+
+        incident = incidentRepository.save(incident);
+
+        log.info("Staff {} updated incident {} description", staffUserId, incidentId);
+
+        return ApiResponse.<IncidentResponse>builder()
+                .code(200)
+                .message("Cập nhật mô tả sự cố thành công")
+                .result(staffDashboardMapper.toIncidentResponse(incident))
+                .build();
+    }
+
+    //=====================================================ADMIN============================================================
+
+    /**
+     * ADMIN: Xem tất cả incidents của tất cả stations
+     */
+    public List<IncidentResponse> getAllIncidents() {
+        List<Incident> incidents = incidentRepository.findAllByOrderByReportedAtDesc();
+
+        return incidents.stream()
+                .map(staffDashboardMapper::toIncidentResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * ADMIN: Xem chi tiết một incident
+     */
+    public ApiResponse<IncidentResponse> getIncidentById(String incidentId) {
+        Incident incident = incidentRepository.findById(incidentId)
+                .orElseThrow(() -> new AppException(ErrorCode.INCIDENT_NOT_FOUND));
+
+        return ApiResponse.<IncidentResponse>builder()
+                .result(staffDashboardMapper.toIncidentResponse(incident))
+                .build();
+    }
+
+    /**
+     * ADMIN: Cập nhật trạng thái incident (WAITING -> WORKING -> DONE)
+     * Có thể cập nhật cả description
+     */
+    @Transactional
+    public ApiResponse<IncidentResponse> updateIncidentStatus(String incidentId, IncidentUpdateRequest request) {
+        String adminUserId = getCurrentUserId();
+
+        Incident incident = incidentRepository.findById(incidentId)
+                .orElseThrow(() -> new AppException(ErrorCode.INCIDENT_NOT_FOUND));
+
+        // Admin có thể cập nhật status
+        if (request.getStatus() != null) {
+            incident.setStatus(request.getStatus());
+
+            // Nếu status là DONE thì set resolvedAt
+            if (request.getStatus() == IncidentStatus.DONE) {
+                incident.setResolvedAt(LocalDateTime.now());
+            }
+        }
+
+        // Admin cũng có thể cập nhật description
+        if (request.getDescription() != null) {
+            incident.setDescription(request.getDescription());
+        }
+
+        incident = incidentRepository.save(incident);
+
+        log.info("Admin {} updated incident {} to status {}", adminUserId, incidentId, request.getStatus());
+
+        return ApiResponse.<IncidentResponse>builder()
+                .code(200)
+                .message("Cập nhật trạng thái sự cố thành công")
+                .result(staffDashboardMapper.toIncidentResponse(incident))
+                .build();
+    }
+
+    /**
+     * ADMIN: Xóa incident
+     */
+    @Transactional
+    public ApiResponse<Void> deleteIncident(String incidentId) {
+        String adminUserId = getCurrentUserId();
+
+        Incident incident = incidentRepository.findById(incidentId)
+                .orElseThrow(() -> new AppException(ErrorCode.INCIDENT_NOT_FOUND));
+
+        incidentRepository.delete(incident);
+
+        log.info("Admin {} deleted incident {}", adminUserId, incidentId);
+
+        return ApiResponse.<Void>builder()
+                .message("Xóa báo cáo sự cố thành công")
+                .build();
+    }
+}
+

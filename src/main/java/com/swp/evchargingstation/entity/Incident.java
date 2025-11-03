@@ -1,6 +1,7 @@
 package com.swp.evchargingstation.entity;
 
 import com.swp.evchargingstation.enums.IncidentSeverity;
+import com.swp.evchargingstation.enums.IncidentStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -45,8 +46,9 @@ public class Incident {
     @Column(name = "severity")
     IncidentSeverity severity;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    String status;
+    IncidentStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_staff_id")

@@ -1,6 +1,7 @@
 package com.swp.evchargingstation.repository;
 
 import com.swp.evchargingstation.entity.Incident;
+import com.swp.evchargingstation.enums.IncidentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,9 +18,9 @@ public interface IncidentRepository extends JpaRepository<Incident, String> {
     // Tìm incidents theo staff được assign
     List<Incident> findByAssignedStaff_UserIdOrderByReportedAtDesc(String staffId);
 
-    // Tìm incidents theo station và status
+    // Tìm incidents theo station và status (nếu cần sau này thì dùng @Query)
     @Query("SELECT i FROM Incident i WHERE i.station.stationId = :stationId AND i.status = :status ORDER BY i.reportedAt DESC")
-    List<Incident> findByStationIdAndStatus(@Param("stationId") String stationId, @Param("status") String status);
+    List<Incident> findByStation_StationIdAndStatus(@Param("stationId") String stationId, @Param("status") IncidentStatus status);
 
     // Tìm tất cả incidents của một station, sắp xếp theo thời gian
     @Query("SELECT i FROM Incident i " +

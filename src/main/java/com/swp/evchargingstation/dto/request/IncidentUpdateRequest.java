@@ -1,5 +1,6 @@
 package com.swp.evchargingstation.dto.request;
 
+import com.swp.evchargingstation.enums.IncidentStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -9,7 +10,7 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class IncidentUpdateRequest {
-    String status; // REPORTED, IN_PROGRESS, RESOLVED, CLOSED
-    String resolution; // Giải pháp đã áp dụng
+    IncidentStatus status; // WAITING, WORKING, DONE
+    String description; // Cập nhật mô tả
 }
 
