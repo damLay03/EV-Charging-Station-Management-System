@@ -20,7 +20,7 @@ public class StaffTransactionResponse {
     LocalDateTime startTime;
     LocalDateTime endTime;
     float energyKwh;
-    int durationMin;
+    float durationMin;
     float costTotal;
     ChargingSessionStatus status;
     boolean isPaid;

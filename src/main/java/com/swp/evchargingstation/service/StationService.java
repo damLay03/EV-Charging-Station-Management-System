@@ -640,7 +640,7 @@ public class StationService {
         ChargingSession session = payment.getChargingSession();
         String customerName = null;
         String chargingPointName = null;
-        Integer durationMinutes = null;
+        Float durationMinutes = null;
         String durationFormatted = null;
 
         if (session != null) {
@@ -679,13 +679,14 @@ public class StationService {
     /**
      * Format duration từ phút sang dạng "35 phút" hoặc "1h 15m"
      */
-    private String formatDuration(Integer minutes) {
+    private String formatDuration(Float minutes) {
         if (minutes == null || minutes == 0) {
             return "0 phút";
         }
 
-        int hours = minutes / 60;
-        int mins = minutes % 60;
+        int totalMinutes = Math.round(minutes);
+        int hours = totalMinutes / 60;
+        int mins = totalMinutes % 60;
 
         if (hours == 0) {
             return mins + " phút";

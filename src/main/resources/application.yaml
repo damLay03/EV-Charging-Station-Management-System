@@ -48,6 +48,24 @@ spring:
 jwt:
   singerKey: 0a58c8b134bc3d3e7a853dc8a49bcd3895e02c20d39d29d2d976e87300dc23fa
 
+# Email Configuration
+mail:
+  host: smtp.gmail.com
+  port: 587
+  username: ${MAIL_USERNAME:khoahuynh142005@gmail.com}
+  password: ${MAIL_PASSWORD:ebazvujevswtbypu}
+  properties:
+    mail:
+      smtp:
+        auth: true
+        starttls:
+          enable: true
+          required: true
+        connectiontimeout: 5000
+        timeout: 5000
+        writetimeout: 5000
+  from: ${MAIL_FROM:EV Charging System <khoahuynh142005@gmail.com>}
+
 zalopay:
   app-id: "2554"  # Sandbox App ID
   key1: "sdngKKJmqEMzvh5QQcdD2A9XBSKUNaYn"  # Sandbox Key1

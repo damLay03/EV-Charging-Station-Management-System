@@ -28,6 +28,7 @@ public class CashPaymentService {
     PaymentRepository paymentRepository;
     ChargingSessionRepository chargingSessionRepository;
     StaffRepository staffRepository;
+    EmailService emailService;
 
     /**
      * Driver yêu cầu thanh toán bằng tiền mặt cho một session đã hoàn thành
@@ -198,6 +199,9 @@ public class CashPaymentService {
         log.info("Payment after update - ID: {}, Status: {}, ConfirmedAt: {}, PaidAt: {}",
                 savedPayment.getPaymentId(), savedPayment.getStatus(),
                 savedPayment.getConfirmedAt(), savedPayment.getPaidAt());
+        // Gửi email xác nhận thanh toán
+        emailService.sendPaymentConfirmationEmail(savedPayment);
+
 
         return convertToResponse(savedPayment);
     }

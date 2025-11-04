@@ -17,7 +17,7 @@ public class ChargingSessionResponse {
     // Thông tin thời gian
     LocalDateTime startTime;        // Ngày và giờ bắt đầu
     LocalDateTime endTime;          // Ngày và giờ kết thúc
-    Integer durationMin;            // Thời gian (45 phút, 1h 20m)
+    Float durationMin;              // Thời gian (45 phút, 1h 20m)
 
     // Thông tin trạm
     String stationName;             // Tên trạm (Vincom Đồng Khởi, Landmark 81)
@@ -42,7 +42,7 @@ public class ChargingSessionResponse {
     // Các field realtime (được chuyển từ ActiveChargingSessionResponse)
     Integer currentSocPercent;              // Mức pin hiện tại
     Integer targetSocPercent;               // Mục tiêu SOC
-    Integer elapsedTimeMinutes;             // Thời gian đã sạc (phút)
+    Float elapsedTimeMinutes;               // Thời gian đã sạc (phút)
     Integer estimatedTimeRemainingMinutes;  // Thời gian còn lại ước tính (phút)
     Float pricePerKwh;                      // Giá điện theo plan
     Float energyConsumedKwh;                // Năng lượng tiêu thụ (kWh) - realtime

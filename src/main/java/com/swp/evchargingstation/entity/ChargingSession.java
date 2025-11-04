@@ -54,7 +54,7 @@ public class ChargingSession {
     float energyKwh;
 
     @Column(name = "duration_min")
-    int durationMin;
+    float durationMin;
 
     @Column(name = "cost_total")
     float costTotal;

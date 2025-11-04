@@ -48,6 +48,7 @@ public class ChargingSessionService {
     PaymentRepository paymentRepository;
 
     ChargingSimulatorService simulatorService;
+    EmailService emailService;
 
     /**
      * Lấy dashboard overview của driver đang đăng nhập
@@ -192,7 +193,7 @@ public class ChargingSessionService {
         int targetSoc = session.getTargetSocPercent() != null ? session.getTargetSocPercent() : 100;
         int startSoc = session.getStartSocPercent();
         int currentSoc;
-        int elapsedMinutes;
+        float elapsedMinutes;
         Integer estimatedTimeRemaining = null;
         float energyConsumed;
         float pricePerKwh = planRepository.findByNameIgnoreCase("Linh hoạt").map(com.swp.evchargingstation.entity.Plan::getPricePerKwh).orElse(3000f);
@@ -204,13 +205,13 @@ public class ChargingSessionService {
 
         if (session.getStatus() == com.swp.evchargingstation.enums.ChargingSessionStatus.IN_PROGRESS) {
             currentSoc = (vehicle != null && vehicle.getCurrentSocPercent() != null) ? vehicle.getCurrentSocPercent() : startSoc;
-            elapsedMinutes = (int) java.time.temporal.ChronoUnit.MINUTES.between(session.getStartTime(), java.time.LocalDateTime.now());
+            elapsedMinutes = (float) java.time.temporal.ChronoUnit.MINUTES.between(session.getStartTime(), java.time.LocalDateTime.now());
             int socGained = Math.max(0, currentSoc - startSoc);
             energyConsumed = socGained * energyPerPercent;
 
             if (currentSoc < targetSoc && socGained > 0 && elapsedMinutes > 0) {
                 int remainingSoc = targetSoc - currentSoc;
-                float avgSocPerMinute = (float) socGained / (float) elapsedMinutes;
+                float avgSocPerMinute = socGained / elapsedMinutes;
                 if (avgSocPerMinute > 0) {
                     estimatedTimeRemaining = (int) Math.ceil(remainingSoc / avgSocPerMinute);
                 }
@@ -355,7 +356,7 @@ public class ChargingSessionService {
                 .endSocPercent(currentSoc)
                 .targetSocPercent(target)
                 .energyKwh(0f)
-                .durationMin(0)
+                .durationMin(0f)
                 .costTotal(0f)
                 .startedByUser(driver.getUser())
                 .status(ChargingSessionStatus.IN_PROGRESS)
@@ -367,6 +368,9 @@ public class ChargingSessionService {
         chargingPoint.setStatus(ChargingPointStatus.CHARGING);
         chargingPoint.setCurrentSession(newSession);
         chargingPointRepository.save(chargingPoint);
+        // Gửi email thông báo bắt đầu sạc
+        emailService.sendChargingStartEmail(newSession);
+
 
         log.info("Started charging session {} for driver {} at point {}", newSession.getSessionId(), driverId, chargingPoint.getPointId());
         return convertToResponse(newSession);

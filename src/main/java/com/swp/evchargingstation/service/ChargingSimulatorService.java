@@ -31,9 +31,10 @@ public class ChargingSimulatorService {
     ChargingPointRepository chargingPointRepository;
     PlanRepository planRepository;
     PaymentRepository paymentRepository;
+    EmailService emailService;
 
     // Phase 2: background simulation tick, runs every 2 seconds
-    @Scheduled(fixedRate = 2000)
+    @Scheduled(fixedRate = 1000)
     @Transactional
     public void simulateChargingTick() {
         List<ChargingSession> activeSessions = chargingSessionRepository.findByStatus(ChargingSessionStatus.IN_PROGRESS);
@@ -58,16 +59,16 @@ public class ChargingSimulatorService {
                     continue;
                 }
 
-                // Simulate 2 minutes per tick
-                float energyPerTick = powerKw * (2.0f / 60.0f);
+                // Simulate 6 giây một tick
+                float energyPerTick = powerKw * (6.0f / 3600.0f); //6 giây/3600 giây trong 1 giờ (đổi giây sang giờ)
                 float socAddedPerTick = (energyPerTick / capacityKwh) * 100.0f;
 
                 float currentSoc = session.getEndSocPercent();
                 float newSocFloat = currentSoc + socAddedPerTick;
                 int newSocRounded = Math.round(newSocFloat);
 
-                // Update session counters (add 2 simulated minutes)
-                session.setDurationMin(session.getDurationMin() + 2);
+                // Update session counters (add 6 simulated seconds = 0.1 minute)
+                session.setDurationMin(session.getDurationMin() + 0.1f);
                 session.setEnergyKwh(session.getEnergyKwh() + energyPerTick);
 
                 if (newSocRounded >= targetSoc) {
@@ -133,6 +134,9 @@ public class ChargingSimulatorService {
 
                 paymentRepository.save(payment);
                 log.info("Created UNPAID payment for completed session {}", session.getSessionId());
+
+            // Gửi email thông báo kết thúc sạc
+            emailService.sendChargingCompleteEmail(session);
             }
         }
 

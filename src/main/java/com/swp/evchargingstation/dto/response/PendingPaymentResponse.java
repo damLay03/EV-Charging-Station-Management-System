@@ -18,7 +18,7 @@ public class PendingPaymentResponse {
     String licensePlate;
     LocalDateTime sessionStartTime;
     LocalDateTime sessionEndTime;
-    Integer durationMin;
+    Float durationMin;
     Float energyKwh;
     Float amount;
     String paymentStatus;

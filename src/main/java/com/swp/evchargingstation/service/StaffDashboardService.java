@@ -66,7 +66,7 @@ public class StaffDashboardService {
         // Tính thời gian trung bình
         Double avgDuration = todaySessions.stream()
                 .filter(s -> s.getDurationMin() > 0)
-                .mapToInt(ChargingSession::getDurationMin)
+                .mapToDouble(ChargingSession::getDurationMin)
                 .average()
                 .orElse(0.0);
 

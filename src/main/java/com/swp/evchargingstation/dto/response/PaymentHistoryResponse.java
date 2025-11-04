@@ -17,7 +17,7 @@ public class PaymentHistoryResponse {
     String chargingPointName;       // Điểm sạc (Điểm sạc #2)
     String customerName;            // Khách hàng (Lê Văn Cường)
     String durationFormatted;       // Thời gian sạc (35 phút, 1h 15m)
-    Integer durationMinutes;        // Thời gian sạc (phút) - để sort nếu cần
+    Float durationMinutes;          // Thời gian sạc (phút) - để sort nếu cần
     Float amount;                   // Số tiền (65,000đ)
     Payment.PaymentMethod paymentMethod;  // PT Thanh toán (CASH, ZALOPAY)
     String paymentMethodDisplay;    // Hiển thị (Thẻ, Tiền mặt, MoMo)
