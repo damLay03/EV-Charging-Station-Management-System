@@ -15,24 +15,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/overview")
+@RequestMapping("/api/system-overview")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-@Tag(name = "Overview", description = "API tổng quan hệ thống dành cho quản trị viên")
+@Tag(name = "System Overview", description = "Tổng quan hệ thống dành cho quản trị viên")
 public class OverviewController {
 
     OverviewService overviewService;
 
-    /**
-     * Lấy dữ liệu tổng quan hệ thống
-     * Bao gồm: Tổng số trạm sạc, điểm sạc đang hoạt động,
-     * tổng số người dùng (driver), doanh thu tháng hiện tại
-     *
-     * Chỉ ADMIN mới có quyền truy cập
-     *
-     * @return SystemOverviewResponse chứa các thông số tổng quan
-     */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(

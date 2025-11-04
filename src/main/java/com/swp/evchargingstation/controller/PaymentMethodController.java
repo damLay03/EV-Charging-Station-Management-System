@@ -18,22 +18,21 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/payment-methods")
+@RequestMapping("/api/my-payment-methods")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-@Tag(name = "Payment Methods", description = "API quản lý phương thức thanh toán của driver")
+@Tag(name = "My Payment Methods", description = "API quản lý phương thức thanh toán của driver")
 public class PaymentMethodController {
     PaymentMethodService paymentMethodService;
 
-    // NOTE: Driver thêm phương thức thanh toán (Credit Card, E-Wallet, ...)
     @PostMapping
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(
             summary = "Thêm phương thức thanh toán mới",
             description = "Driver thêm một phương thức thanh toán mới (thẻ tín dụng, ví điện tử, ...) vào tài khoản của mình"
     )
-    public ApiResponse<PaymentMethodResponse> create(
+    public ApiResponse<PaymentMethodResponse> addPaymentMethod(
             Authentication authentication,
             @RequestBody @Valid PaymentMethodCreationRequest request) {
         String driverId = authentication.getName();
@@ -44,7 +43,6 @@ public class PaymentMethodController {
                 .build();
     }
 
-    // NOTE: Driver xem danh sách phương thức thanh toán của mình
     @GetMapping
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(
@@ -60,14 +58,13 @@ public class PaymentMethodController {
                 .build();
     }
 
-    // NOTE: Driver xóa phương thức thanh toán
     @DeleteMapping("/{pmId}")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(
             summary = "Xóa phương thức thanh toán",
             description = "Xóa một phương thức thanh toán khỏi tài khoản của driver. Driver chỉ có thể xóa các phương thức thanh toán của chính mình"
     )
-    public ApiResponse<Void> delete(
+    public ApiResponse<Void> deletePaymentMethod(
             Authentication authentication,
             @PathVariable String pmId) {
         String driverId = authentication.getName();

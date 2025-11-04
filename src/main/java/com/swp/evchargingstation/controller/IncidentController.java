@@ -22,45 +22,10 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-@Tag(name = "Incident Management", description = "APIs for managing incident reports")
+@Tag(name = "Incidents (Admin)", description = "Admin incident management - view, update status, delete incidents")
 public class IncidentController {
 
     IncidentService incidentService;
-
-//=====================================================STAFF============================================================
-
-    @PostMapping
-    @PreAuthorize("hasRole('STAFF')")
-    @Operation(summary = "Create incident report",
-               description = "Staff can report incidents at their station. Default status: WAITING")
-    public ApiResponse<IncidentResponse> createIncident(@RequestBody @Valid IncidentCreationRequest request) {
-        log.info("Staff creating incident report for station: {}", request.getStationId());
-        return incidentService.createIncident(request);
-    }
-
-    @GetMapping("/my-station")
-    @PreAuthorize("hasRole('STAFF')")
-    @Operation(summary = "Get incidents of my station",
-               description = "Staff can view all incidents reported at their station")
-    public ApiResponse<List<IncidentResponse>> getMyStationIncidents() {
-        log.info("Staff requesting incidents of their station");
-        return ApiResponse.<List<IncidentResponse>>builder()
-                .result(incidentService.getMyStationIncidents())
-                .build();
-    }
-
-    @PutMapping("/{incidentId}/description")
-    @PreAuthorize("hasRole('STAFF')")
-    @Operation(summary = "Update incident description",
-               description = "Staff can update description of incidents at their station (cannot change status)")
-    public ApiResponse<IncidentResponse> updateIncidentDescription(
-            @PathVariable String incidentId,
-            @RequestBody @Valid IncidentUpdateRequest request) {
-        log.info("Staff updating incident {} description", incidentId);
-        return incidentService.updateIncidentDescription(incidentId, request);
-    }
-
-//=====================================================ADMIN============================================================
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -82,7 +47,7 @@ public class IncidentController {
         return incidentService.getIncidentById(incidentId);
     }
 
-    @PutMapping("/{incidentId}/status")
+    @PatchMapping("/{incidentId}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update incident status",
                description = "Admin can update incident status: WAITING -> WORKING -> DONE")

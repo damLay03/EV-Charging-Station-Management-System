@@ -1,7 +1,9 @@
 package com.swp.evchargingstation.controller;
 
 import com.swp.evchargingstation.dto.response.*;
+import com.swp.evchargingstation.service.ChargingSessionService;
 import com.swp.evchargingstation.service.DashboardService;
+import com.swp.evchargingstation.service.StaffDashboardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AccessLevel;
@@ -16,20 +18,29 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/dashboard")
+@RequestMapping("/api/my-dashboard")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-@Tag(name = "Dashboard", description = "API dashboard cho driver xem thống kê và phân tích sạc")
+@Tag(name = "Driver Dashboard", description = "Dashboard và thống kê sạc của driver hiện tại")
 public class DashboardController {
 
     DashboardService dashboardService;
+    ChargingSessionService chargingSessionService;
 
-    /**
-     * API 1: Lấy thống kê tổng quan (Cards trên cùng)
-     * GET /api/dashboard/summary
-     * @param period "today", "week", "month" (optional)
-     */
+    @GetMapping
+    @PreAuthorize("hasRole('DRIVER')")
+    @Operation(
+            summary = "Lấy dashboard overview của driver",
+            description = "Trả về thông tin tổng quát của driver bao gồm tổng chi phí, tổng năng lượng, số phiên sạc, trung bình/tháng, thông tin xe và phần trăm pin hiện tại"
+    )
+    public ApiResponse<DriverDashboardResponse> getMyDashboard() {
+        log.info("Driver requesting dashboard overview");
+        return ApiResponse.<DriverDashboardResponse>builder()
+                .result(chargingSessionService.getMyDashboard())
+                .build();
+    }
+
     @GetMapping("/summary")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(
@@ -46,11 +57,6 @@ public class DashboardController {
                 .build();
     }
 
-    /**
-     * API 2: Lấy thống kê theo giờ trong ngày (Biểu đồ)
-     * GET /api/dashboard/hourly-sessions
-     * @param date Ngày cần thống kê (optional, mặc định hôm nay)
-     */
     @GetMapping("/hourly-sessions")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(
@@ -67,11 +73,6 @@ public class DashboardController {
                 .build();
     }
 
-    /**
-     * API 3: Lấy danh sách trạm sạc yêu thích
-     * GET /api/dashboard/favorite-stations
-     * @param limit Số lượng trạm trả về (mặc định 5)
-     */
     @GetMapping("/favorite-stations")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(
@@ -88,10 +89,6 @@ public class DashboardController {
                 .build();
     }
 
-    /**
-     * API 4: Lấy thống kê thói quen sạc
-     * GET /api/dashboard/charging-statistics
-     */
     @GetMapping("/charging-statistics")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(
@@ -106,23 +103,6 @@ public class DashboardController {
                 .result(dashboardService.getChargingStatistics())
                 .build();
     }
-
-    /**
-     * API 5: Lấy thông tin gói plan hiện tại của driver
-     * GET /api/dashboard/current-plan
-     */
-    @GetMapping("/current-plan")
-    @PreAuthorize("hasRole('DRIVER')")
-    @Operation(
-            summary = "Lấy thông tin gói plan hiện tại",
-            description = "Trả về thông tin chi tiết về gói plan mà driver hiện đang sử dụng, bao gồm giá, lợi ích, thời hạn"
-    )
-    public ApiResponse<PlanResponse> getCurrentPlan() {
-
-        log.info("Driver requesting current plan information");
-
-        return ApiResponse.<PlanResponse>builder()
-                .result(dashboardService.getCurrentPlan())
-                .build();
-    }
 }
+
+

@@ -4,6 +4,7 @@ import com.swp.evchargingstation.dto.response.ApiResponse;
 import com.swp.evchargingstation.dto.response.StationRevenueResponse;
 import com.swp.evchargingstation.service.RevenueService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -15,97 +16,46 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/revenue")
+@RequestMapping("/api/revenues")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-@Tag(name = "Revenue", description = "API thống kê doanh thu theo ngày, tuần, tháng, năm dành cho quản trị viên")
+@Tag(name = "Revenue Statistics", description = "Thống kê doanh thu của hệ thống - Admin only")
 public class RevenueController {
 
     RevenueService revenueService;
 
-    /**
-     * Lấy thống kê doanh thu theo ngày của từng trạm sạc
-     * @param year Năm cần thống kê (mặc định: năm hiện tại)
-     * @param month Tháng cần thống kê (mặc định: tháng hiện tại)
-     * @param day Ngày cần thống kê (mặc định: ngày hiện tại)
-     * @return Danh sách doanh thu của các trạm trong ngày
-     */
-    @GetMapping("/daily")
+    @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
-            summary = "Lấy thống kê doanh thu theo ngày",
-            description = "Trả về thống kê doanh thu của từng trạm sạc theo ngày. Mặc định lấy dữ liệu ngày hiện tại nếu không chỉ định. Chỉ quản trị viên có quyền truy cập"
+            summary = "Lấy thống kê doanh thu",
+            description = "Trả về thống kê doanh thu của từng trạm sạc theo khoảng thời gian được chỉ định (ngày, tuần, tháng, năm). Chỉ quản trị viên có quyền truy cập"
     )
-    public ApiResponse<List<StationRevenueResponse>> getDailyRevenue(
+    public ApiResponse<List<StationRevenueResponse>> getRevenue(
+            @Parameter(description = "Khoảng thời gian thống kê (daily, weekly, monthly, yearly)", example = "daily")
+            @RequestParam(defaultValue = "daily") String period,
+            @Parameter(description = "Năm (mặc định: năm hiện tại)", example = "2025")
             @RequestParam(required = false) Integer year,
+            @Parameter(description = "Tháng (1-12, dùng với period=monthly hoặc daily)", example = "11")
             @RequestParam(required = false) Integer month,
-            @RequestParam(required = false) Integer day) {
+            @Parameter(description = "Ngày (1-31, dùng với period=daily)", example = "4")
+            @RequestParam(required = false) Integer day,
+            @Parameter(description = "Tuần (1-52, dùng với period=weekly)", example = "45")
+            @RequestParam(required = false) Integer week) {
 
-        log.info("Admin requesting daily revenue - year: {}, month: {}, day: {}", year, month, day);
+        log.info("Admin requesting revenue statistics - period: {}, year: {}, month: {}, day: {}, week: {}",
+                period, year, month, day, week);
 
-        return ApiResponse.<List<StationRevenueResponse>>builder()
-                .result(revenueService.getDailyRevenue(year, month, day))
-                .build();
-    }
-
-    @GetMapping("/weekly")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-            summary = "Lấy thống kê doanh thu theo tuần",
-            description = "Trả về thống kê doanh thu của từng trạm sạc theo tuần. Mặc định lấy dữ liệu tuần hiện tại nếu không chỉ định. Chỉ quản trị viên có quyền truy cập"
-    )
-    public ApiResponse<List<StationRevenueResponse>> getWeeklyRevenue(
-            @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer week
-    ) {
-        log.info("Admin requesting weekly revenue - year: {}, week: {}", year, week);
+        List<StationRevenueResponse> result = switch (period.toLowerCase()) {
+            case "daily" -> revenueService.getDailyRevenue(year, month, day);
+            case "weekly" -> revenueService.getWeeklyRevenue(year, week);
+            case "monthly" -> revenueService.getMonthlyRevenue(year, month);
+            case "yearly" -> revenueService.getYearlyRevenue(year);
+            default -> throw new IllegalArgumentException("Invalid period: " + period);
+        };
 
         return ApiResponse.<List<StationRevenueResponse>>builder()
-                .result(revenueService.getWeeklyRevenue(year, week))
-                .build();
-    }
-    /**
-     * Lấy thống kê doanh thu theo tháng của từng trạm sạc
-     * @param year Năm cần thống kê (mặc định: năm hiện tại)
-     * @param month Tháng cần thống kê (mặc định: tháng hiện tại)
-     * @return Danh sách doanh thu của các trạm trong tháng
-     */
-    @GetMapping("/monthly")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-            summary = "Lấy thống kê doanh thu theo tháng",
-            description = "Trả về thống kê doanh thu của từng trạm sạc theo tháng. Mặc định lấy dữ liệu tháng hiện tại nếu không chỉ định. Chỉ quản trị viên có quyền truy cập"
-    )
-    public ApiResponse<List<StationRevenueResponse>> getMonthlyRevenue(
-            @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer month) {
-
-        log.info("Admin requesting monthly revenue - year: {}, month: {}", year, month);
-
-        return ApiResponse.<List<StationRevenueResponse>>builder()
-                .result(revenueService.getMonthlyRevenue(year, month))
-                .build();
-    }
-
-    /**
-     * Lấy thống kê doanh thu theo năm của từng trạm sạc (tất cả các tháng)
-     * @param year Năm cần thống kê (mặc định: năm hiện tại)
-     * @return Danh sách doanh thu của các trạm trong cả năm
-     */
-    @GetMapping("/yearly")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-            summary = "Lấy thống kê doanh thu theo năm",
-            description = "Trả về thống kê doanh thu của từng trạm sạc theo năm (tất cả các tháng). Mặc định lấy dữ liệu năm hiện tại nếu không chỉ định. Chỉ quản trị viên có quyền truy cập"
-    )
-    public ApiResponse<List<StationRevenueResponse>> getYearlyRevenue(
-            @RequestParam(required = false) Integer year) {
-
-        log.info("Admin requesting yearly revenue - year: {}", year);
-
-        return ApiResponse.<List<StationRevenueResponse>>builder()
-                .result(revenueService.getYearlyRevenue(year))
+                .result(result)
                 .build();
     }
 }

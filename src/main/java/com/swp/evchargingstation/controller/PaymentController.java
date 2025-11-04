@@ -1,11 +1,9 @@
 package com.swp.evchargingstation.controller;
 
-import com.swp.evchargingstation.dto.request.CashPaymentRequest;
+import com.swp.evchargingstation.dto.request.StaffPaymentRequest;
 import com.swp.evchargingstation.dto.response.ApiResponse;
-import com.swp.evchargingstation.service.CashPaymentService;
-import com.swp.evchargingstation.service.ZaloPayService;
-import com.swp.evchargingstation.dto.zalopay.ZaloPayCallbackRequest;
-import org.springframework.http.ResponseEntity;
+import com.swp.evchargingstation.dto.response.PendingPaymentResponse;
+import com.swp.evchargingstation.service.StaffDashboardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -13,87 +11,60 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
+import java.util.List;
 
 @RestController
-@RequestMapping("/api/payments")
+@RequestMapping("/api/my-stations/payments")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-@Tag(name = "Payment", description = "Payment APIs - Cash Payment Only")
+@Tag(name = "Staff Station Payments", description = "Xử lý thanh toán tại trạm của nhân viên")
 public class PaymentController {
 
-    CashPaymentService cashPaymentService;
-    ZaloPayService zaloPayService;
+    StaffDashboardService staffDashboardService;
 
-    @PostMapping("/cash/request")
+    @PostMapping
+    @PreAuthorize("hasRole('STAFF')")
     @Operation(
-            summary = "Yêu cầu thanh toán tiền mặt",
-            description = "Driver yêu cầu thanh toán tiền mặt cho phiên sạc. Yêu cầu sẽ được gửi tới nhân viên trạm sạc để xác nhận"
+            summary = "Xử lý thanh toán cho driver",
+            description = "Staff xử lý thanh toán bằng tiền mặt hoặc thẻ cho các phiên sạc đã hoàn thành"
     )
-    public ApiResponse<String> requestCashPayment(@RequestBody @Valid CashPaymentRequest request,
-                                                   @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.oauth2.jwt.Jwt jwt) {
-        String driverId = jwt.getClaim("userId");
-        log.info("Driver {} requesting cash payment for session {}", driverId, request.getSessionId());
+    public ApiResponse<String> processPayment(@RequestBody @Valid StaffPaymentRequest request) {
+        log.info("Staff processing payment for session: {}", request.getSessionId());
+        return staffDashboardService.processPaymentForDriver(request);
+    }
 
-        cashPaymentService.requestCashPayment(request.getSessionId());
-
-        return ApiResponse.<String>builder()
-                .message("Yêu cầu thanh toán tiền mặt đã được gửi đến nhân viên trạm")
-                .result("PENDING")
+    @GetMapping
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(
+            summary = "Lấy danh sách yêu cầu thanh toán đang chờ",
+            description = "Lấy danh sách tất cả các yêu cầu thanh toán bằng tiền mặt đang chờ xác nhận tại trạm của staff"
+    )
+    public ApiResponse<List<PendingPaymentResponse>> getPendingPayments(
+            @AuthenticationPrincipal Jwt jwt) {
+        String staffId = jwt.getClaim("userId");
+        log.info("Staff {} requesting pending payments", staffId);
+        return ApiResponse.<List<PendingPaymentResponse>>builder()
+                .result(staffDashboardService.getPendingCashPayments(staffId))
                 .build();
     }
 
-    /**
-     * Create ZaloPay payment
-     */
-    @PostMapping("/sessions/{sessionId}/zalopay")
+    @PatchMapping("/{paymentId}")
+    @PreAuthorize("hasRole('STAFF')")
     @Operation(
-            summary = "Tạo thanh toán ZaloPay",
-            description = "Tạo một đơn thanh toán ZaloPay cho phiên sạc. Trả về URL thanh toán để driver chuyển hướng sang cổng thanh toán ZaloPay"
+            summary = "Xác nhận thanh toán tiền mặt",
+            description = "Staff xác nhận driver đã thanh toán tiền mặt. Trạng thái chuyển thành COMPLETED"
     )
-    public ApiResponse<String> createZaloPayPayment(@PathVariable String sessionId) {
-        String paymentUrl = zaloPayService.createPayment(sessionId);
-        return ApiResponse.<String>builder()
-                .result(paymentUrl)
-                .build();
-    }
-
-    /**
-     * ZaloPay callback endpoint
-     */
-    @PostMapping("/callbacks/zalopay")
-    @Operation(
-            summary = "Xử lý callback từ ZaloPay",
-            description = "Endpoint nhận callback từ ZaloPay để xác nhận kết quả thanh toán. ZaloPay sẽ gửi thông tin thanh toán tới đây sau khi người dùng hoàn tất giao dịch"
-    )
-    public ResponseEntity<Map<String, Object>> zaloPayCallback(
-            @RequestBody ZaloPayCallbackRequest callbackRequest
-    ) {
-        log.info("=== ZaloPay Callback Received ===");
-        log.info("Data: {}", callbackRequest.getData());
-        log.info("MAC: {}", callbackRequest.getMac());
-
-        Map<String, Object> response = zaloPayService.handleCallback(callbackRequest);
-
-        log.info("Callback response: {}", response);
-        log.info("=== End ZaloPay Callback ===");
-
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * Test endpoint to verify callback URL is accessible
-     */
-    @GetMapping("/callbacks/zalopay/test")
-    @Operation(
-            summary = "Kiểm tra callback endpoint của ZaloPay",
-            description = "Endpoint kiểm tra xem URL callback ZaloPay có hoạt động bình thường không. Dùng để xác minh rằng ZaloPay có thể kết nối tới hệ thống"
-    )
-    public ResponseEntity<String> testCallback() {
-        log.info("ZaloPay callback test endpoint hit!");
-        return ResponseEntity.ok("ZaloPay callback endpoint is accessible. POST to this URL for actual callback.");
+    public ApiResponse<String> confirmPayment(
+            @PathVariable String paymentId,
+            @AuthenticationPrincipal Jwt jwt) {
+        String staffId = jwt.getClaim("userId");
+        log.info("Staff {} confirming payment {}", staffId, paymentId);
+        return staffDashboardService.confirmCashPayment(paymentId, staffId);
     }
 }
