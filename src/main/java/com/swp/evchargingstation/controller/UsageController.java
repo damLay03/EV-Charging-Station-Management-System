@@ -22,18 +22,20 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-@Tag(name = "System Usages", description = "Thống kê mức độ sử dụng của tất cả trạm sạc (Admin only)")
+@Tag(name = "Usage Management", description = "RESTful API thống kê mức độ sử dụng trạm sạc - Admin/Staff")
 public class UsageController {
 
     StationUsageService stationUsageService;
 
+    // ==================== ADMIN - ALL STATIONS ====================
+
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
-            summary = "Lấy mức độ sử dụng tất cả trạm",
-            description = "Trả về mức độ sử dụng của tất cả các trạm sạc theo ngày chỉ định. Mặc định lấy dữ liệu ngày hôm nay nếu không chỉ định ngày. Chỉ quản trị viên có quyền truy cập"
+            summary = "[ADMIN] Lấy mức độ sử dụng tất cả trạm",
+            description = "Trả về mức độ sử dụng của tất cả các trạm sạc theo ngày chỉ định. Mặc định lấy dữ liệu ngày hôm nay nếu không chỉ định ngày"
     )
-    public ApiResponse<List<StationUsageResponse>> listAll(
+    public ApiResponse<List<StationUsageResponse>> getAllStationsUsage(
             @Parameter(description = "Ngày thống kê (yyyy-MM-dd)", example = "2025-11-04")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 
@@ -42,6 +44,28 @@ public class UsageController {
 
         return ApiResponse.<List<StationUsageResponse>>builder()
                 .result(stationUsageService.getAllStationsUsageByDate(targetDate))
+                .build();
+    }
+
+    // ==================== ADMIN/STAFF - SPECIFIC STATION ====================
+
+    @GetMapping("/stations/{stationId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @Operation(
+            summary = "[ADMIN/STAFF] Lấy mức độ sử dụng trạm cụ thể",
+            description = "Trả về mức độ sử dụng của một trạm sạc theo ngày chỉ định. Mặc định lấy dữ liệu ngày hôm nay nếu không chỉ định ngày bao gồm số phiên sạc, tỷ lệ sử dụng, năng lượng tiêu thụ"
+    )
+    public ApiResponse<StationUsageResponse> getStationUsage(
+            @Parameter(description = "ID của trạm sạc", example = "STATION_123")
+            @PathVariable String stationId,
+            @Parameter(description = "Ngày thống kê (yyyy-MM-dd)", example = "2025-11-04")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        LocalDate targetDate = (date != null) ? date : LocalDate.now();
+        log.info("Fetching usage for station: {} on date: {}", stationId, targetDate);
+
+        return ApiResponse.<StationUsageResponse>builder()
+                .result(stationUsageService.getStationUsageByDate(stationId, targetDate))
                 .build();
     }
 }

@@ -85,25 +85,21 @@ public class NotificationSettingService {
 
     // NOTE: Cập nhật một cài đặt cụ thể
     @Transactional
-    public NotificationSettingResponse updateSingleSetting(NotificationSettingRequest request) {
+    public NotificationSettingResponse updateSingleSetting(String settingId, NotificationSettingRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        log.info("User '{}' updating single notification setting: {} - {}",
-                user.getUserId(), request.getNotificationType(), request.getChannel());
+        log.info("User '{}' updating notification setting: {}", user.getUserId(), settingId);
 
         NotificationSetting setting = notificationSettingRepository
-                .findByUser_UserIdAndNotificationTypeAndChannel(
-                        user.getUserId(),
-                        request.getNotificationType(),
-                        request.getChannel()
-                )
-                .orElse(NotificationSetting.builder()
-                        .user(user)
-                        .notificationType(request.getNotificationType())
-                        .channel(request.getChannel())
-                        .build());
+                .findById(settingId)
+                .orElseThrow(() -> new RuntimeException("Notification setting not found"));
+
+        // Verify ownership
+        if (!setting.getUser().getUserId().equals(user.getUserId())) {
+            throw new RuntimeException("You don't have permission to update this setting");
+        }
 
         setting.setEnabled(request.getIsEnabled());
         NotificationSetting saved = notificationSettingRepository.save(setting);

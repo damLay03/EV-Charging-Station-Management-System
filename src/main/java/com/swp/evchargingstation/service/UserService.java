@@ -3,9 +3,7 @@ import com.swp.evchargingstation.dto.request.UserCreationRequest;
 import com.swp.evchargingstation.dto.request.UserUpdateRequest;
 import com.swp.evchargingstation.dto.request.AdminUpdateDriverRequest;
 import com.swp.evchargingstation.dto.request.RoleAssignmentRequest;
-import com.swp.evchargingstation.dto.response.AdminUserResponse;
-import com.swp.evchargingstation.dto.response.DriverResponse;
-import com.swp.evchargingstation.dto.response.UserResponse;
+import com.swp.evchargingstation.dto.response.*;
 import com.swp.evchargingstation.entity.*;
 import com.swp.evchargingstation.enums.Role;
 import com.swp.evchargingstation.exception.AppException;
@@ -73,62 +71,139 @@ public class UserService {
         return userMapper.toUserResponse(saved);
     }
 
-    @PreAuthorize("hasRole('DRIVER')")
-    public DriverResponse getMyInfo() {
+    // NEW: Support all 3 roles - returns unified profile response
+    @PreAuthorize("isAuthenticated()")
+    public UserProfileResponse getMyInfo() {
         var context = SecurityContextHolder.getContext();
-        String name = context.getAuthentication().getName();
+        String email = context.getAuthentication().getName();
 
-        User user = userRepository.findByEmail(name)
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Lấy thông tin Driver entity
-        Driver driver = driverRepository.findById(user.getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        return switch (user.getRole()) {
+            case DRIVER -> {
+                Driver driver = driverRepository.findById(user.getUserId())
+                        .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Map sang DriverResponse với đầy đủ thông tin
-        return DriverResponse.builder()
-                .userId(user.getUserId())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .dateOfBirth(user.getDateOfBirth())
-                .gender(user.getGender())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .fullName(user.getFullName())
-                .role(user.getRole())
-                .address(driver.getAddress())
-                .joinDate(driver.getJoinDate())
-                .build();
+                DriverResponse driverProfile = DriverResponse.builder()
+                        .userId(user.getUserId())
+                        .email(user.getEmail())
+                        .phone(user.getPhone())
+                        .dateOfBirth(user.getDateOfBirth())
+                        .gender(user.getGender())
+                        .firstName(user.getFirstName())
+                        .lastName(user.getLastName())
+                        .fullName(user.getFullName())
+                        .role(user.getRole())
+                        .address(driver.getAddress())
+                        .joinDate(driver.getJoinDate())
+                        .build();
+
+                yield UserProfileResponse.builder()
+                        .role(Role.DRIVER)
+                        .driverProfile(driverProfile)
+                        .build();
+            }
+            case STAFF -> {
+                Staff staff = staffRepository.findById(user.getUserId())
+                        .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+                StaffProfileResponse staffProfile = StaffProfileResponse.builder()
+                        .staffId(user.getUserId())
+                        .email(user.getEmail())
+                        .fullName(user.getFullName())
+                        .phone(user.getPhone())
+                        .employeeNo(staff.getEmployeeNo())
+                        .position(staff.getPosition())
+                        .stationId(staff.getStation() != null ? staff.getStation().getStationId() : null)
+                        .stationName(staff.getStation() != null ? staff.getStation().getName() : null)
+                        .stationAddress(staff.getStation() != null ? staff.getStation().getAddress() : null)
+                        .build();
+
+                yield UserProfileResponse.builder()
+                        .role(Role.STAFF)
+                        .staffProfile(staffProfile)
+                        .build();
+            }
+            case ADMIN -> {
+                Admin admin = adminRepository.findById(user.getUserId())
+                        .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+                AdminProfileResponse adminProfile = AdminProfileResponse.builder()
+                        .adminId(user.getUserId())
+                        .email(user.getEmail())
+                        .fullName(user.getFullName())
+                        .firstName(user.getFirstName())
+                        .lastName(user.getLastName())
+                        .phone(user.getPhone())
+                        .dateOfBirth(user.getDateOfBirth())
+                        .gender(user.getGender())
+                        .department(null) // Admin entity doesn't have department field yet
+                        .build();
+
+                yield UserProfileResponse.builder()
+                        .role(Role.ADMIN)
+                        .adminProfile(adminProfile)
+                        .build();
+            }
+        };
     }
 
-    // SELF UPDATE SAU KHI DANG KY: user bo sung cac thong tin bat buoc
-    // Khong cho phep doi email, password, role.
+    // DEPRECATED: Keep for backward compatibility, only works for DRIVER
+    @Deprecated
     @PreAuthorize("hasRole('DRIVER')")
-    public DriverResponse updateMyInfo(UserUpdateRequest request) {
+    public DriverResponse getMyInfoLegacy() {
+        UserProfileResponse profile = getMyInfo();
+        return profile.getDriverProfile();
+    }
+
+    // SELF UPDATE: user bo sung cac thong tin bat buoc
+    // Khong cho phep doi email, password, role.
+    @PreAuthorize("isAuthenticated()")
+    public UserProfileResponse updateMyInfo(UserUpdateRequest request) {
         var context = SecurityContextHolder.getContext();
         String principalEmail = context.getAuthentication().getName();
         User currentUser = userRepository.findByEmail(principalEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Update User fields
+        // Update User fields (common for all roles)
         userMapper.updateUser(currentUser, request);
         userRepository.save(currentUser);
 
-        // Update Driver fields (address)
-        if (request.getAddress() != null) {
-            Driver driver = driverRepository.findById(currentUser.getUserId())
-                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-            driver.setAddress(request.getAddress());
-            driverRepository.save(driver);
+        // Update role-specific fields
+        switch (currentUser.getRole()) {
+            case DRIVER -> {
+                if (request.getAddress() != null) {
+                    Driver driver = driverRepository.findById(currentUser.getUserId())
+                            .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                    driver.setAddress(request.getAddress());
+                    driverRepository.save(driver);
+                }
+            }
+            case STAFF -> {
+                // Staff có thể cập nhật position, employeeNo nếu cần
+                // Hiện tại chỉ update User fields
+                log.info("Staff {} updated profile", currentUser.getUserId());
+            }
+            case ADMIN -> {
+                // Admin có thể cập nhật department nếu cần
+                // Hiện tại chỉ update User fields
+                log.info("Admin {} updated profile", currentUser.getUserId());
+            }
         }
 
         // Return updated info
         return getMyInfo();
     }
 
-    // ALIAS (theo yeu cau doi ten updateUser). KHONG thay doi logic: van chi cho phep user tu update ho so cua minh
+    // DEPRECATED: Keep for backward compatibility
+    @Deprecated
     public DriverResponse updateUser(UserUpdateRequest request) {
-        return updateMyInfo(request); // delegate
+        UserProfileResponse profile = updateMyInfo(request);
+        if (profile.getDriverProfile() != null) {
+            return profile.getDriverProfile();
+        }
+        throw new AppException(ErrorCode.UNAUTHORIZED);
     }
 
     private void createRoleSpecificRecord(User user) {

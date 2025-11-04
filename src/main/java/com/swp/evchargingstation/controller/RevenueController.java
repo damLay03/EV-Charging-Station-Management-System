@@ -20,7 +20,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-@Tag(name = "Revenue Statistics", description = "Thống kê doanh thu của hệ thống - Admin only")
+@Tag(name = "Revenue Management", description = "RESTful API thống kê doanh thu - Admin only")
 public class RevenueController {
 
     RevenueService revenueService;
@@ -28,8 +28,12 @@ public class RevenueController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
-            summary = "Lấy thống kê doanh thu",
-            description = "Trả về thống kê doanh thu của từng trạm sạc theo khoảng thời gian được chỉ định (ngày, tuần, tháng, năm). Chỉ quản trị viên có quyền truy cập"
+            summary = "[ADMIN] Lấy thống kê doanh thu",
+            description = "Trả về thống kê doanh thu của từng trạm sạc theo khoảng thời gian được chỉ định. " +
+                    "- daily: cần year, month, day " +
+                    "- weekly: cần year, week " +
+                    "- monthly: cần year, month " +
+                    "- yearly: cần year"
     )
     public ApiResponse<List<StationRevenueResponse>> getRevenue(
             @Parameter(description = "Khoảng thời gian thống kê (daily, weekly, monthly, yearly)", example = "daily")
@@ -46,12 +50,47 @@ public class RevenueController {
         log.info("Admin requesting revenue statistics - period: {}, year: {}, month: {}, day: {}, week: {}",
                 period, year, month, day, week);
 
-        List<StationRevenueResponse> result = switch (period.toLowerCase()) {
-            case "daily" -> revenueService.getDailyRevenue(year, month, day);
-            case "weekly" -> revenueService.getWeeklyRevenue(year, week);
-            case "monthly" -> revenueService.getMonthlyRevenue(year, month);
-            case "yearly" -> revenueService.getYearlyRevenue(year);
-            default -> throw new IllegalArgumentException("Invalid period: " + period);
+        // Validate parameters based on period
+        String periodLower = period.toLowerCase();
+
+        List<StationRevenueResponse> result = switch (periodLower) {
+            case "daily" -> {
+                if (year == null || month == null || day == null) {
+                    throw new IllegalArgumentException("period=daily requires year, month, and day parameters");
+                }
+                if (month < 1 || month > 12) {
+                    throw new IllegalArgumentException("month must be between 1 and 12");
+                }
+                if (day < 1 || day > 31) {
+                    throw new IllegalArgumentException("day must be between 1 and 31");
+                }
+                yield revenueService.getDailyRevenue(year, month, day);
+            }
+            case "weekly" -> {
+                if (year == null || week == null) {
+                    throw new IllegalArgumentException("period=weekly requires year and week parameters");
+                }
+                if (week < 1 || week > 53) {
+                    throw new IllegalArgumentException("week must be between 1 and 53");
+                }
+                yield revenueService.getWeeklyRevenue(year, week);
+            }
+            case "monthly" -> {
+                if (year == null || month == null) {
+                    throw new IllegalArgumentException("period=monthly requires year and month parameters");
+                }
+                if (month < 1 || month > 12) {
+                    throw new IllegalArgumentException("month must be between 1 and 12");
+                }
+                yield revenueService.getMonthlyRevenue(year, month);
+            }
+            case "yearly" -> {
+                if (year == null) {
+                    throw new IllegalArgumentException("period=yearly requires year parameter");
+                }
+                yield revenueService.getYearlyRevenue(year);
+            }
+            default -> throw new IllegalArgumentException("Invalid period: " + period + ". Supported: daily, weekly, monthly, yearly");
         };
 
         return ApiResponse.<List<StationRevenueResponse>>builder()

@@ -11,27 +11,26 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/my-analytics")
+@RequestMapping("/api/analytics")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-@Tag(name = "Driver Analytics", description = "Phân tích dữ liệu sạc của driver hiện tại")
+@Tag(name = "Analytics Management", description = "RESTful API phân tích dữ liệu sạc - Driver only")
 public class AnalyticsController {
 
     ChargingSessionService chargingSessionService;
 
+    // ==================== DRIVER - ANALYTICS ====================
+
     @GetMapping
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(
-            summary = "Lấy dữ liệu phân tích",
+            summary = "[DRIVER] Lấy dữ liệu phân tích của tôi",
             description = "Trả về dữ liệu phân tích theo loại được chỉ định. " +
                     "period=monthly (mặc định): 5 tháng gần nhất với chi phí, năng lượng tiêu thụ, số phiên sạc"
     )
@@ -46,7 +45,7 @@ public class AnalyticsController {
                     .result(chargingSessionService.getMyMonthlyAnalytics())
                     .build();
         } else {
-            throw new IllegalArgumentException("Invalid analytics period: " + period);
+            throw new IllegalArgumentException("Invalid analytics period: " + period + ". Supported: monthly");
         }
     }
 }

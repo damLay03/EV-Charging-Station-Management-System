@@ -12,6 +12,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,15 +23,59 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-@Tag(name = "Incidents (Admin)", description = "Admin incident management - view, update status, delete incidents")
+@Tag(name = "Incidents Management", description = "RESTful API quản lý sự cố - Phân quyền theo role")
 public class IncidentController {
 
     IncidentService incidentService;
 
+    // ==================== STAFF ENDPOINTS ====================
+
+    @ResponseStatus(HttpStatus.CREATED)
+    @PostMapping
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(
+            summary = "[STAFF] Tạo báo cáo sự cố",
+            description = "Staff có thể báo cáo sự cố tại trạm của họ. Trạng thái mặc định: WAITING"
+    )
+    public ApiResponse<IncidentResponse> createIncident(@RequestBody @Valid IncidentCreationRequest request) {
+        log.info("Staff creating incident report for station: {}", request.getStationId());
+        return incidentService.createIncident(request);
+    }
+
+    @GetMapping("/my-station")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(
+            summary = "[STAFF] Lấy danh sách sự cố tại trạm của tôi",
+            description = "Staff có thể xem tất cả sự cố được báo cáo tại trạm của họ"
+    )
+    public ApiResponse<List<IncidentResponse>> getMyStationIncidents() {
+        log.info("Staff requesting incidents of their station");
+        return ApiResponse.<List<IncidentResponse>>builder()
+                .result(incidentService.getMyStationIncidents())
+                .build();
+    }
+
+    @PatchMapping("/{incidentId}/description")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(
+            summary = "[STAFF] Cập nhật mô tả sự cố",
+            description = "Staff có thể cập nhật mô tả sự cố tại trạm của họ (không thể thay đổi trạng thái)"
+    )
+    public ApiResponse<IncidentResponse> updateIncidentDescription(
+            @PathVariable String incidentId,
+            @RequestBody @Valid IncidentUpdateRequest request) {
+        log.info("Staff updating incident {} description", incidentId);
+        return incidentService.updateIncidentDescription(incidentId, request);
+    }
+
+    // ==================== ADMIN ENDPOINTS ====================
+
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Get all incidents",
-               description = "Admin can view all incidents from all stations")
+    @Operation(
+            summary = "[ADMIN] Lấy tất cả sự cố",
+            description = "Admin có thể xem tất cả sự cố từ tất cả các trạm"
+    )
     public ApiResponse<List<IncidentResponse>> getAllIncidents() {
         log.info("Admin requesting all incidents");
         return ApiResponse.<List<IncidentResponse>>builder()
@@ -40,28 +85,35 @@ public class IncidentController {
 
     @GetMapping("/{incidentId}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Get incident by ID",
-               description = "Admin can view detailed information of any incident")
+    @Operation(
+            summary = "[ADMIN] Lấy chi tiết sự cố",
+            description = "Admin có thể xem thông tin chi tiết của bất kỳ sự cố nào"
+    )
     public ApiResponse<IncidentResponse> getIncidentById(@PathVariable String incidentId) {
         log.info("Admin requesting incident: {}", incidentId);
         return incidentService.getIncidentById(incidentId);
     }
 
-    @PatchMapping("/{incidentId}")
+    @PatchMapping("/{incidentId}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Update incident status",
-               description = "Admin can update incident status: WAITING -> WORKING -> DONE")
+    @Operation(
+            summary = "[ADMIN] Cập nhật trạng thái sự cố",
+            description = "Admin có thể cập nhật trạng thái sự cố: WAITING -> WORKING -> DONE"
+    )
     public ApiResponse<IncidentResponse> updateIncidentStatus(
             @PathVariable String incidentId,
             @RequestBody @Valid IncidentUpdateRequest request) {
         log.info("Admin updating incident {} to status: {}", incidentId, request.getStatus());
         return incidentService.updateIncidentStatus(incidentId, request);
     }
+    @ResponseStatus(HttpStatus.NO_CONTENT)
 
     @DeleteMapping("/{incidentId}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Delete incident",
-               description = "Admin can delete any incident report")
+    @Operation(
+            summary = "[ADMIN] Xóa sự cố",
+            description = "Admin có thể xóa bất kỳ báo cáo sự cố nào"
+    )
     public ApiResponse<Void> deleteIncident(@PathVariable String incidentId) {
         log.info("Admin deleting incident: {}", incidentId);
         return incidentService.deleteIncident(incidentId);

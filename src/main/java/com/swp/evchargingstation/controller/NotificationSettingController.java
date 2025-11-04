@@ -16,17 +16,17 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/my-notification-settings")
+@RequestMapping("/api/notification-settings")
 @RequiredArgsConstructor
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-@Tag(name = "My Notification Settings", description = "Cài đặt thông báo của người dùng hiện tại")
+@Tag(name = "Notification Settings Management", description = "RESTful API cài đặt thông báo - All authenticated users")
 public class NotificationSettingController {
     NotificationSettingService notificationSettingService;
 
     @GetMapping
     @Operation(
-            summary = "Lấy tất cả cài đặt thông báo",
+            summary = "[ALL] Lấy tất cả cài đặt thông báo của tôi",
             description = "Trả về danh sách tất cả cài đặt thông báo của người dùng hiện tại bao gồm các loại thông báo và trạng thái bật/tắt của chúng"
     )
     public ApiResponse<List<NotificationSettingResponse>> getMyNotificationSettings() {
@@ -38,7 +38,7 @@ public class NotificationSettingController {
 
     @PatchMapping
     @Operation(
-            summary = "Cập nhật nhiều cài đặt thông báo cùng lúc",
+            summary = "[ALL] Cập nhật nhiều cài đặt thông báo cùng lúc",
             description = "Cập nhật batch nhiều cài đặt thông báo của người dùng cùng một lúc. Sử dụng khi người dùng nhấn nút 'Lưu cài đặt' sau khi thay đổi nhiều cài đặt"
     )
     public ApiResponse<List<NotificationSettingResponse>> updateMyNotificationSettings(
@@ -51,7 +51,7 @@ public class NotificationSettingController {
 
     @PatchMapping("/{settingId}")
     @Operation(
-            summary = "Cập nhật một cài đặt thông báo cụ thể",
+            summary = "[ALL] Cập nhật một cài đặt thông báo cụ thể",
             description = "Cập nhật một cài đặt thông báo cụ thể của người dùng. Sử dụng khi người dùng bật/tắt từng switch cài đặt individual"
     )
     public ApiResponse<NotificationSettingResponse> updateSingleSetting(
@@ -59,7 +59,7 @@ public class NotificationSettingController {
             @RequestBody @Valid NotificationSettingRequest request) {
         log.info("User updating single notification setting: {}", settingId);
         return ApiResponse.<NotificationSettingResponse>builder()
-                .result(notificationSettingService.updateSingleSetting(request))
+                .result(notificationSettingService.updateSingleSetting(settingId, request))
                 .build();
     }
 }

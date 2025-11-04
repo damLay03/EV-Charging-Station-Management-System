@@ -10,6 +10,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -18,11 +19,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/my-sessions")
+@RequestMapping("/api/sessions")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-@Tag(name = "Driver Charging Sessions", description = "API quản lý phiên sạc của driver hiện tại")
+@Tag(name = "Charging Sessions Management", description = "RESTful API quản lý phiên sạc - Driver only")
 public class ChargingSessionController {
 
     ChargingSessionService chargingSessionService;
@@ -30,7 +31,7 @@ public class ChargingSessionController {
     @GetMapping
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(
-            summary = "Lấy danh sách lịch sử phiên sạc của driver",
+            summary = "[DRIVER] Lấy danh sách lịch sử phiên sạc của tôi",
             description = "Trả về danh sách tất cả các phiên sạc của driver đã đăng nhập, sắp xếp theo thời gian bắt đầu giảm dần (mới nhất trước)"
     )
     public ApiResponse<List<ChargingSessionResponse>> getMySessions() {
@@ -43,7 +44,7 @@ public class ChargingSessionController {
     @GetMapping("/{sessionId}")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(
-            summary = "Lấy chi tiết phiên sạc theo ID",
+            summary = "[DRIVER] Lấy chi tiết phiên sạc theo ID",
             description = "Trả về chi tiết của một phiên sạc cụ thể theo sessionId. Driver chỉ có thể xem phiên sạc của chính mình"
     )
     public ApiResponse<ChargingSessionResponse> getSessionById(@PathVariable String sessionId) {
@@ -53,10 +54,11 @@ public class ChargingSessionController {
                 .build();
     }
 
+    @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(
-            summary = "Bắt đầu phiên sạc mới",
+            summary = "[DRIVER] Bắt đầu phiên sạc mới",
             description = "Tạo một phiên sạc mới cho driver với các thông tin về trạm sạc, điểm sạc và dữ liệu xe"
     )
     public ApiResponse<ChargingSessionResponse> startCharging(@RequestBody @Valid StartChargingRequest request,
@@ -70,7 +72,7 @@ public class ChargingSessionController {
     @PostMapping("/{sessionId}/stop")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(
-            summary = "Dừng phiên sạc",
+            summary = "[DRIVER] Dừng phiên sạc",
             description = "Dừng phiên sạc hiện tại của driver. Driver chỉ có thể dừng phiên sạc của chính mình"
     )
     public ApiResponse<ChargingSessionResponse> stopCharging(@PathVariable String sessionId,
