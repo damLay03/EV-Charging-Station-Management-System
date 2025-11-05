@@ -36,7 +36,7 @@ public class SecurityConfig {
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/auth/login",
             "/api/auth/google/callback",  // Google OAuth2 callback
-            "/api/users/register",
+            "/api/users",
             "/api/plans",
             "/api/payments/callbacks/zalopay",  // ZaloPay callback - must be public
             "/oauth2/**",  // OAuth2 endpoints
