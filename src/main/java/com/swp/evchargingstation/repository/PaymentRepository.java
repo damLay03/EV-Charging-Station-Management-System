@@ -144,4 +144,19 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
             @Param("endDate") LocalDateTime endDate,
             @Param("paymentMethod") Payment.PaymentMethod paymentMethod
     );
+
+    // Query lấy doanh thu theo khoảng thời gian tùy chỉnh của từng trạm
+    @Query("SELECT s.stationId, s.name, s.address, " +
+            "SUM(p.amount), COUNT(p.paymentId) " +
+            "FROM Payment p " +
+            "JOIN p.chargingSession cs " +
+            "JOIN cs.chargingPoint cp " +
+            "JOIN cp.station s " +
+            "WHERE p.paidAt >= :startDate " +
+            "AND p.paidAt <= :endDate " +
+            "AND p.status = 'COMPLETED' " +
+            "GROUP BY s.stationId, s.name, s.address " +
+            "ORDER BY s.name")
+    List<Object[]> findCustomRangeRevenueByStation(@Param("startDate") LocalDateTime startDate,
+                                                    @Param("endDate") LocalDateTime endDate);
 }
