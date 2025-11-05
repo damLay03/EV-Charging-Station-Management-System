@@ -1,7 +1,9 @@
 package com.swp.evchargingstation.controller;
 
 import com.swp.evchargingstation.dto.response.ApiResponse;
+import com.swp.evchargingstation.dto.response.RevenueReportResponse;
 import com.swp.evchargingstation.dto.response.StationRevenueResponse;
+import com.swp.evchargingstation.service.PdfExportService;
 import com.swp.evchargingstation.service.RevenueService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -10,9 +12,15 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -24,6 +32,7 @@ import java.util.List;
 public class RevenueController {
 
     RevenueService revenueService;
+    PdfExportService pdfExportService;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -96,5 +105,169 @@ public class RevenueController {
         return ApiResponse.<List<StationRevenueResponse>>builder()
                 .result(result)
                 .build();
+    }
+
+    @GetMapping("/reports/daily")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "[ADMIN] Xuất báo cáo PDF doanh thu hàng ngày",
+            description = "Xuất file PDF báo cáo doanh thu theo ngày cụ thể. Nếu không truyền tham số, lấy ngày hiện tại."
+    )
+    public ResponseEntity<byte[]> exportDailyReport(
+            @Parameter(description = "Năm (mặc định: năm hiện tại)", example = "2025")
+            @RequestParam(required = false) Integer year,
+            @Parameter(description = "Tháng (1-12, mặc định: tháng hiện tại)", example = "11")
+            @RequestParam(required = false) Integer month,
+            @Parameter(description = "Ngày (1-31, mặc định: ngày hiện tại)", example = "5")
+            @RequestParam(required = false) Integer day) {
+
+        // Validate and set defaults
+        LocalDate today = LocalDate.now();
+        year = year != null ? year : today.getYear();
+        month = month != null ? month : today.getMonthValue();
+        day = day != null ? day : today.getDayOfMonth();
+
+        log.info("Admin exporting daily revenue report for: {}-{}-{}", year, month, day);
+
+        // Generate report data
+        RevenueReportResponse reportData = revenueService.generateDailyReport(year, month, day);
+
+        // Generate PDF
+        byte[] pdfBytes = pdfExportService.exportRevenuePdf(reportData);
+
+        // Set response headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(
+                ContentDisposition.attachment()
+                        .filename(String.format("revenue_report_daily_%04d%02d%02d.pdf", year, month, day))
+                        .build()
+        );
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+    }
+
+    @GetMapping("/reports/weekly")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "[ADMIN] Xuất báo cáo PDF doanh thu hàng tuần",
+            description = "Xuất file PDF báo cáo doanh thu theo tuần cụ thể. Nếu không truyền tham số, lấy tuần hiện tại."
+    )
+    public ResponseEntity<byte[]> exportWeeklyReport(
+            @Parameter(description = "Năm (mặc định: năm hiện tại)", example = "2025")
+            @RequestParam(required = false) Integer year,
+            @Parameter(description = "Tuần (1-53, mặc định: tuần hiện tại)", example = "45")
+            @RequestParam(required = false) Integer week) {
+
+        // Validate and set defaults
+        LocalDate today = LocalDate.now();
+        year = year != null ? year : today.getYear();
+        week = week != null ? week : today.get(java.time.temporal.WeekFields.ISO.weekOfYear());
+
+        log.info("Admin exporting weekly revenue report for: year={}, week={}", year, week);
+
+        // Generate report data
+        RevenueReportResponse reportData = revenueService.generateWeeklyReport(year, week);
+
+        // Generate PDF
+        byte[] pdfBytes = pdfExportService.exportRevenuePdf(reportData);
+
+        // Set response headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(
+                ContentDisposition.attachment()
+                        .filename(String.format("revenue_report_weekly_%04d_W%02d.pdf", year, week))
+                        .build()
+        );
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+    }
+
+    @GetMapping("/reports/monthly")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "[ADMIN] Xuất báo cáo PDF doanh thu hàng tháng",
+            description = "Xuất file PDF báo cáo doanh thu theo tháng cụ thể. Nếu không truyền tham số, lấy tháng hiện tại."
+    )
+    public ResponseEntity<byte[]> exportMonthlyReport(
+            @Parameter(description = "Năm (mặc định: năm hiện tại)", example = "2025")
+            @RequestParam(required = false) Integer year,
+            @Parameter(description = "Tháng (1-12, mặc định: tháng hiện tại)", example = "11")
+            @RequestParam(required = false) Integer month) {
+
+        // Validate and set defaults
+        LocalDate today = LocalDate.now();
+        year = year != null ? year : today.getYear();
+        month = month != null ? month : today.getMonthValue();
+
+        if (month < 1 || month > 12) {
+            throw new IllegalArgumentException("month must be between 1 and 12");
+        }
+
+        log.info("Admin exporting monthly revenue report for: {}-{}", year, month);
+
+        // Generate report data
+        RevenueReportResponse reportData = revenueService.generateMonthlyReport(year, month);
+
+        // Generate PDF
+        byte[] pdfBytes = pdfExportService.exportRevenuePdf(reportData);
+
+        // Set response headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(
+                ContentDisposition.attachment()
+                        .filename(String.format("revenue_report_monthly_%04d%02d.pdf", year, month))
+                        .build()
+        );
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+    }
+
+    @GetMapping("/reports/custom")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "[ADMIN] Xuất báo cáo PDF doanh thu theo khoảng thời gian tùy chỉnh",
+            description = "Xuất file PDF báo cáo doanh thu trong khoảng thời gian do admin tự chọn. " +
+                    "Định dạng ngày: yyyy-MM-dd (ví dụ: 2025-11-01)"
+    )
+    public ResponseEntity<byte[]> exportCustomRangeReport(
+            @Parameter(description = "Ngày bắt đầu (yyyy-MM-dd)", example = "2025-11-01", required = true)
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @Parameter(description = "Ngày kết thúc (yyyy-MM-dd)", example = "2025-11-30", required = true)
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        // Validate date range
+        if (endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException("endDate must be after or equal to startDate");
+        }
+
+        log.info("Admin exporting custom range revenue report from {} to {}", startDate, endDate);
+
+        // Generate report data
+        RevenueReportResponse reportData = revenueService.generateCustomRangeReport(startDate, endDate);
+
+        // Generate PDF
+        byte[] pdfBytes = pdfExportService.exportRevenuePdf(reportData);
+
+        // Set response headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(
+                ContentDisposition.attachment()
+                        .filename(String.format("revenue_report_custom_%s_to_%s.pdf", startDate, endDate))
+                        .build()
+        );
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
     }
 }
