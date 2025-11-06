@@ -143,9 +143,9 @@ public class StationController {
     }
 
     @GetMapping("/{stationId}/charging-points")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'DRIVER')")
     @Operation(
-            summary = "[ADMIN/STAFF] Lấy danh sách trụ sạc của một trạm",
+            summary = "[ALL] Lấy danh sách trụ sạc của một trạm",
             description = "Trả về danh sách tất cả các trụ sạc thuộc một trạm sạc cụ thể"
     )
     public ApiResponse<List<ChargingPointResponse>> getChargingPoints(
