@@ -132,37 +132,72 @@ public class IncidentService {
     }
 
     /**
-     * STAFF: Cập nhật mô tả của incident (không thể thay đổi status)
+     * STAFF/ADMIN: Cập nhật incident
+     * - STAFF: chỉ có thể cập nhật description của incident tại station của mình
+     * - ADMIN: có thể cập nhật cả description và status của bất kỳ incident nào
      */
     @Transactional
-    public ApiResponse<IncidentResponse> updateIncidentDescription(String incidentId, IncidentUpdateRequest request) {
-        String staffUserId = getCurrentUserId();
-
-        Staff staff = staffRepository.findById(staffUserId)
-                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+    public ApiResponse<IncidentResponse> updateIncident(String incidentId, IncidentUpdateRequest request) {
+        String userId = getCurrentUserId();
+        boolean isAdminUser = isAdmin();
 
         Incident incident = incidentRepository.findById(incidentId)
                 .orElseThrow(() -> new AppException(ErrorCode.INCIDENT_NOT_FOUND));
 
-        // Kiểm tra incident thuộc station của staff
-        if (!incident.getStation().getStationId().equals(staff.getStation().getStationId())) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
+        if (isAdminUser) {
+            // ADMIN: có thể cập nhật cả description và status
+            if (request.getDescription() != null) {
+                incident.setDescription(request.getDescription());
+            }
+
+            if (request.getStatus() != null) {
+                incident.setStatus(request.getStatus());
+
+                // Nếu status là DONE thì set resolvedAt
+                if (request.getStatus() == IncidentStatus.DONE) {
+                    incident.setResolvedAt(LocalDateTime.now());
+                }
+            }
+
+            incident = incidentRepository.save(incident);
+
+            log.info("Admin {} updated incident {}", userId, incidentId);
+
+            return ApiResponse.<IncidentResponse>builder()
+                    .code(200)
+                    .message("Cập nhật sự cố thành công")
+                    .result(staffDashboardMapper.toIncidentResponse(incident))
+                    .build();
+        } else {
+            // STAFF: chỉ có thể cập nhật description của incident tại station của mình
+            Staff staff = staffRepository.findById(userId)
+                    .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+            // Kiểm tra incident thuộc station của staff
+            if (!incident.getStation().getStationId().equals(staff.getStation().getStationId())) {
+                throw new AppException(ErrorCode.UNAUTHORIZED);
+            }
+
+            // Staff không được phép thay đổi status
+            if (request.getStatus() != null) {
+                throw new AppException(ErrorCode.UNAUTHORIZED);
+            }
+
+            // Staff chỉ có thể cập nhật description
+            if (request.getDescription() != null) {
+                incident.setDescription(request.getDescription());
+            }
+
+            incident = incidentRepository.save(incident);
+
+            log.info("Staff {} updated incident {} description", userId, incidentId);
+
+            return ApiResponse.<IncidentResponse>builder()
+                    .code(200)
+                    .message("Cập nhật mô tả sự cố thành công")
+                    .result(staffDashboardMapper.toIncidentResponse(incident))
+                    .build();
         }
-
-        // Staff chỉ có thể cập nhật description
-        if (request.getDescription() != null) {
-            incident.setDescription(request.getDescription());
-        }
-
-        incident = incidentRepository.save(incident);
-
-        log.info("Staff {} updated incident {} description", staffUserId, incidentId);
-
-        return ApiResponse.<IncidentResponse>builder()
-                .code(200)
-                .message("Cập nhật mô tả sự cố thành công")
-                .result(staffDashboardMapper.toIncidentResponse(incident))
-                .build();
     }
 
     //=====================================================ADMIN============================================================
@@ -186,43 +221,6 @@ public class IncidentService {
                 .orElseThrow(() -> new AppException(ErrorCode.INCIDENT_NOT_FOUND));
 
         return ApiResponse.<IncidentResponse>builder()
-                .result(staffDashboardMapper.toIncidentResponse(incident))
-                .build();
-    }
-
-    /**
-     * ADMIN: Cập nhật trạng thái incident (WAITING -> WORKING -> DONE)
-     * Có thể cập nhật cả description
-     */
-    @Transactional
-    public ApiResponse<IncidentResponse> updateIncidentStatus(String incidentId, IncidentUpdateRequest request) {
-        String adminUserId = getCurrentUserId();
-
-        Incident incident = incidentRepository.findById(incidentId)
-                .orElseThrow(() -> new AppException(ErrorCode.INCIDENT_NOT_FOUND));
-
-        // Admin có thể cập nhật status
-        if (request.getStatus() != null) {
-            incident.setStatus(request.getStatus());
-
-            // Nếu status là DONE thì set resolvedAt
-            if (request.getStatus() == IncidentStatus.DONE) {
-                incident.setResolvedAt(LocalDateTime.now());
-            }
-        }
-
-        // Admin cũng có thể cập nhật description
-        if (request.getDescription() != null) {
-            incident.setDescription(request.getDescription());
-        }
-
-        incident = incidentRepository.save(incident);
-
-        log.info("Admin {} updated incident {} to status {}", adminUserId, incidentId, request.getStatus());
-
-        return ApiResponse.<IncidentResponse>builder()
-                .code(200)
-                .message("Cập nhật trạng thái sự cố thành công")
                 .result(staffDashboardMapper.toIncidentResponse(incident))
                 .build();
     }

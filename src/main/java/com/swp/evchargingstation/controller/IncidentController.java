@@ -55,17 +55,18 @@ public class IncidentController {
                 .build();
     }
 
-    @PatchMapping("/{incidentId}/description")
-    @PreAuthorize("hasRole('STAFF')")
+    @PatchMapping("/{incidentId}")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
     @Operation(
-            summary = "[STAFF] Cập nhật mô tả sự cố",
-            description = "Staff có thể cập nhật mô tả sự cố tại trạm của họ (không thể thay đổi trạng thái)"
+            summary = "[STAFF/ADMIN] Cập nhật sự cố",
+            description = "Staff: chỉ có thể cập nhật description của sự cố tại trạm của họ. " +
+                         "Admin: có thể cập nhật cả description và status (WAITING -> WORKING -> DONE)"
     )
-    public ApiResponse<IncidentResponse> updateIncidentDescription(
+    public ApiResponse<IncidentResponse> updateIncident(
             @PathVariable String incidentId,
             @RequestBody @Valid IncidentUpdateRequest request) {
-        log.info("Staff updating incident {} description", incidentId);
-        return incidentService.updateIncidentDescription(incidentId, request);
+        log.info("Updating incident {}", incidentId);
+        return incidentService.updateIncident(incidentId, request);
     }
 
     // ==================== ADMIN ENDPOINTS ====================
@@ -92,19 +93,6 @@ public class IncidentController {
     public ApiResponse<IncidentResponse> getIncidentById(@PathVariable String incidentId) {
         log.info("Admin requesting incident: {}", incidentId);
         return incidentService.getIncidentById(incidentId);
-    }
-
-    @PatchMapping("/{incidentId}/status")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(
-            summary = "[ADMIN] Cập nhật trạng thái sự cố",
-            description = "Admin có thể cập nhật trạng thái sự cố: WAITING -> WORKING -> DONE"
-    )
-    public ApiResponse<IncidentResponse> updateIncidentStatus(
-            @PathVariable String incidentId,
-            @RequestBody @Valid IncidentUpdateRequest request) {
-        log.info("Admin updating incident {} to status: {}", incidentId, request.getStatus());
-        return incidentService.updateIncidentStatus(incidentId, request);
     }
     @ResponseStatus(HttpStatus.NO_CONTENT)
 
