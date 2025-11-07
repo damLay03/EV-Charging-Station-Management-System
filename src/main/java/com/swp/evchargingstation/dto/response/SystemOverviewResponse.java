@@ -10,7 +10,8 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class SystemOverviewResponse {
     long totalStations;
-    long activeChargingPoints;
+    long totalChargingPoints; // Tổng số trụ sạc
+    long activeChargingPoints; // Số trụ sạc đang hoạt động (AVAILABLE + CHARGING)
     long totalDrivers;
     float currentMonthRevenue;
 }

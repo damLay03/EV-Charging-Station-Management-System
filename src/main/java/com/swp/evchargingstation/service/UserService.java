@@ -273,6 +273,129 @@ public class UserService {
 
 //=====================================================STAFF============================================================
 
+    /**
+     * [ADMIN] Lấy thông tin chi tiết một staff cụ thể
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    public StaffResponse getStaffInfo(String staffId) {
+        log.info("Admin fetching staff info: {}", staffId);
+
+        User user = userRepository.findById(staffId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Kiểm tra user có phải là STAFF không
+        if (user.getRole() != Role.STAFF) {
+            throw new AppException(ErrorCode.STAFF_NOT_FOUND);
+        }
+
+        Staff staff = staffRepository.findByIdWithStation(staffId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+        // Lấy thông tin trạm được quản lý
+        String managedStationId = null;
+        String managedStationName = null;
+        if (staff.getManagedStation() != null) {
+            managedStationId = staff.getManagedStation().getStationId();
+            managedStationName = staff.getManagedStation().getName();
+        }
+
+        return StaffResponse.builder()
+                .userId(user.getUserId())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .dateOfBirth(user.getDateOfBirth())
+                .gender(user.getGender())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .fullName(user.getFullName())
+                .role(user.getRole())
+                .employeeNo(staff.getEmployeeNo())
+                .position(staff.getPosition())
+                .managedStationId(managedStationId)
+                .managedStationName(managedStationName)
+                .build();
+    }
+
+    /**
+     * [ADMIN] Cập nhật thông tin staff
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public StaffResponse updateStaffByAdmin(String staffId, com.swp.evchargingstation.dto.request.AdminUpdateStaffRequest request) {
+        log.info("Admin updating staff id='{}'", staffId);
+
+        // Tìm user theo id
+        User user = userRepository.findById(staffId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Kiểm tra user có phải là STAFF không
+        if (user.getRole() != Role.STAFF) {
+            throw new AppException(ErrorCode.STAFF_NOT_FOUND);
+        }
+
+        // Update User fields (chỉ update nếu không null)
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone());
+        }
+        if (request.getDateOfBirth() != null) {
+            user.setDateOfBirth(request.getDateOfBirth());
+        }
+        if (request.getGender() != null) {
+            user.setGender(request.getGender());
+        }
+        if (request.getFirstName() != null) {
+            user.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null) {
+            user.setLastName(request.getLastName());
+        }
+
+        userRepository.save(user);
+
+        // Update Staff fields (employeeNo, position)
+        Staff staff = staffRepository.findById(staffId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+        if (request.getEmployeeNo() != null) {
+            staff.setEmployeeNo(request.getEmployeeNo());
+        }
+        if (request.getPosition() != null) {
+            staff.setPosition(request.getPosition());
+        }
+
+        staffRepository.save(staff);
+
+        log.info("Admin updated staff '{}' successfully", staffId);
+
+        // Return updated info
+        return getStaffInfo(staffId);
+    }
+
+    /**
+     * Helper method: map Staff sang AdminUserResponse
+     */
+    private AdminUserResponse mapStaffToAdminUserResponse(Staff staff) {
+        User user = staff.getUser();
+
+        // Lấy thông tin trạm
+        String stationName = null;
+        if (staff.getManagedStation() != null) {
+            stationName = staff.getManagedStation().getName();
+        }
+
+        return AdminUserResponse.builder()
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .joinDate(null) // Staff không có joinDate như Driver
+                .planName(stationName) // Dùng để hiển thị trạm quản lý
+                .sessionCount(null) // Staff không có session count
+                .totalSpent(null) // Staff không có total spent
+                .status("Hoạt động")
+                .isActive(true)
+                .build();
+    }
+
 //=====================================================ADMIN============================================================
 
     //lay tat ca driver cho ADMIN voi day du thong tin (ten, lien he, ngay tham gia, goi dich vu, so phien, tong chi tieu, trang thai)

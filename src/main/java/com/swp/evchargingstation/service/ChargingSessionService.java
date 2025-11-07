@@ -12,13 +12,7 @@ import com.swp.evchargingstation.enums.ChargingPointStatus;
 import com.swp.evchargingstation.enums.ChargingSessionStatus;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
-import com.swp.evchargingstation.repository.ChargingPointRepository;
-import com.swp.evchargingstation.repository.ChargingSessionRepository;
-import com.swp.evchargingstation.repository.DriverRepository;
-import com.swp.evchargingstation.repository.UserRepository;
-import com.swp.evchargingstation.repository.VehicleRepository;
-import com.swp.evchargingstation.repository.PlanRepository;
-import com.swp.evchargingstation.repository.PaymentRepository;
+import com.swp.evchargingstation.repository.*;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -46,6 +40,7 @@ public class ChargingSessionService {
     ChargingPointRepository chargingPointRepository;
     PlanRepository planRepository;
     PaymentRepository paymentRepository;
+    StaffRepository staffRepository;
 
     ChargingSimulatorService simulatorService;
     EmailService emailService;
@@ -393,6 +388,128 @@ public class ChargingSessionService {
         // Dừng thủ công cũng set status = COMPLETED (giống sạc đầy) để có thể thanh toán
         simulatorService.stopSessionLogic(session, ChargingSessionStatus.COMPLETED);
         log.info("Driver {} stopped session {} manually", driverId, sessionId);
+        return convertToResponse(session);
+    }
+
+    // ==================== STAFF - MY STATION SESSIONS MANAGEMENT ====================
+
+    /**
+     * [STAFF] Lấy danh sách phiên sạc tại trạm của staff
+     */
+    @PreAuthorize("hasRole('STAFF')")
+    public List<ChargingSessionResponse> getMyStationSessions() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        String userId = null;
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            userId = jwt.getClaim("userId");
+        }
+
+        if (userId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        log.info("Staff {} requesting charging sessions at their station", userId);
+
+        com.swp.evchargingstation.entity.Staff staff = staffRepository.findByIdWithStation(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+        // Lấy trạm mà staff quản lý
+        com.swp.evchargingstation.entity.Station station = staff.getManagedStation();
+        if (station == null) {
+            throw new AppException(ErrorCode.STAFF_NO_MANAGED_STATION);
+        }
+
+        String stationId = station.getStationId();
+        List<ChargingSession> sessions = chargingSessionRepository.findByStationIdOrderByStartTimeDesc(stationId);
+
+        return sessions.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * [STAFF] Lấy chi tiết một phiên sạc tại trạm của staff
+     */
+    @PreAuthorize("hasRole('STAFF')")
+    public ChargingSessionResponse getMyStationSessionById(String sessionId) {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        String userId = null;
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            userId = jwt.getClaim("userId");
+        }
+
+        if (userId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        log.info("Staff {} requesting session detail: {}", userId, sessionId);
+
+        com.swp.evchargingstation.entity.Staff staff = staffRepository.findByIdWithStation(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+        com.swp.evchargingstation.entity.Station station = staff.getManagedStation();
+        if (station == null) {
+            throw new AppException(ErrorCode.STAFF_NO_MANAGED_STATION);
+        }
+
+        ChargingSession session = chargingSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new AppException(ErrorCode.CHARGING_SESSION_NOT_FOUND));
+
+        // Kiểm tra session có thuộc trạm của staff không
+        if (session.getChargingPoint() == null ||
+            !session.getChargingPoint().getStation().getStationId().equals(station.getStationId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        return convertToResponse(session);
+    }
+
+    /**
+     * [STAFF] Dừng phiên sạc tại trạm của staff (khẩn cấp hoặc bảo trì)
+     */
+    @Transactional
+    @PreAuthorize("hasRole('STAFF')")
+    public ChargingSessionResponse stopMyStationSession(String sessionId) {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        String userId = null;
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            userId = jwt.getClaim("userId");
+        }
+
+        if (userId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        log.info("Staff {} stopping session: {}", userId, sessionId);
+
+        com.swp.evchargingstation.entity.Staff staff = staffRepository.findByIdWithStation(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
+
+        com.swp.evchargingstation.entity.Station station = staff.getManagedStation();
+        if (station == null) {
+            throw new AppException(ErrorCode.STAFF_NO_MANAGED_STATION);
+        }
+
+        ChargingSession session = chargingSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new AppException(ErrorCode.CHARGING_SESSION_NOT_FOUND));
+
+        // Kiểm tra session có thuộc trạm của staff không
+        if (session.getChargingPoint() == null ||
+            !session.getChargingPoint().getStation().getStationId().equals(station.getStationId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        if (session.getStatus() != ChargingSessionStatus.IN_PROGRESS) {
+            throw new AppException(ErrorCode.CHARGING_SESSION_NOT_ACTIVE);
+        }
+
+        // Dừng phiên sạc với trạng thái COMPLETED để có thể thanh toán
+        simulatorService.stopSessionLogic(session, ChargingSessionStatus.COMPLETED);
+        log.info("Staff {} stopped session {} at station {}", userId, sessionId, station.getStationId());
+
         return convertToResponse(session);
     }
 }

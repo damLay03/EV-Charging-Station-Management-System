@@ -86,6 +86,7 @@ public class SecurityConfig {
 
         // Cho phép origins cụ thể
         configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:8080",
                 "http://localhost:5173", "http://localhost:5174", "http://localhost:5175",
                 "https://overintense-hee-unaxiomatic.ngrok-free.dev",
                 "https://unendued-somnolent-rosemarie.ngrok-free.dev"

@@ -143,7 +143,7 @@ public class StationController {
     }
 
     @GetMapping("/{stationId}/charging-points")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'DRIVER')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(
             summary = "[ALL] Lấy danh sách trụ sạc của một trạm",
             description = "Trả về danh sách tất cả các trụ sạc thuộc một trạm sạc cụ thể"

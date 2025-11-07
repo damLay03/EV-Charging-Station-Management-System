@@ -64,9 +64,8 @@ public class PlanController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
     @Operation(
-            summary = "[ADMIN] Lấy danh sách tất cả gói cước",
+            summary = "Lấy danh sách tất cả gói cước",
             description = "Trả về danh sách tất cả các gói cước có trong hệ thống"
     )
     public ApiResponse<List<PlanResponse>> getAllPlans() {

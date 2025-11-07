@@ -394,9 +394,10 @@ public class StationService {
 
         // Tạo summary string - CHỈ tạo nếu có dữ liệu
         String chargingPointsSummary = null;
-        if (totalPoints != null || activePoints != null || offlinePoints != null || maintenancePoints != null) {
-            chargingPointsSummary = String.format("Tổng: %s | Hoạt động: %s | Offline: %s | Bảo trì: %s",
+        if (totalPoints != null || availablePoints != null || activePoints != null || offlinePoints != null || maintenancePoints != null) {
+            chargingPointsSummary = String.format("Tổng: %s | Sẵn sàng: %s | Hoạt động: %s | Offline: %s | Bảo trì: %s",
                     totalPoints != null ? totalPoints : "-",
+                    availablePoints != null ? availablePoints : "-",
                     activePoints != null ? activePoints : "-",
                     offlinePoints != null ? offlinePoints : "-",
                     maintenancePoints != null ? maintenancePoints : "-");
@@ -410,6 +411,7 @@ public class StationService {
                 .longitude(station.getLongitude())
                 .status(station.getStatus())
                 .totalChargingPoints(totalPoints)
+                .availableChargingPoints(availablePoints)
                 .activeChargingPoints(activePoints)
                 .offlineChargingPoints(offlinePoints)
                 .maintenanceChargingPoints(maintenancePoints)

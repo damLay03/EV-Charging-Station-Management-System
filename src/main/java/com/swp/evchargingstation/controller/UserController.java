@@ -150,5 +150,47 @@ public class UserController {
                 .result(stationService.getAllStaff())
                 .build();
     }
+
+    @GetMapping("/staffs/{staffId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "[ADMIN] Lấy thông tin chi tiết staff",
+            description = "ADMIN lấy thông tin đầy đủ của một staff bao gồm tên, email, số điện thoại, chức vụ, mã nhân viên, và trạm quản lý"
+    )
+    public ApiResponse<StaffResponse> getStaffInfo(@PathVariable String staffId) {
+        log.info("Admin fetching staff info: {}", staffId);
+        return ApiResponse.<StaffResponse>builder()
+                .result(userService.getStaffInfo(staffId))
+                .build();
+    }
+
+    @PutMapping("/staffs/{staffId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "[ADMIN] Cập nhật thông tin staff",
+            description = "ADMIN cập nhật thông tin chi tiết của staff. Không thể sửa email, mật khẩu và trạm quản lý (sửa trạm phải qua API station)"
+    )
+    public ApiResponse<StaffResponse> updateStaff(@PathVariable String staffId,
+                                                   @RequestBody @Valid com.swp.evchargingstation.dto.request.AdminUpdateStaffRequest request) {
+        log.info("Admin updating staff: {}", staffId);
+        return ApiResponse.<StaffResponse>builder()
+                .result(userService.updateStaffByAdmin(staffId, request))
+                .build();
+    }
+
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @DeleteMapping("/staffs/{staffId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "[ADMIN] Xóa staff",
+            description = "Xóa một staff khỏi hệ thống theo ID. Đây là xóa vĩnh viễn (hard delete) không thể khôi phục"
+    )
+    public ApiResponse<Void> deleteStaff(@PathVariable String staffId) {
+        log.info("Admin deleting staff: {}", staffId);
+        userService.deleteUser(staffId);
+        return ApiResponse.<Void>builder()
+                .message("Staff deleted successfully")
+                .build();
+    }
 }
 

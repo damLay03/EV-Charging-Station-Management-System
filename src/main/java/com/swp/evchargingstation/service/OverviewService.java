@@ -32,11 +32,18 @@ public class OverviewService {
         long totalStations = stationRepository.count();
         log.info("Total stations: {}", totalStations);
 
-        // 2. Điểm sạc đang hoạt động (đang sạc - status = CHARGING)
-        long activeChargingPoints = chargingPointRepository.countByStatus(ChargingPointStatus.CHARGING);
-        log.info("Active charging points: {}", activeChargingPoints);
+        // 2. Tổng số điểm sạc (tất cả charging points của các trạm)
+        long totalChargingPoints = chargingPointRepository.count();
+        log.info("Total charging points: {}", totalChargingPoints);
 
-        // 3. Tổng số người dùng (driver)
+        // 3. Số điểm sạc đang hoạt động (AVAILABLE + CHARGING)
+        long availablePoints = chargingPointRepository.countByStatus(ChargingPointStatus.AVAILABLE);
+        long chargingPoints = chargingPointRepository.countByStatus(ChargingPointStatus.CHARGING);
+        long activeChargingPoints = availablePoints + chargingPoints;
+        log.info("Active charging points (AVAILABLE: {}, CHARGING: {}, Total: {})",
+                availablePoints, chargingPoints, activeChargingPoints);
+
+        // 4. Tổng số người dùng (driver)
         long totalDrivers = driverRepository.count();
         log.info("Total drivers: {}", totalDrivers);
 
@@ -52,6 +59,7 @@ public class OverviewService {
 
         return SystemOverviewResponse.builder()
                 .totalStations(totalStations)
+                .totalChargingPoints(totalChargingPoints)
                 .activeChargingPoints(activeChargingPoints)
                 .totalDrivers(totalDrivers)
                 .currentMonthRevenue(revenue)

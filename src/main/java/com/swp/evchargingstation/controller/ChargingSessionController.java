@@ -83,4 +83,45 @@ public class ChargingSessionController {
                 .result(chargingSessionService.stopSessionByUser(sessionId, driverId))
                 .build();
     }
+
+    // ==================== STAFF - MY STATION SESSIONS MANAGEMENT ====================
+
+    @GetMapping("/my-station")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(
+            summary = "[STAFF] Lấy danh sách phiên sạc tại trạm của tôi",
+            description = "Trả về danh sách tất cả các phiên sạc tại trạm mà staff quản lý, sắp xếp theo thời gian bắt đầu giảm dần (mới nhất trước)"
+    )
+    public ApiResponse<List<ChargingSessionResponse>> getMyStationSessions() {
+        log.info("Staff requesting charging sessions at their station");
+        return ApiResponse.<List<ChargingSessionResponse>>builder()
+                .result(chargingSessionService.getMyStationSessions())
+                .build();
+    }
+
+    @GetMapping("/my-station/{sessionId}")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(
+            summary = "[STAFF] Lấy chi tiết phiên sạc tại trạm của tôi",
+            description = "Trả về chi tiết của một phiên sạc cụ thể tại trạm mà staff quản lý"
+    )
+    public ApiResponse<ChargingSessionResponse> getMyStationSessionById(@PathVariable String sessionId) {
+        log.info("Staff requesting session detail at their station: {}", sessionId);
+        return ApiResponse.<ChargingSessionResponse>builder()
+                .result(chargingSessionService.getMyStationSessionById(sessionId))
+                .build();
+    }
+
+    @PostMapping("/my-station/{sessionId}/stop")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(
+            summary = "[STAFF] Dừng phiên sạc tại trạm của tôi",
+            description = "Dừng một phiên sạc đang diễn ra tại trạm mà staff quản lý (khẩn cấp hoặc bảo trì)"
+    )
+    public ApiResponse<ChargingSessionResponse> stopMyStationSession(@PathVariable String sessionId) {
+        log.info("Staff stopping charging session at their station: {}", sessionId);
+        return ApiResponse.<ChargingSessionResponse>builder()
+                .result(chargingSessionService.stopMyStationSession(sessionId))
+                .build();
+    }
 }

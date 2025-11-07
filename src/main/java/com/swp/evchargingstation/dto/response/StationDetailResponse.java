@@ -19,10 +19,11 @@ public class StationDetailResponse {
 
     // Điểm sạc - thông tin tổng hợp
     Integer totalChargingPoints; // Tổng số điểm sạc
+    Integer availableChargingPoints; // Số điểm sạc đang sẵn sàng (AVAILABLE)
     Integer activeChargingPoints; // Số điểm đang hoạt động (AVAILABLE hoặc IN_USE)
     Integer offlineChargingPoints; // Số điểm offline
     Integer maintenanceChargingPoints; // Số điểm bảo trì
-    String chargingPointsSummary; // "Tổng: X | Hoạt động: Y | Offline: Z | Bảo trì: W"
+    String chargingPointsSummary; // "Tổng: X | Sẵn sàng: Y | Hoạt động: Z | Offline: W | Bảo trì: V"
 
     Double revenue; // Doanh thu (tổng từ các session của trạm này)
     Double usagePercent; // Phần trăm sử dụng (số điểm đang IN_USE / tổng)

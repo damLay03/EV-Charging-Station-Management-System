@@ -134,10 +134,10 @@ public class ChargingSimulatorService {
 
                 paymentRepository.save(payment);
                 log.info("Created UNPAID payment for completed session {}", session.getSessionId());
+            }
 
             // Gửi email thông báo kết thúc sạc
             emailService.sendChargingCompleteEmail(session);
-            }
         }
 
         chargingSessionRepository.save(session);
