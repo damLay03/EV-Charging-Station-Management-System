@@ -196,7 +196,19 @@ public class ChargingSessionService {
         float elapsedMinutes;
         Integer estimatedTimeRemaining = null;
         float energyConsumed;
-        float pricePerKwh = planRepository.findByNameIgnoreCase("Linh hoạt").map(com.swp.evchargingstation.entity.Plan::getPricePerKwh).orElse(3000f);
+
+        // Use hardcoded fallback to avoid query triggering auto-flush during entity modifications
+        float pricePerKwh = 3800f; // Default "Linh hoạt" plan price
+        float pricePerMinute = 0f; // Default "Linh hoạt" plan price per minute
+        try {
+            Plan plan = planRepository.findByNameIgnoreCase("Linh hoạt").orElse(null);
+            if (plan != null) {
+                pricePerKwh = plan.getPricePerKwh();
+                pricePerMinute = plan.getPricePerMinute();
+            }
+        } catch (Exception e) {
+            log.warn("Could not fetch plan price, using default: {}", e.getMessage());
+        }
         float currentCost;
 
         Vehicle vehicle = session.getVehicle();
@@ -204,11 +216,15 @@ public class ChargingSessionService {
         float energyPerPercent = batteryCapacity > 0 ? (batteryCapacity / 100f) : 0f;
 
         if (session.getStatus() == com.swp.evchargingstation.enums.ChargingSessionStatus.IN_PROGRESS) {
-            currentSoc = (vehicle != null && vehicle.getCurrentSocPercent() != null) ? vehicle.getCurrentSocPercent() : startSoc;
+            // For in-progress sessions, use real-time data
+            currentSoc = (vehicle != null && vehicle.getCurrentSocPercent() != null) ? vehicle.getCurrentSocPercent() : session.getEndSocPercent();
             elapsedMinutes = (float) java.time.temporal.ChronoUnit.MINUTES.between(session.getStartTime(), java.time.LocalDateTime.now());
+
+            // Calculate energy consumed based on SOC gain
             int socGained = Math.max(0, currentSoc - startSoc);
             energyConsumed = socGained * energyPerPercent;
 
+            // Estimate time remaining
             if (currentSoc < targetSoc && socGained > 0 && elapsedMinutes > 0) {
                 int remainingSoc = targetSoc - currentSoc;
                 float avgSocPerMinute = socGained / elapsedMinutes;
@@ -216,8 +232,11 @@ public class ChargingSessionService {
                     estimatedTimeRemaining = (int) Math.ceil(remainingSoc / avgSocPerMinute);
                 }
             }
-            currentCost = energyConsumed * pricePerKwh;
+
+            // Calculate current cost based on energy and time
+            currentCost = (energyConsumed * pricePerKwh) + (elapsedMinutes * pricePerMinute);
         } else {
+            // For completed sessions, use stored data
             currentSoc = session.getEndSocPercent();
             elapsedMinutes = session.getDurationMin();
             energyConsumed = session.getEnergyKwh();
@@ -241,7 +260,7 @@ public class ChargingSessionService {
                 .chargingPointName(chargingPointName)
                 .startSocPercent(session.getStartSocPercent())
                 .endSocPercent(session.getEndSocPercent())
-                .energyKwh(session.getEnergyKwh() * 2)
+                .energyKwh(session.getEnergyKwh())
                 .costTotal(session.getCostTotal())
                 .status(session.getStatus())
                 .vehicleModel(session.getVehicle() != null && session.getVehicle().getModel() != null ? session.getVehicle().getModel().getModelName() : "")
@@ -346,14 +365,15 @@ public class ChargingSessionService {
         }
 
         // Create session
-        int currentSoc = vehicle.getCurrentSocPercent();
+        int currentSoc = vehicle.getCurrentSocPercent() != null ? vehicle.getCurrentSocPercent() : 0;
+
         ChargingSession newSession = ChargingSession.builder()
                 .driver(driver)
                 .vehicle(vehicle)
                 .chargingPoint(chargingPoint)
                 .startTime(LocalDateTime.now())
                 .startSocPercent(currentSoc)
-                .endSocPercent(currentSoc)
+                .endSocPercent(currentSoc)  // Initialize with current SOC
                 .targetSocPercent(target)
                 .energyKwh(0f)
                 .durationMin(0f)
@@ -362,7 +382,10 @@ public class ChargingSessionService {
                 .status(ChargingSessionStatus.IN_PROGRESS)
                 .build();
 
-        chargingSessionRepository.save(newSession);
+        chargingSessionRepository.saveAndFlush(newSession);
+
+        log.info("Created charging session {} for driver {} at point {}. Start SOC: {}%, Target: {}%",
+            newSession.getSessionId(), driverId, chargingPoint.getPointId(), currentSoc, target);
 
         // Update charging point -> CHARGING
         chargingPoint.setStatus(ChargingPointStatus.CHARGING);
@@ -401,8 +424,40 @@ public class ChargingSessionService {
             throw new AppException(ErrorCode.CHARGING_SESSION_NOT_ACTIVE);
         }
 
+        // Eager load entities BEFORE stopSessionLogic to avoid lazy loading issues
+        Driver driver = session.getDriver();
+        if (driver != null && driver.getUser() != null) {
+            driver.getUser().getEmail(); // Force load
+        }
+        ChargingPoint chargingPoint = session.getChargingPoint();
+        if (chargingPoint != null && chargingPoint.getStation() != null) {
+            chargingPoint.getStation().getName(); // Force load
+            chargingPoint.getStation().getAddress(); // Force load
+        }
+
+        // Update session's endSocPercent from vehicle before stopping
+        Vehicle vehicle = session.getVehicle();
+        if (vehicle != null && vehicle.getCurrentSocPercent() != null) {
+            session.setEndSocPercent(vehicle.getCurrentSocPercent());
+            log.info("Updated session {} endSocPercent to {}% from vehicle before stopping",
+                sessionId, vehicle.getCurrentSocPercent());
+        }
+
         // Dừng thủ công cũng set status = COMPLETED (giống sạc đầy) để có thể thanh toán
         simulatorService.stopSessionLogic(session, ChargingSessionStatus.COMPLETED);
+
+        // Send email after transaction (will be sent after method completes and transaction commits)
+        // Reuse driver and chargingPoint variables already loaded above
+        if (driver != null && driver.getUser() != null) {
+            driver.getUser().getEmail(); // Force load for async email
+        }
+        if (chargingPoint != null && chargingPoint.getStation() != null) {
+            chargingPoint.getStation().getName(); // Force load for async email
+            chargingPoint.getStation().getAddress(); // Force load for async email
+        }
+
+        emailService.sendChargingCompleteEmail(session);
+
         log.info("Driver {} stopped session {} manually", driverId, sessionId);
         return convertToResponse(session);
     }
@@ -520,6 +575,14 @@ public class ChargingSessionService {
 
         if (session.getStatus() != ChargingSessionStatus.IN_PROGRESS) {
             throw new AppException(ErrorCode.CHARGING_SESSION_NOT_ACTIVE);
+        }
+
+        // Update session's endSocPercent from vehicle before stopping
+        Vehicle vehicle = session.getVehicle();
+        if (vehicle != null && vehicle.getCurrentSocPercent() != null) {
+            session.setEndSocPercent(vehicle.getCurrentSocPercent());
+            log.info("Updated session {} endSocPercent to {}% from vehicle before stopping",
+                sessionId, vehicle.getCurrentSocPercent());
         }
 
         // Dừng phiên sạc với trạng thái COMPLETED để có thể thanh toán

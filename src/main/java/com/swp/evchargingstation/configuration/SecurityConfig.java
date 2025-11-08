@@ -38,7 +38,7 @@ public class SecurityConfig {
             "/api/auth/google/callback",  // Google OAuth2 callback
             "/api/users",
             "/api/plans",
-            "/api/payments/callbacks/zalopay",  // ZaloPay callback - must be public
+            "/api/webhooks/zalopay/callback",  // ZaloPay callback - must be public (fixed URL)
             "/oauth2/**",  // OAuth2 endpoints
             "/login/oauth2/**",  // OAuth2 login
             "/swagger-ui/**",

@@ -77,7 +77,7 @@ zalopay:
   key1: "sdngKKJmqEMzvh5QQcdD2A9XBSKUNaYn"  # Sandbox Key1
   key2: "trMrHtvjo6myautxDUiAcYsVtaeQ8nhf"  # Sandbox Key2
   endpoint: "https://sb-openapi.zalopay.vn/v2/create"  # Sandbox
-  callback-url: "https://unendued-somnolent-rosemarie.ngrok-free.dev/evchargingstation/api/payment/zalopay-callback"
+  callback-url: "https://unendued-somnolent-rosemarie.ngrok-free.dev/evchargingstation/api/webhooks/zalopay/callback"
   redirect-url: "${app.base-url}/payment-result"
 
 logging:
