@@ -79,7 +79,14 @@ public enum ErrorCode {
     STAFF_NO_MANAGED_STATION(18004, "Staff Does Not Manage Any Station"),
     CASH_PAYMENT_REQUEST_NOT_FOUND(18005, "Cash Payment Request Not Found"),
     CASH_PAYMENT_REQUEST_ALREADY_PROCESSED(18006, "Cash Payment Request Already Processed"),
-    STAFF_NOT_AUTHORIZED_FOR_STATION(18007, "Staff Not Authorized To Process Payments For This Station");
+    STAFF_NOT_AUTHORIZED_FOR_STATION(18007, "Staff Not Authorized To Process Payments For This Station"),
+
+    // Wallet related (19xxx)
+    WALLET_NOT_FOUND(19001, "Wallet Not Found"),
+    INSUFFICIENT_FUNDS(19002, "Insufficient Funds In Wallet"),
+    WALLET_TRANSACTION_NOT_FOUND(19003, "Wallet Transaction Not Found"),
+    INVALID_TOPUP_AMOUNT(19004, "Invalid Top-up Amount"),
+    WALLET_ALREADY_EXISTS(19005, "Wallet Already Exists For This User");
 
     private int code;
     private String message;

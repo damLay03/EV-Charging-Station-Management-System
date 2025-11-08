@@ -1,5 +1,6 @@
 package com.swp.evchargingstation.controller;
 
+import com.swp.evchargingstation.service.TopUpService;
 import com.swp.evchargingstation.service.ZaloPayService;
 import com.swp.evchargingstation.dto.zalopay.ZaloPayCallbackRequest;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +26,7 @@ import java.util.Map;
 public class WebhookController {
 
     ZaloPayService zaloPayService;
+    TopUpService topUpService;
 
     @PostMapping("/zalopay/callback")
     @Operation(
@@ -43,6 +45,27 @@ public class WebhookController {
 
         log.info("Webhook response: {}", response);
         log.info("=== End ZaloPay Webhook Callback ===");
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/zalopay/topup")
+    @Operation(
+            summary = "Xử lý callback nạp tiền từ ZaloPay",
+            description = "Endpoint nhận callback từ ZaloPay server để xác nhận kết quả nạp tiền vào ví. " +
+                    "Đây là internal endpoint được gọi bởi ZaloPay, không phải từ client"
+    )
+    public ResponseEntity<Map<String, Object>> zaloPayTopUpCallback(
+            @RequestBody ZaloPayCallbackRequest callbackRequest
+    ) {
+        log.info("=== ZaloPay Top-up Webhook Callback Received ===");
+        log.info("Data: {}", callbackRequest.getData());
+        log.info("MAC: {}", callbackRequest.getMac());
+
+        Map<String, Object> response = topUpService.handleZaloPayCallback(callbackRequest);
+
+        log.info("Webhook response: {}", response);
+        log.info("=== End ZaloPay Top-up Webhook Callback ===");
 
         return ResponseEntity.ok(response);
     }

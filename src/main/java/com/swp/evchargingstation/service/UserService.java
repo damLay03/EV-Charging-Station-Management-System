@@ -40,6 +40,8 @@ public class UserService {
     StaffRepository staffRepository;
     AdminRepository adminRepository;
 
+    WalletService walletService;
+
     //encoder đã tạo ở SecurityConfig, khong can dua vao thu vien nua
 //    @Bean
 //    public PasswordEncoder passwordEncoder()
@@ -217,6 +219,14 @@ public class UserService {
                         .build();
                 driverRepository.save(driver);
                 log.info("Driver record created for user ID: {} at {}", user.getUserId(), driver.getJoinDate());
+
+                // Create wallet for the driver
+                try {
+                    walletService.createWallet(user);
+                    log.info("Wallet created for driver: {}", user.getUserId());
+                } catch (Exception e) {
+                    log.error("Failed to create wallet for driver: {}", user.getUserId(), e);
+                }
                 break;
             }
             case STAFF: {
