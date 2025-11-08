@@ -33,13 +33,13 @@ public class ChargingSimulatorService {
     PaymentRepository paymentRepository;
     EmailService emailService;
 
-    // Phase 2: background simulation tick, runs every 2 seconds
+    // Phase 2: background simulation tick, runs every 1 seconds
+    // Chạy mỗi 1 giây
     @Scheduled(fixedRate = 1000)
     @Transactional
     public void simulateChargingTick() {
         List<ChargingSession> activeSessions = chargingSessionRepository.findByStatus(ChargingSessionStatus.IN_PROGRESS);
 
-        // Only log when there are active sessions to avoid console spam
         if (!activeSessions.isEmpty()) {
             log.debug("Running charging simulation for {} active sessions", activeSessions.size());
         }
@@ -59,20 +59,26 @@ public class ChargingSimulatorService {
                     continue;
                 }
 
-                // Simulate 6 giây một tick
-                float energyPerTick = powerKw * (6.0f / 3600.0f); //6 giây/3600 giây trong 1 giờ (đổi giây sang giờ)
+                // Kiểm tra endSocPercent đã được khởi tạo chưa
+                if (session.getEndSocPercent() == 0) {
+                    Integer startSoc = session.getStartSocPercent();
+                    session.setEndSocPercent(startSoc != 0 ? startSoc : 0);
+                }
+
+                // Giả lập 1 giây một tick (vì fixedRate = 1000ms)
+                float energyPerTick = powerKw * (1.0f / 3600.0f); // 1 giây / 3600 giây trong 1 giờ
                 float socAddedPerTick = (energyPerTick / capacityKwh) * 100.0f;
 
                 float currentSoc = session.getEndSocPercent();
                 float newSocFloat = currentSoc + socAddedPerTick;
                 int newSocRounded = Math.round(newSocFloat);
 
-                // Update session counters (add 6 simulated seconds = 0.1 minute)
-                session.setDurationMin(session.getDurationMin() + 0.1f);
+                // Cập nhật thời gian: mỗi tick = 1 giây = 1/60 phút
+                session.setDurationMin(session.getDurationMin() + (1.0f / 60.0f));
                 session.setEnergyKwh(session.getEnergyKwh() + energyPerTick);
 
                 if (newSocRounded >= targetSoc) {
-                    // Cap at target and stop
+                    // Đạt mục tiêu, dừng sạc
                     session.setEndSocPercent(targetSoc);
                     vehicle.setCurrentSocPercent(targetSoc);
                     stopSessionLogic(session, ChargingSessionStatus.COMPLETED);

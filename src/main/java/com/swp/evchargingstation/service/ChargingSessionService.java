@@ -4,10 +4,7 @@ import com.swp.evchargingstation.dto.request.StartChargingRequest;
 import com.swp.evchargingstation.dto.response.ChargingSessionResponse;
 import com.swp.evchargingstation.dto.response.DriverDashboardResponse;
 import com.swp.evchargingstation.dto.response.MonthlyAnalyticsResponse;
-import com.swp.evchargingstation.entity.ChargingPoint;
-import com.swp.evchargingstation.entity.ChargingSession;
-import com.swp.evchargingstation.entity.Driver;
-import com.swp.evchargingstation.entity.Vehicle;
+import com.swp.evchargingstation.entity.*;
 import com.swp.evchargingstation.enums.ChargingPointStatus;
 import com.swp.evchargingstation.enums.ChargingSessionStatus;
 import com.swp.evchargingstation.exception.AppException;
@@ -166,21 +163,29 @@ public class ChargingSessionService {
         String powerOutput = "N/A";
 
         if (session.getChargingPoint() != null) {
-            ChargingPoint point = session.getChargingPoint();
-            // ChargingPoint không có name, dùng pointId nếu name null
-            chargingPointName = point.getName() != null ? point.getName() : (point.getPointId() != null ? point.getPointId() : "");
+            try {
+                ChargingPoint point = session.getChargingPoint();
+                // ChargingPoint không có name, dùng pointId nếu name null
+                chargingPointName = point.getName() != null ? point.getName() : (point.getPointId() != null ? point.getPointId() : "");
 
-            if (point.getStation() != null) {
-                stationName = point.getStation().getName();
-                stationAddress = point.getStation().getAddress();
-            }
-
-            if (point.getChargingPower() != null) {
-                try {
-                    powerOutput = point.getChargingPower().name().replace("_", " ");
-                } catch (Exception ignore) {
-                    powerOutput = "N/A";
+                if (point.getStation() != null) {
+                    try {
+                        stationName = point.getStation().getName();
+                        stationAddress = point.getStation().getAddress();
+                    } catch (Exception e) {
+                        log.warn("Could not load station details: {}", e.getMessage());
+                    }
                 }
+
+                if (point.getChargingPower() != null) {
+                    try {
+                        powerOutput = point.getChargingPower().name().replace("_", " ");
+                    } catch (Exception ignore) {
+                        powerOutput = "N/A";
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Could not load charging point details: {}", e.getMessage());
             }
         }
 
@@ -363,6 +368,17 @@ public class ChargingSessionService {
         chargingPoint.setStatus(ChargingPointStatus.CHARGING);
         chargingPoint.setCurrentSession(newSession);
         chargingPointRepository.save(chargingPoint);
+
+        // Eager load entities before async email call to avoid LazyInitializationException
+        // Force Hibernate to load the lazy entities within the transaction
+        User driverUser = driver.getUser();
+        if (driverUser != null) {
+            driverUser.getEmail(); // Force load
+        }
+        if (chargingPoint.getStation() != null) {
+            chargingPoint.getStation().getName(); // Force load
+        }
+
         // Gửi email thông báo bắt đầu sạc
         emailService.sendChargingStartEmail(newSession);
 

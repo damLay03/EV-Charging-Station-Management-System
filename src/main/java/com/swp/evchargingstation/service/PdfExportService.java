@@ -1,5 +1,6 @@
 package com.swp.evchargingstation.service;
 
+import com.itextpdf.io.font.PdfEncodings;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.font.PdfFont;
@@ -33,16 +34,85 @@ public class PdfExportService {
     private static final DeviceRgb LIGHT_GRAY = new DeviceRgb(240, 240, 240);
     private static final DecimalFormat CURRENCY_FORMAT = new DecimalFormat("#,###");
 
+    private PdfFont vietnameseFont;
+
+    /**
+     * Load Times New Roman font with Unicode support for Vietnamese
+     */
+    private PdfFont loadVietnameseFont() throws Exception {
+        try {
+            // Try Windows system font first (Times New Roman)
+            return PdfFontFactory.createFont(
+                "c:/windows/fonts/times.ttf",
+                PdfEncodings.IDENTITY_H,
+                PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED
+            );
+        } catch (Exception e1) {
+            log.warn("Times New Roman not found on Windows, trying alternatives...");
+
+            // Fallback fonts for different OS
+            String[] fallbackFonts = {
+                "c:/windows/fonts/timesbd.ttf",                     // Times New Roman Bold (Windows)
+                "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf",  // Linux
+                "/System/Library/Fonts/Supplemental/Times New Roman.ttf",           // macOS
+                "c:/windows/fonts/arial.ttf"                        // Final fallback
+            };
+
+            for (String fontPath : fallbackFonts) {
+                try {
+                    return PdfFontFactory.createFont(
+                        fontPath,
+                        PdfEncodings.IDENTITY_H,
+                        PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED
+                    );
+                } catch (Exception e2) {
+                    // Continue to next font
+                }
+            }
+
+            // Last resort: use built-in Helvetica font
+            log.error("No suitable font found, using default Helvetica");
+            return PdfFontFactory.createFont(
+                com.itextpdf.io.font.constants.StandardFonts.HELVETICA,
+                PdfEncodings.IDENTITY_H
+            );
+        }
+    }
+
     public byte[] exportRevenuePdf(RevenueReportResponse reportData) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         try {
+            // Load Vietnamese font (Times New Roman)
+            vietnameseFont = loadVietnameseFont();
+
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdf = new PdfDocument(writer);
             Document document = new Document(pdf);
 
+            // Set default font for entire document
+            document.setFont(vietnameseFont);
+
+            // Vietnamese motto
+            Paragraph motto = new Paragraph("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM")
+                    .setFont(vietnameseFont)
+                    .setFontSize(12)
+                    .setBold()
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(2);
+            document.add(motto);
+
+            Paragraph independence = new Paragraph("Độc lập - Tự do - Hạnh phúc")
+                    .setFont(vietnameseFont)
+                    .setFontSize(11)
+                    .setItalic()
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setMarginBottom(20);
+            document.add(independence);
+
             // Title
             Paragraph title = new Paragraph("BÁO CÁO DOANH THU")
+                    .setFont(vietnameseFont)
                     .setFontSize(24)
                     .setBold()
                     .setTextAlignment(TextAlignment.CENTER)
@@ -51,6 +121,7 @@ public class PdfExportService {
 
             // Subtitle - Period
             Paragraph subtitle = new Paragraph(reportData.getReportPeriod())
+                    .setFont(vietnameseFont)
                     .setFontSize(16)
                     .setTextAlignment(TextAlignment.CENTER)
                     .setMarginBottom(3);
@@ -58,6 +129,7 @@ public class PdfExportService {
 
             // Period details
             Paragraph periodDetails = new Paragraph(reportData.getPeriodDetails())
+                    .setFont(vietnameseFont)
                     .setFontSize(12)
                     .setTextAlignment(TextAlignment.CENTER)
                     .setMarginBottom(20);
@@ -76,6 +148,7 @@ public class PdfExportService {
             Paragraph footer = new Paragraph(
                     String.format("\nNgày xuất báo cáo: %s",
                             reportData.getGeneratedAt().format(formatter)))
+                    .setFont(vietnameseFont)
                     .setFontSize(10)
                     .setTextAlignment(TextAlignment.RIGHT)
                     .setMarginTop(20)
@@ -83,13 +156,14 @@ public class PdfExportService {
             document.add(footer);
 
             Paragraph systemFooter = new Paragraph("© 2025 EV Charging Station Management System")
+                    .setFont(vietnameseFont)
                     .setFontSize(9)
                     .setTextAlignment(TextAlignment.CENTER)
                     .setMarginTop(10);
             document.add(systemFooter);
 
             document.close();
-            log.info("PDF report generated successfully");
+            log.info("PDF report generated successfully with Vietnamese font");
 
         } catch (Exception e) {
             log.error("Error generating PDF: {}", e.getMessage(), e);
@@ -102,6 +176,7 @@ public class PdfExportService {
     private void addSummarySection(Document document, RevenueReportResponse.ReportSummary summary) {
         // Summary header
         Paragraph summaryHeader = new Paragraph("TỔNG QUAN")
+                .setFont(vietnameseFont)
                 .setFontSize(14)
                 .setBold()
                 .setMarginTop(10)
@@ -134,8 +209,8 @@ public class PdfExportService {
 
     private Cell createSummaryCell(String label, String value, boolean isHighlight) {
         Paragraph content = new Paragraph()
-                .add(new Paragraph(label).setBold().setFontSize(10))
-                .add(new Paragraph(value).setFontSize(12));
+                .add(new Paragraph(label).setFont(vietnameseFont).setBold().setFontSize(10))
+                .add(new Paragraph(value).setFont(vietnameseFont).setFontSize(12));
 
         Cell cell = new Cell()
                 .add(content)
@@ -152,6 +227,7 @@ public class PdfExportService {
     private void addStationDetailsTable(Document document, List<StationRevenueResponse> stations) {
         // Details header
         Paragraph detailsHeader = new Paragraph("CHI TIẾT TỪNG TRẠM SẠC")
+                .setFont(vietnameseFont)
                 .setFontSize(14)
                 .setBold()
                 .setMarginTop(10)
@@ -185,7 +261,7 @@ public class PdfExportService {
 
     private Cell createHeaderCell(String text) {
         return new Cell()
-                .add(new Paragraph(text).setBold().setFontSize(11))
+                .add(new Paragraph(text).setFont(vietnameseFont).setBold().setFontSize(11))
                 .setBackgroundColor(HEADER_COLOR)
                 .setFontColor(ColorConstants.WHITE)
                 .setTextAlignment(TextAlignment.CENTER)
@@ -194,7 +270,7 @@ public class PdfExportService {
 
     private Cell createDataCell(String text, TextAlignment alignment) {
         return new Cell()
-                .add(new Paragraph(text).setFontSize(10))
+                .add(new Paragraph(text).setFont(vietnameseFont).setFontSize(10))
                 .setTextAlignment(alignment)
                 .setPadding(6);
     }

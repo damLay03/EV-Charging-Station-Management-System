@@ -106,42 +106,88 @@ public class EmailService {
     }
 
     private String buildChargingStartEmailTemplate(ChargingSession session) {
-        String userName = session.getDriver().getUser().getFullName();
-        String stationName = session.getChargingPoint().getStation().getName();
-        String startTime = session.getStartTime().format(timeFormatter);
-        int currentSoc = session.getStartSocPercent();
-        int targetSoc = session.getTargetSocPercent() != null ? session.getTargetSocPercent() : 100;
+        try {
+            String userName = "Quý khách";
+            String stationName = "Trạm sạc";
 
-        String bodyContent = String.format(
-            "<p>Phiên sạc của bạn tại trạm <strong>%s</strong> đã bắt đầu.</p>" +
-            "<ul><li><strong>Thời gian:</strong> %s</li>" +
-            "<li><strong>Pin hiện tại:</strong> %d%%</li>" +
-            "<li><strong>Mục tiêu:</strong> %d%%</li></ul>",
-            stationName, startTime, currentSoc, targetSoc
-        );
+            // Safe access to lazy-loaded entities
+            if (session.getDriver() != null && session.getDriver().getUser() != null) {
+                try {
+                    userName = session.getDriver().getUser().getFullName();
+                } catch (Exception e) {
+                    log.warn("Could not load driver user name: {}", e.getMessage());
+                }
+            }
 
-        return buildBaseEmailTemplate(userName, bodyContent);
+            if (session.getChargingPoint() != null && session.getChargingPoint().getStation() != null) {
+                try {
+                    stationName = session.getChargingPoint().getStation().getName();
+                } catch (Exception e) {
+                    log.warn("Could not load station name: {}", e.getMessage());
+                }
+            }
+
+            String startTime = session.getStartTime().format(timeFormatter);
+            int currentSoc = session.getStartSocPercent();
+            int targetSoc = session.getTargetSocPercent() != null ? session.getTargetSocPercent() : 100;
+
+            String bodyContent = String.format(
+                "<p>Phiên sạc của bạn tại trạm <strong>%s</strong> đã bắt đầu.</p>" +
+                "<ul><li><strong>Thời gian:</strong> %s</li>" +
+                "<li><strong>Pin hiện tại:</strong> %d%%</li>" +
+                "<li><strong>Mục tiêu:</strong> %d%%</li></ul>",
+                stationName, startTime, currentSoc, targetSoc
+            );
+
+            return buildBaseEmailTemplate(userName, bodyContent);
+        } catch (Exception e) {
+            log.error("Error building charging start email template: {}", e.getMessage(), e);
+            return buildFallbackEmailTemplate();
+        }
     }
 
     private String buildChargingCompleteEmailTemplate(ChargingSession session) {
-        String userName = session.getDriver().getUser().getFullName();
-        String stationName = session.getChargingPoint().getStation().getName();
-        String duration = formatDuration(session.getDurationMin());
-        String energy = String.format("%.1f", session.getEnergyKwh());
-        int startSoc = session.getStartSocPercent();
-        int endSoc = session.getEndSocPercent();
-        String cost = currencyFormatter.format(session.getCostTotal());
+        try {
+            String userName = "Quý khách";
+            String stationName = "Trạm sạc";
 
-        String bodyContent = String.format(
-            "<p>Phiên sạc của bạn tại trạm <strong>%s</strong> đã hoàn tất.</p>" +
-            "<ul><li><strong>Thời gian:</strong> %s</li>" +
-            "<li><strong>Năng lượng:</strong> %s kWh</li>" +
-            "<li><strong>Pin:</strong> %d%% → %d%%</li>" +
-            "<li style='font-size:18px'><strong>Tổng:</strong> %s VNĐ</li></ul>",
-            stationName, duration, energy, startSoc, endSoc, cost
-        );
+            // Safe access to lazy-loaded entities
+            if (session.getDriver() != null && session.getDriver().getUser() != null) {
+                try {
+                    userName = session.getDriver().getUser().getFullName();
+                } catch (Exception e) {
+                    log.warn("Could not load driver user name: {}", e.getMessage());
+                }
+            }
 
-        return buildBaseEmailTemplate(userName, bodyContent);
+            if (session.getChargingPoint() != null && session.getChargingPoint().getStation() != null) {
+                try {
+                    stationName = session.getChargingPoint().getStation().getName();
+                } catch (Exception e) {
+                    log.warn("Could not load station name: {}", e.getMessage());
+                }
+            }
+
+            String duration = formatDuration(session.getDurationMin());
+            String energy = String.format("%.1f", session.getEnergyKwh());
+            int startSoc = session.getStartSocPercent();
+            int endSoc = session.getEndSocPercent();
+            String cost = currencyFormatter.format(session.getCostTotal());
+
+            String bodyContent = String.format(
+                "<p>Phiên sạc của bạn tại trạm <strong>%s</strong> đã hoàn tất.</p>" +
+                "<ul><li><strong>Thời gian:</strong> %s</li>" +
+                "<li><strong>Năng lượng:</strong> %s kWh</li>" +
+                "<li><strong>Pin:</strong> %d%% → %d%%</li>" +
+                "<li style='font-size:18px'><strong>Tổng:</strong> %s VNĐ</li></ul>",
+                stationName, duration, energy, startSoc, endSoc, cost
+            );
+
+            return buildBaseEmailTemplate(userName, bodyContent);
+        } catch (Exception e) {
+            log.error("Error building charging complete email template: {}", e.getMessage(), e);
+            return buildFallbackEmailTemplate();
+        }
     }
 
     private String buildPaymentConfirmationEmailTemplate(Payment payment) {
@@ -182,6 +228,14 @@ public class EmailService {
         if (hours == 0) return mins + " phút";
         if (mins == 0) return hours + " giờ";
         return hours + " giờ " + mins + " phút";
+    }
+
+    private String buildFallbackEmailTemplate() {
+        return buildBaseEmailTemplate(
+            "Quý khách",
+            "<p>Phiên sạc của bạn đã được xử lý.</p>" +
+            "<p>Vui lòng kiểm tra chi tiết trong ứng dụng.</p>"
+        );
     }
 }
 
