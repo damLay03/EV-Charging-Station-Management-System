@@ -49,23 +49,23 @@ public class WebhookController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/zalopay/topup")
+    @PostMapping("/zalopay/callback/topup")
     @Operation(
-            summary = "Xử lý callback nạp tiền từ ZaloPay",
+            summary = "Xử lý callback từ ZaloPay cho wallet top-up",
             description = "Endpoint nhận callback từ ZaloPay server để xác nhận kết quả nạp tiền vào ví. " +
                     "Đây là internal endpoint được gọi bởi ZaloPay, không phải từ client"
     )
     public ResponseEntity<Map<String, Object>> zaloPayTopUpCallback(
             @RequestBody ZaloPayCallbackRequest callbackRequest
     ) {
-        log.info("=== ZaloPay Top-up Webhook Callback Received ===");
+        log.info("=== ZaloPay Top-up Callback Received ===");
         log.info("Data: {}", callbackRequest.getData());
         log.info("MAC: {}", callbackRequest.getMac());
 
         Map<String, Object> response = topUpService.handleZaloPayCallback(callbackRequest);
 
         log.info("Webhook response: {}", response);
-        log.info("=== End ZaloPay Top-up Webhook Callback ===");
+        log.info("=== End ZaloPay Top-up Callback ===");
 
         return ResponseEntity.ok(response);
     }

@@ -7,6 +7,8 @@ import com.swp.evchargingstation.dto.response.TopUpZaloPayResponse;
 import com.swp.evchargingstation.dto.response.WalletBalanceResponse;
 import com.swp.evchargingstation.dto.response.WalletTransactionResponse;
 import com.swp.evchargingstation.entity.WalletTransaction;
+import com.swp.evchargingstation.exception.AppException;
+import com.swp.evchargingstation.exception.ErrorCode;
 import com.swp.evchargingstation.service.TopUpService;
 import com.swp.evchargingstation.service.WalletService;
 import jakarta.validation.Valid;
@@ -14,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,13 +31,24 @@ public class WalletController {
     private final TopUpService topUpService;
 
     /**
+     * Extract userId from JWT token
+     */
+    private String getUserIdFromAuth(Authentication authentication) {
+        if (authentication.getPrincipal() instanceof Jwt jwt) {
+            return jwt.getClaim("userId");
+        }
+        throw new AppException(ErrorCode.UNAUTHENTICATED);
+    }
+
+    /**
      * Get current wallet balance
      * Accessible by DRIVER only
      */
     @GetMapping("/balance")
     @PreAuthorize("hasRole('DRIVER')")
     public ApiResponse<WalletBalanceResponse> getBalance(Authentication authentication) {
-        String userId = authentication.getName();
+        String userId = getUserIdFromAuth(authentication);
+        log.info("Getting wallet balance for user: {}", userId);
         WalletBalanceResponse response = walletService.getWalletBalance(userId);
         return ApiResponse.<WalletBalanceResponse>builder()
                 .result(response)
@@ -48,7 +62,8 @@ public class WalletController {
     @GetMapping("/history")
     @PreAuthorize("hasRole('DRIVER')")
     public ApiResponse<List<WalletTransactionResponse>> getHistory(Authentication authentication) {
-        String userId = authentication.getName();
+        String userId = getUserIdFromAuth(authentication);
+        log.info("Getting wallet history for user: {}", userId);
         List<WalletTransactionResponse> history = walletService.getTransactionHistory(userId);
         return ApiResponse.<List<WalletTransactionResponse>>builder()
                 .result(history)
@@ -64,8 +79,8 @@ public class WalletController {
     public ApiResponse<TopUpZaloPayResponse> createZaloPayTopUp(
             Authentication authentication,
             @Valid @RequestBody TopUpZaloPayRequest request) {
-        String userId = authentication.getName();
-        log.info("Creating ZaloPay top-up for user: {}", userId);
+        String userId = getUserIdFromAuth(authentication);
+        log.info("Creating ZaloPay top-up for user: {}, amount: {}", userId, request.getAmount());
         TopUpZaloPayResponse response = topUpService.createZaloPayTopUp(userId, request);
         return ApiResponse.<TopUpZaloPayResponse>builder()
                 .result(response)
@@ -81,8 +96,9 @@ public class WalletController {
     public ApiResponse<WalletTransactionResponse> processCashTopUp(
             Authentication authentication,
             @Valid @RequestBody TopUpCashRequest request) {
-        String staffId = authentication.getName();
-        log.info("Processing cash top-up by staff: {}", staffId);
+        String staffId = getUserIdFromAuth(authentication);
+        log.info("Processing cash top-up by staff: {}, target: {}, amount: {}",
+                staffId, request.getTargetUserIdentifier(), request.getAmount());
         WalletTransaction transaction = topUpService.processCashTopUp(staffId, request);
 
         // Map to response

@@ -40,8 +40,8 @@ public class WalletService {
     /**
      * Get balance by userId
      */
-    public Double getBalance(String userId) {
-        Wallet wallet = getWallet(userId);
+    public Double getBalance(Long userId) {
+        Wallet wallet = getWallet(String.valueOf(userId));
         return wallet.getBalance();
     }
 
@@ -70,6 +70,10 @@ public class WalletService {
         return transactions.stream()
                 .map(this::mapToTransactionResponse)
                 .collect(Collectors.toList());
+    }
+
+    public WalletTransaction credit(Long userId, Double amount, TransactionType type, String description) {
+        return credit(String.valueOf(userId), amount, type, description, null, null, null, null);
     }
 
     /**
@@ -112,6 +116,11 @@ public class WalletService {
 
         return transaction;
     }
+
+    public WalletTransaction debit(Long userId, Double amount, TransactionType type, String description) {
+        return debit(String.valueOf(userId), amount, type, description, null, null);
+    }
+
 
     /**
      * Debit (subtract money) from wallet

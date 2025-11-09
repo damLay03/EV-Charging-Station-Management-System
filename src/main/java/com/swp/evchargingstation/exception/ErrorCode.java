@@ -86,7 +86,11 @@ public enum ErrorCode {
     INSUFFICIENT_FUNDS(19002, "Insufficient Funds In Wallet"),
     WALLET_TRANSACTION_NOT_FOUND(19003, "Wallet Transaction Not Found"),
     INVALID_TOPUP_AMOUNT(19004, "Invalid Top-up Amount"),
-    WALLET_ALREADY_EXISTS(19005, "Wallet Already Exists For This User");
+    WALLET_ALREADY_EXISTS(19005, "Wallet Already Exists For This User"),
+
+    // Booking related (20xxx)
+    VEHICLE_NOT_MATCH_BOOKING(20001, "Vehicle Does Not Match Booking"),
+    CHARGING_POINT_RESERVED(20002, "Charging Point Is Reserved");
 
     private int code;
     private String message;

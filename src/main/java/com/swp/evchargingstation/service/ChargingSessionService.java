@@ -5,8 +5,10 @@ import com.swp.evchargingstation.dto.response.ChargingSessionResponse;
 import com.swp.evchargingstation.dto.response.DriverDashboardResponse;
 import com.swp.evchargingstation.dto.response.MonthlyAnalyticsResponse;
 import com.swp.evchargingstation.entity.*;
+import com.swp.evchargingstation.enums.BookingStatus;
 import com.swp.evchargingstation.enums.ChargingPointStatus;
 import com.swp.evchargingstation.enums.ChargingSessionStatus;
+import com.swp.evchargingstation.enums.TransactionType;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
 import com.swp.evchargingstation.repository.*;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +41,8 @@ public class ChargingSessionService {
     PlanRepository planRepository;
     PaymentRepository paymentRepository;
     StaffRepository staffRepository;
+    BookingRepository bookingRepository;
+    WalletService walletService;
 
     ChargingSimulatorService simulatorService;
     EmailService emailService;
@@ -353,10 +358,37 @@ public class ChargingSessionService {
         ChargingPoint chargingPoint = chargingPointRepository.findById(request.getChargingPointId())
                 .orElseThrow(() -> new AppException(ErrorCode.CHARGING_POINT_NOT_FOUND));
 
-        // Validations
-        if (chargingPoint.getStatus() != ChargingPointStatus.AVAILABLE) {
-            throw new AppException(ErrorCode.CHARGING_POINT_NOT_AVAILABLE);
+        // Booking check
+        Optional<Booking> bookingOpt = bookingRepository.findByUserIdAndChargingPointIdAndBookingStatus(
+                driver.getUser().getUserId(), chargingPoint.getPointId(), BookingStatus.CONFIRMED);
+
+        if (bookingOpt.isPresent()) {
+            Booking booking = bookingOpt.get();
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime bookingTime = booking.getBookingTime();
+            // Check-in window: ±10 minutes
+            if (now.isAfter(bookingTime.minusMinutes(10)) && now.isBefore(bookingTime.plusMinutes(10))) {
+                if (!booking.getVehicle().getVehicleId().equals(request.getVehicleId())) {
+                    throw new AppException(ErrorCode.VEHICLE_NOT_MATCH_BOOKING);
+                }
+                // Valid check-in
+                booking.setBookingStatus(BookingStatus.IN_PROGRESS);
+                bookingRepository.save(booking);
+            } else {
+                // Not within check-in window, treat as normal session start, but the point might be reserved
+                 if (chargingPoint.getStatus() == ChargingPointStatus.RESERVED) {
+                    throw new AppException(ErrorCode.CHARGING_POINT_RESERVED);
+                }
+            }
+        } else {
+            // No booking, check if point is available
+            if (chargingPoint.getStatus() != ChargingPointStatus.AVAILABLE) {
+                throw new AppException(ErrorCode.CHARGING_POINT_NOT_AVAILABLE);
+            }
         }
+
+
+        // Validations
         if (!vehicle.getOwner().getUserId().equals(driverId)) {
             throw new AppException(ErrorCode.VEHICLE_NOT_BELONG_TO_DRIVER);
         }
@@ -446,6 +478,10 @@ public class ChargingSessionService {
         // Dừng thủ công cũng set status = COMPLETED (giống sạc đầy) để có thể thanh toán
         simulatorService.stopSessionLogic(session, ChargingSessionStatus.COMPLETED);
 
+        // Handle booking completion and payment
+        handleBookingPayment(session);
+
+
         // Send email after transaction (will be sent after method completes and transaction commits)
         // Reuse driver and chargingPoint variables already loaded above
         if (driver != null && driver.getUser() != null) {
@@ -460,6 +496,31 @@ public class ChargingSessionService {
 
         log.info("Driver {} stopped session {} manually", driverId, sessionId);
         return convertToResponse(session);
+    }
+
+    private void handleBookingPayment(ChargingSession session) {
+        Optional<Booking> bookingOpt = bookingRepository.findByUserIdAndChargingPointIdAndBookingStatus(
+                session.getDriver().getUser().getUserId(),
+                session.getChargingPoint().getPointId(),
+                BookingStatus.IN_PROGRESS);
+
+        if (bookingOpt.isPresent()) {
+            Booking booking = bookingOpt.get();
+            double totalCost = session.getCostTotal();
+            double deposit = booking.getDepositAmount();
+
+            if (totalCost > deposit) {
+                double amountToDebit = totalCost - deposit;
+                walletService.debit(Long.parseLong(session.getDriver().getUser().getUserId()), amountToDebit, TransactionType.CHARGING_PAYMENT, "Final payment for session " + session.getSessionId());
+            } else {
+                double amountToRefund = deposit - totalCost;
+                if (amountToRefund > 0) {
+                    walletService.credit(Long.parseLong(session.getDriver().getUser().getUserId()), amountToRefund, TransactionType.BOOKING_DEPOSIT_REFUND, "Refund for booking deposit, session " + session.getSessionId());
+                }
+            }
+            booking.setBookingStatus(BookingStatus.COMPLETED);
+            bookingRepository.save(booking);
+        }
     }
 
     // ==================== STAFF - MY STATION SESSIONS MANAGEMENT ====================
@@ -588,6 +649,8 @@ public class ChargingSessionService {
         // Dừng phiên sạc với trạng thái COMPLETED để có thể thanh toán
         simulatorService.stopSessionLogic(session, ChargingSessionStatus.COMPLETED);
         log.info("Staff {} stopped session {} at station {}", userId, sessionId, station.getStationId());
+
+        handleBookingPayment(session);
 
         return convertToResponse(session);
     }

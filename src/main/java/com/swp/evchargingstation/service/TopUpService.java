@@ -10,6 +10,7 @@ import com.swp.evchargingstation.dto.zalopay.ZaloPayCreateRequest;
 import com.swp.evchargingstation.dto.zalopay.ZaloPayCreateResponse;
 import com.swp.evchargingstation.entity.Staff;
 import com.swp.evchargingstation.entity.User;
+import com.swp.evchargingstation.entity.Wallet;
 import com.swp.evchargingstation.entity.WalletTransaction;
 import com.swp.evchargingstation.enums.TransactionStatus;
 import com.swp.evchargingstation.enums.TransactionType;
@@ -17,6 +18,7 @@ import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
 import com.swp.evchargingstation.repository.StaffRepository;
 import com.swp.evchargingstation.repository.UserRepository;
+import com.swp.evchargingstation.repository.WalletRepository;
 import com.swp.evchargingstation.repository.WalletTransactionRepository;
 import com.swp.evchargingstation.util.ZaloPayUtil;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +38,7 @@ import java.util.Map;
 public class TopUpService {
 
     private final WalletService walletService;
+    private final WalletRepository walletRepository;
     private final WalletTransactionRepository transactionRepository;
     private final UserRepository userRepository;
     private final StaffRepository staffRepository;
@@ -48,20 +51,32 @@ public class TopUpService {
      */
     @Transactional
     public TopUpZaloPayResponse createZaloPayTopUp(String userId, TopUpZaloPayRequest request) {
+        log.info("Creating ZaloPay top-up - userId: {}, amount: {}", userId, request.getAmount());
+
         Double amount = request.getAmount();
 
         if (amount <= 0) {
+            log.error("Invalid top-up amount: {}", amount);
             throw new AppException(ErrorCode.INVALID_TOPUP_AMOUNT);
         }
 
+        // Find user by userId
+        log.debug("Looking for user with userId: {}", userId);
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> {
+                    log.error("User not found with userId: {}", userId);
+                    return new AppException(ErrorCode.USER_NOT_FOUND);
+                });
+
+        log.info("Found user: {} ({})", user.getEmail(), user.getUserId());
 
         // Ensure wallet exists
         try {
             walletService.getWallet(userId);
+            log.debug("Wallet exists for user: {}", userId);
         } catch (AppException e) {
             if (e.getErrorCode() == ErrorCode.WALLET_NOT_FOUND) {
+                log.info("Creating wallet for user: {}", userId);
                 walletService.createWalletByUserId(userId);
             } else {
                 throw e;
@@ -109,7 +124,7 @@ public class TopUpService {
                 .description("Top-up wallet for user " + userId)
                 .bankCode("")
                 .mac(mac)
-                .callbackUrl(zaloPayConfig.getCallbackUrl() + "/topup")  // Different callback for topup
+                .callbackUrl(zaloPayConfig.getCallbackUrl() + "/topup")  // Use separate topup callback
                 .build();
 
         log.info("Creating ZaloPay top-up for user: {}, amount: {}", userId, amount);
@@ -193,25 +208,26 @@ public class TopUpService {
             // Find pending transaction
             WalletTransaction transaction = transactionRepository
                     .findByExternalTransactionIdAndStatus(appTransId, TransactionStatus.PENDING)
-                    .orElseThrow(() -> new AppException(ErrorCode.WALLET_TRANSACTION_NOT_FOUND));
+                    .orElseThrow(() -> {
+                        log.error("Transaction not found or not pending: {}", appTransId);
+                        return new AppException(ErrorCode.WALLET_TRANSACTION_NOT_FOUND);
+                    });
 
-            // Update transaction status
+            // Update wallet balance
+            Wallet wallet = transaction.getWallet();
+            wallet.setBalance(wallet.getBalance() + amount);
+            wallet.setUpdatedAt(LocalDateTime.now());
+            walletRepository.save(wallet);
+
+            log.info("Updated wallet balance for user: {}. New balance: {}",
+                    wallet.getUser().getUserId(), wallet.getBalance());
+
+            // Update transaction status to COMPLETED
             transaction.setStatus(TransactionStatus.COMPLETED);
             transactionRepository.save(transaction);
 
-            // Credit the wallet
-            walletService.credit(
-                    transaction.getWallet().getUser().getUserId(),
-                    (double) amount,
-                    TransactionType.TOPUP_ZALOPAY,
-                    "Top-up via ZaloPay - " + appTransId,
-                    appTransId,
-                    null,
-                    null,
-                    null
-            );
-
-            log.info("Top-up completed successfully: {}", appTransId);
+            log.info("Top-up completed successfully: {}. Amount: {}, User: {}",
+                    appTransId, amount, wallet.getUser().getUserId());
 
             return createCallbackResponse(1, "Success");
 
