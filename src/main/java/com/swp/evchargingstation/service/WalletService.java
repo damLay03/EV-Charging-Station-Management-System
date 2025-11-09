@@ -1,6 +1,7 @@
 package com.swp.evchargingstation.service;
 
 import com.swp.evchargingstation.dto.response.WalletBalanceResponse;
+import com.swp.evchargingstation.dto.response.WalletDashboardResponse;
 import com.swp.evchargingstation.dto.response.WalletTransactionResponse;
 import com.swp.evchargingstation.entity.*;
 import com.swp.evchargingstation.enums.TransactionStatus;
@@ -210,6 +211,46 @@ public class WalletService {
     }
 
     /**
+     * Get wallet dashboard with statistics for current month
+     */
+    public WalletDashboardResponse getWalletDashboard(String userId) {
+        Wallet wallet = getWallet(userId);
+
+        // Get current month transactions
+        LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+        LocalDateTime endOfMonth = LocalDateTime.now();
+
+        List<WalletTransaction> monthlyTransactions = transactionRepository
+                .findByWalletAndTimestampBetween(wallet, startOfMonth, endOfMonth);
+
+        // Calculate statistics
+        double monthlySpending = monthlyTransactions.stream()
+                .filter(t -> t.getAmount() < 0) // Negative amounts are spending
+                .mapToDouble(WalletTransaction::getAmount)
+                .sum();
+
+        double monthlyTopUp = monthlyTransactions.stream()
+                .filter(t -> t.getAmount() > 0 &&
+                       (t.getTransactionType() == TransactionType.TOPUP_CASH ||
+                        t.getTransactionType() == TransactionType.TOPUP_ZALOPAY))
+                .mapToDouble(WalletTransaction::getAmount)
+                .sum();
+
+        int transactionCount = monthlyTransactions.size();
+
+        WalletDashboardResponse.WalletStatistics statistics = WalletDashboardResponse.WalletStatistics.builder()
+                .monthlySpending(Math.abs(monthlySpending))
+                .monthlyTopUp(monthlyTopUp)
+                .transactionCount(transactionCount)
+                .build();
+
+        return WalletDashboardResponse.builder()
+                .currentBalance(wallet.getBalance())
+                .statistics(statistics)
+                .build();
+    }
+
+    /**
      * Map WalletTransaction to Response DTO
      */
     private WalletTransactionResponse mapToTransactionResponse(WalletTransaction transaction) {
@@ -229,5 +270,47 @@ public class WalletService {
                 .relatedSessionId(transaction.getRelatedSessionId())
                 .build();
     }
-}
 
+    /**
+     * Get transaction history filtered by type
+     */
+    public List<WalletTransactionResponse> getTransactionHistoryByType(String userId, String typeFilter) {
+        Wallet wallet = getWallet(userId);
+        List<WalletTransaction> transactions = transactionRepository
+                .findByWalletOrderByTimestampDesc(wallet);
+
+        // Filter based on type
+        return transactions.stream()
+                .filter(t -> matchesTypeFilter(t, typeFilter))
+                .map(this::mapToTransactionResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Check if transaction matches the filter
+     */
+    private boolean matchesTypeFilter(WalletTransaction transaction, String typeFilter) {
+        if (typeFilter == null || typeFilter.equalsIgnoreCase("ALL")) {
+            return true;
+        }
+
+        switch (typeFilter.toUpperCase()) {
+            case "TOPUP":
+            case "NAP_TIEN":
+                return transaction.getTransactionType() == TransactionType.TOPUP_CASH ||
+                       transaction.getTransactionType() == TransactionType.TOPUP_ZALOPAY;
+
+            case "CHARGING":
+            case "SAC_XE":
+                return transaction.getTransactionType() == TransactionType.CHARGING_PAYMENT;
+
+            case "REFUND":
+            case "HOAN_TIEN":
+                return transaction.getTransactionType() == TransactionType.BOOKING_DEPOSIT_REFUND ||
+                       transaction.getDescription() != null && transaction.getDescription().toLowerCase().contains("refund");
+
+            default:
+                return true;
+        }
+    }
+}

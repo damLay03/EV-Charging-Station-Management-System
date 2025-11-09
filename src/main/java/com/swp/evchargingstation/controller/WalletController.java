@@ -5,6 +5,7 @@ import com.swp.evchargingstation.dto.request.TopUpZaloPayRequest;
 import com.swp.evchargingstation.dto.response.ApiResponse;
 import com.swp.evchargingstation.dto.response.TopUpZaloPayResponse;
 import com.swp.evchargingstation.dto.response.WalletBalanceResponse;
+import com.swp.evchargingstation.dto.response.WalletDashboardResponse;
 import com.swp.evchargingstation.dto.response.WalletTransactionResponse;
 import com.swp.evchargingstation.entity.WalletTransaction;
 import com.swp.evchargingstation.exception.AppException;
@@ -56,15 +57,25 @@ public class WalletController {
     }
 
     /**
-     * Get wallet transaction history
+     * Get wallet transaction history with optional filter
      * Accessible by DRIVER only
+     * @param type Filter by transaction type: TOPUP (Nạp tiền), CHARGING (Sạc xe), REFUND (Hoàn tiền), or null for all
      */
     @GetMapping("/history")
     @PreAuthorize("hasRole('DRIVER')")
-    public ApiResponse<List<WalletTransactionResponse>> getHistory(Authentication authentication) {
+    public ApiResponse<List<WalletTransactionResponse>> getHistory(
+            Authentication authentication,
+            @RequestParam(required = false) String type) {
         String userId = getUserIdFromAuth(authentication);
-        log.info("Getting wallet history for user: {}", userId);
-        List<WalletTransactionResponse> history = walletService.getTransactionHistory(userId);
+        log.info("Getting wallet history for user: {}, filter: {}", userId, type);
+
+        List<WalletTransactionResponse> history;
+        if (type != null && !type.equalsIgnoreCase("ALL")) {
+            history = walletService.getTransactionHistoryByType(userId, type);
+        } else {
+            history = walletService.getTransactionHistory(userId);
+        }
+
         return ApiResponse.<List<WalletTransactionResponse>>builder()
                 .result(history)
                 .build();
@@ -119,5 +130,19 @@ public class WalletController {
                 .result(response)
                 .build();
     }
-}
 
+    /**
+     * Get wallet dashboard with statistics
+     * Accessible by DRIVER only
+     */
+    @GetMapping("/dashboard")
+    @PreAuthorize("hasRole('DRIVER')")
+    public ApiResponse<WalletDashboardResponse> getDashboard(Authentication authentication) {
+        String userId = getUserIdFromAuth(authentication);
+        log.info("Getting wallet dashboard for user: {}", userId);
+        WalletDashboardResponse response = walletService.getWalletDashboard(userId);
+        return ApiResponse.<WalletDashboardResponse>builder()
+                .result(response)
+                .build();
+    }
+}

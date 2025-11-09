@@ -6,6 +6,7 @@ import com.swp.evchargingstation.enums.TransactionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,5 +15,5 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
     List<WalletTransaction> findByWalletOrderByTimestampDesc(Wallet wallet);
     List<WalletTransaction> findByWalletIdOrderByTimestampDesc(Long walletId);
     Optional<WalletTransaction> findByExternalTransactionIdAndStatus(String externalTransactionId, TransactionStatus status);
+    List<WalletTransaction> findByWalletAndTimestampBetween(Wallet wallet, LocalDateTime start, LocalDateTime end);
 }
-
