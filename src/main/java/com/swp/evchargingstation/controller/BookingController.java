@@ -21,17 +21,20 @@ public class BookingController {
 
     @GetMapping("/availability")
     public ResponseEntity<BookingAvailabilityDto> checkAvailability(
-            @RequestParam Long chargingPointId,
+            @RequestParam String chargingPointId,
             @RequestParam LocalDateTime bookingTime,
-            @RequestParam Long vehicleId) {
+            @RequestParam String vehicleId) {
         return ResponseEntity.ok(bookingService.checkAvailability(chargingPointId, bookingTime, vehicleId));
     }
 
     @PostMapping
-    public ResponseEntity<Booking> createBooking(@RequestBody BookingRequestDto bookingRequestDto, @AuthenticationPrincipal UserDetails userDetails) {
-        // Assuming userDetails.getUsername() returns the user ID as a string
-        Long userId = Long.parseLong(userDetails.getUsername());
+    public ResponseEntity<Booking> createBooking(
+            @RequestBody BookingRequestDto bookingRequestDto,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        // Get userId from JWT
+        String userId = userDetails.getUsername();
         return ResponseEntity.ok(bookingService.createBooking(bookingRequestDto, userId));
     }
 }
+
 

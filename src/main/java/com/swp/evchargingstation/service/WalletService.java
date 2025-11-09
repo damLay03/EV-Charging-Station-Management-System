@@ -38,8 +38,18 @@ public class WalletService {
     }
 
     /**
-     * Get balance by userId
+     * Get balance by userId (String)
      */
+    public Double getBalance(String userId) {
+        Wallet wallet = getWallet(userId);
+        return wallet.getBalance();
+    }
+
+    /**
+     * Get balance by userId (Long) - DEPRECATED
+     * @deprecated Use getBalance(String userId) instead
+     */
+    @Deprecated
     public Double getBalance(Long userId) {
         Wallet wallet = getWallet(String.valueOf(userId));
         return wallet.getBalance();

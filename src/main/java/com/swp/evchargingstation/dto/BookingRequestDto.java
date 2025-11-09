@@ -6,8 +6,8 @@ import java.time.LocalDateTime;
 
 @Data
 public class BookingRequestDto {
-    private Long vehicleId;
-    private Long chargingPointId;
+    private String vehicleId;
+    private String chargingPointId;
     private LocalDateTime bookingTime;
     private Float desiredPercentage;
 }

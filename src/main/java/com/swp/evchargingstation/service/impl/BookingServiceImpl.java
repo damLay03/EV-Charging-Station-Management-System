@@ -33,14 +33,14 @@ public class BookingServiceImpl implements BookingService {
     private static final double DEPOSIT_AMOUNT = 50000;
 
     @Override
-    public BookingAvailabilityDto checkAvailability(Long chargingPointId, LocalDateTime bookingTime, Long vehicleId) {
+    public BookingAvailabilityDto checkAvailability(String chargingPointId, LocalDateTime bookingTime, String vehicleId) {
         if (bookingTime.isBefore(LocalDateTime.now()) || bookingTime.isAfter(LocalDateTime.now().plusHours(24))) {
             throw new AppException(ErrorCode.VALIDATION_FAILED);
         }
 
-        ChargingPoint chargingPoint = chargingPointRepository.findById(String.valueOf(chargingPointId))
+        ChargingPoint chargingPoint = chargingPointRepository.findById(chargingPointId)
                 .orElseThrow(() -> new AppException(ErrorCode.CHARGING_POINT_NOT_FOUND));
-        Vehicle vehicle = vehicleRepository.findById(String.valueOf(vehicleId))
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new AppException(ErrorCode.VEHICLE_NOT_FOUND));
 
         Optional<Booking> nextBookingOpt = bookingRepository.findFirstByChargingPointIdAndBookingTimeAfterOrderByBookingTimeAsc(
@@ -67,10 +67,11 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public Booking createBooking(BookingRequestDto bookingRequestDto, Long userId) {
-        User user = userRepository.findById(String.valueOf(userId))
+    public Booking createBooking(BookingRequestDto bookingRequestDto, String userId) {
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        // Check wallet balance
         if (walletService.getBalance(userId) < DEPOSIT_AMOUNT) {
             throw new AppException(ErrorCode.INSUFFICIENT_FUNDS);
         }
@@ -82,9 +83,9 @@ public class BookingServiceImpl implements BookingService {
             throw new AppException(ErrorCode.VALIDATION_FAILED);
         }
 
-        ChargingPoint chargingPoint = chargingPointRepository.findById(String.valueOf(bookingRequestDto.getChargingPointId()))
+        ChargingPoint chargingPoint = chargingPointRepository.findById(bookingRequestDto.getChargingPointId())
                 .orElseThrow(() -> new AppException(ErrorCode.CHARGING_POINT_NOT_FOUND));
-        Vehicle vehicle = vehicleRepository.findById(String.valueOf(bookingRequestDto.getVehicleId()))
+        Vehicle vehicle = vehicleRepository.findById(bookingRequestDto.getVehicleId())
                 .orElseThrow(() -> new AppException(ErrorCode.VEHICLE_NOT_FOUND));
 
         // Calculate estimated end time
@@ -92,8 +93,10 @@ public class BookingServiceImpl implements BookingService {
         double chargingTimeHours = requiredEnergy / (chargingPoint.getChargingPower().getPowerKw() / 1000.0);
         LocalDateTime estimatedEndTime = bookingRequestDto.getBookingTime().plusMinutes((long) (chargingTimeHours * 60));
 
+        // Debit deposit from wallet
         walletService.debit(userId, DEPOSIT_AMOUNT, TransactionType.BOOKING_DEPOSIT,
-                "Booking deposit for charging point " + chargingPoint.getPointId());
+                "Booking deposit for charging point " + chargingPoint.getPointId(), null, null);
+
 
         Booking booking = new Booking();
         booking.setUser(user);
@@ -130,4 +133,3 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 }
-
