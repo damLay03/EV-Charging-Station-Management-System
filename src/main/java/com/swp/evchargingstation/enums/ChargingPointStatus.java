@@ -2,8 +2,9 @@ package com.swp.evchargingstation.enums;
 
 public enum ChargingPointStatus {
     AVAILABLE,
-    CHARGING,
+    OCCUPIED,        // Đang có người sử dụng (sau khi check-in)
+    CHARGING,        // Đang sạc
     OUT_OF_SERVICE,
     MAINTENANCE,
-    RESERVED
+    RESERVED         // Đã được đặt trước
 }

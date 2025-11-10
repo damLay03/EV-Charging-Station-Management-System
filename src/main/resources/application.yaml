@@ -58,8 +58,8 @@ jwt:
 mail:
   host: smtp.gmail.com
   port: 587
-  username: ${MAIL_USERNAME:khoahuynh142005@gmail.com}
-  password: ${MAIL_PASSWORD:ebazvujevswtbypu}
+  username: ${MAIL_USERNAME:khoahtd14@gmail.com}
+  password: ${MAIL_PASSWORD:ibpjhdtkgcudhapy}
   properties:
     mail:
       smtp:
@@ -70,7 +70,7 @@ mail:
         connectiontimeout: 5000
         timeout: 5000
         writetimeout: 5000
-  from: ${MAIL_FROM:EV Charging System <khoahuynh142005@gmail.com>}
+  from: ${MAIL_FROM:EV Charging System <khoahtd14@gmail.com>}
 
 zalopay:
   app-id: "2554"  # Sandbox App ID

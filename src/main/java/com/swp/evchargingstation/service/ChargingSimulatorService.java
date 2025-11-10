@@ -1,9 +1,11 @@
 package com.swp.evchargingstation.service;
 
 import com.swp.evchargingstation.entity.*;
+import com.swp.evchargingstation.enums.BookingStatus;
 import com.swp.evchargingstation.enums.ChargingPointStatus;
 import com.swp.evchargingstation.enums.ChargingSessionStatus;
 import com.swp.evchargingstation.enums.PaymentStatus;
+import com.swp.evchargingstation.enums.TransactionType;
 import com.swp.evchargingstation.repository.*;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -27,6 +30,8 @@ public class ChargingSimulatorService {
     ChargingPointRepository chargingPointRepository;
     PlanRepository planRepository;
     PaymentRepository paymentRepository;
+    BookingRepository bookingRepository;
+    WalletService walletService;
     EmailService emailService;
 
     // Phase 2: background simulation tick, runs every 1 seconds
@@ -166,6 +171,62 @@ public class ChargingSimulatorService {
                 paymentRepository.save(payment);
                 log.info("Created UNPAID payment for completed session {} with amount {}", session.getSessionId(), cost);
 
+                // Check if this session is related to a booking (IN_PROGRESS status)
+                Optional<Booking> relatedBooking = bookingRepository.findByUserIdAndChargingPointIdAndBookingStatus(
+                        session.getDriver().getUserId(),
+                        session.getChargingPoint().getPointId(),
+                        BookingStatus.IN_PROGRESS
+                );
+
+                if (relatedBooking.isPresent()) {
+                    Booking booking = relatedBooking.get();
+                    String userId = session.getDriver().getUserId();
+
+                    log.info("Found related booking #{} for session {}. Processing automatic wallet payment.",
+                            booking.getId(), session.getSessionId());
+
+                    try {
+                        // Auto-deduct charging cost from wallet
+                        walletService.debit(
+                                userId,
+                                (double) cost,
+                                TransactionType.CHARGING_PAYMENT,
+                                String.format("Auto-payment for charging session %s", session.getSessionId()),
+                                null,
+                                session.getSessionId()
+                        );
+
+                        // Refund booking deposit
+                        walletService.credit(
+                                userId,
+                                booking.getDepositAmount(),
+                                TransactionType.BOOKING_DEPOSIT_REFUND,
+                                String.format("Deposit refund for booking #%d", booking.getId()),
+                                null,
+                                null,
+                                booking.getId(),
+                                session.getSessionId()
+                        );
+
+                        // Update payment status to COMPLETED
+                        payment.setStatus(PaymentStatus.COMPLETED);
+                        payment.setPaymentMethod(Payment.PaymentMethod.WALLET);
+                        payment.setPaidAt(LocalDateTime.now());
+                        paymentRepository.save(payment);
+
+                        // Update booking status to COMPLETED
+                        booking.setBookingStatus(BookingStatus.COMPLETED);
+                        bookingRepository.save(booking);
+
+                        log.info("Successfully auto-processed payment for session {}. Charged: {} VND, Refunded deposit: {} VND",
+                                session.getSessionId(), cost, booking.getDepositAmount());
+
+                    } catch (Exception e) {
+                        log.error("Failed to auto-process wallet payment for session {}: {}. Payment remains UNPAID.",
+                                session.getSessionId(), e.getMessage(), e);
+                        // Payment remains UNPAID, user needs to manually pay
+                    }
+                }
                 // Note: Email will be sent by caller after transaction commits
                 // to avoid transaction issues with async operations
             }

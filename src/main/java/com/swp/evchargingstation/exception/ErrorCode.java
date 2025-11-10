@@ -90,8 +90,10 @@ public enum ErrorCode {
     TRANSACTION_FAILED(19006, "Transaction Failed"),
 
     // Booking related (20xxx)
-    VEHICLE_NOT_MATCH_BOOKING(20001, "Vehicle Does Not Match Booking"),
-    CHARGING_POINT_RESERVED(20002, "Charging Point Is Reserved");
+    BOOKING_NOT_FOUND(20001, "Booking Not Found"),
+    VEHICLE_NOT_MATCH_BOOKING(20002, "Vehicle Does Not Match Booking"),
+    CHARGING_POINT_RESERVED(20003, "Charging Point Is Reserved"),
+    FORBIDDEN(20004, "Access Forbidden");
 
     private int code;
     private String message;
