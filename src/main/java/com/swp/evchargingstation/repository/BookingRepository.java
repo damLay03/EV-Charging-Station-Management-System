@@ -14,12 +14,44 @@ import java.util.Optional;
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
-    @Query("SELECT b FROM Booking b WHERE b.chargingPoint.pointId = :chargingPointId AND b.bookingTime > :bookingTime ORDER BY b.bookingTime ASC")
-    Optional<Booking> findFirstByChargingPointIdAndBookingTimeAfterOrderByBookingTimeAsc(@Param("chargingPointId") String chargingPointId, @Param("bookingTime") LocalDateTime bookingTime);
+    @Query("SELECT b FROM Booking b WHERE b.chargingPoint.pointId = :chargingPointId " +
+           "AND b.bookingTime > :bookingTime " +
+           "AND b.bookingStatus IN ('CONFIRMED', 'IN_PROGRESS') " +
+           "ORDER BY b.bookingTime ASC")
+    Optional<Booking> findFirstByChargingPointPointIdAndBookingTimeAfterOrderByBookingTimeAsc(
+            @Param("chargingPointId") String chargingPointId,
+            @Param("bookingTime") LocalDateTime bookingTime);
+
+    @Query("SELECT b FROM Booking b WHERE b.chargingPoint.pointId = :chargingPointId " +
+           "AND b.bookingStatus IN ('CONFIRMED', 'IN_PROGRESS') " +
+           "AND ((b.bookingTime BETWEEN :startTime AND :endTime) " +
+           "OR (b.estimatedEndTime BETWEEN :startTime AND :endTime))")
+    Optional<Booking> findConflictingBooking(
+            @Param("chargingPointId") String chargingPointId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
+
+    @Query("SELECT b FROM Booking b WHERE b.user.userId = :userId " +
+           "AND b.bookingStatus IN ('CONFIRMED', 'IN_PROGRESS') " +
+           "ORDER BY b.bookingTime DESC")
+    Optional<Booking> findActiveBookingByUser(@Param("userId") String userId);
+
+    List<Booking> findByUserUserIdOrderByCreatedAtDesc(String userId);
+
+    @Query("SELECT b FROM Booking b WHERE b.bookingStatus = :status " +
+           "AND b.bookingTime < :expiryTime")
+    List<Booking> findExpiredBookings(
+            @Param("status") BookingStatus status,
+            @Param("expiryTime") LocalDateTime expiryTime);
 
     List<Booking> findByBookingStatusAndBookingTimeBefore(BookingStatus status, LocalDateTime time);
 
-    @Query("SELECT b FROM Booking b WHERE b.user.userId = :userId AND b.chargingPoint.pointId = :chargingPointId AND b.bookingStatus = :status")
-    Optional<Booking> findByUserIdAndChargingPointIdAndBookingStatus(@Param("userId") String userId, @Param("chargingPointId") String chargingPointId, @Param("status") BookingStatus status);
+    @Query("SELECT b FROM Booking b WHERE b.user.userId = :userId " +
+           "AND b.chargingPoint.pointId = :chargingPointId " +
+           "AND b.bookingStatus = :status")
+    Optional<Booking> findByUserIdAndChargingPointIdAndBookingStatus(
+            @Param("userId") String userId,
+            @Param("chargingPointId") String chargingPointId,
+            @Param("status") BookingStatus status);
 }
 

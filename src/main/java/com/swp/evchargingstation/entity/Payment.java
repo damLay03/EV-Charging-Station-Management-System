@@ -84,6 +84,7 @@ public class Payment {
 
     public enum PaymentMethod {
         CASH,
-        ZALOPAY  // Add this
+        ZALOPAY,
+        WALLET  // Payment via wallet
     }
 }
