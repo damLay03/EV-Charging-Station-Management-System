@@ -46,6 +46,35 @@ public class PlanController {
                 .build();
     }
 
+    @PostMapping("/subscribe/{planId}")
+    @PreAuthorize("hasRole('DRIVER')")
+    @Operation(
+            summary = "[DRIVER] Đăng ký/thay đổi gói plan",
+            description = "Driver chọn một gói plan mới từ danh sách. Hệ thống sẽ kiểm tra số dư ví, trừ tiền nếu đủ, và gửi email thông báo. Plan cũ (nếu có) sẽ được thay thế bằng plan mới."
+    )
+    public ApiResponse<PlanResponse> subscribePlan(
+            @Parameter(description = "ID của gói plan muốn đăng ký", example = "PLAN_123")
+            @PathVariable String planId) {
+        log.info("Driver subscribing to plan: {}", planId);
+
+        // Lấy userId từ JWT token
+        var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String userId = null;
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            userId = jwt.getClaim("userId");
+        }
+
+        if (userId == null) {
+            log.error("Could not extract userId from JWT token");
+            throw new RuntimeException("User ID not found in token");
+        }
+
+        return ApiResponse.<PlanResponse>builder()
+                .result(planService.subscribePlan(userId, planId))
+                .message("Successfully subscribed to plan")
+                .build();
+    }
+
     // ==================== ADMIN ENDPOINTS ====================
 
     @ResponseStatus(HttpStatus.CREATED)

@@ -31,6 +31,9 @@ public class Driver {
     @JoinColumn(name = "plan_id")
     Plan plan; // Gói plan hiện tại của driver
 
+    @Column(name = "plan_subscription_date")
+    LocalDateTime planSubscriptionDate; // Ngày đăng ký plan (dùng cho auto renew)
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     @MapsId

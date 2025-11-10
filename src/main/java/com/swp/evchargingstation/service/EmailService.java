@@ -1,7 +1,9 @@
 package com.swp.evchargingstation.service;
 
 import com.swp.evchargingstation.entity.ChargingSession;
+import com.swp.evchargingstation.entity.Driver;
 import com.swp.evchargingstation.entity.Payment;
+import com.swp.evchargingstation.entity.Plan;
 import com.swp.evchargingstation.entity.User;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -236,6 +238,138 @@ public class EmailService {
             "<p>Phiên sạc của bạn đã được xử lý.</p>" +
             "<p>Vui lòng kiểm tra chi tiết trong ứng dụng.</p>"
         );
+    }
+
+    // ==================== PLAN SUBSCRIPTION EMAILS ====================
+
+    @Async
+    public void sendPlanSubscriptionSuccessEmail(Driver driver, Plan plan, double fee) {
+        try {
+            User user = driver.getUser();
+            if (user == null || user.getEmail() == null) {
+                log.warn("Cannot send email: User or email is null for driver {}", driver.getUserId());
+                return;
+            }
+
+            String subject = "🎉 Đăng ký gói cước thành công";
+            String htmlContent = buildPlanSubscriptionSuccessEmailTemplate(user, plan, fee);
+
+            sendHtmlEmail(user.getEmail(), subject, htmlContent);
+            log.info("Sent plan subscription success email to {} for plan {}", user.getEmail(), plan.getName());
+        } catch (Exception e) {
+            log.error("Failed to send plan subscription success email for driver {}: {}",
+                    driver.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendPlanRenewalSuccessEmail(Driver driver, Plan plan, double fee) {
+        try {
+            User user = driver.getUser();
+            if (user == null || user.getEmail() == null) {
+                log.warn("Cannot send email: User or email is null for driver {}", driver.getUserId());
+                return;
+            }
+
+            String subject = "✅ Gia hạn gói cước thành công";
+            String htmlContent = buildPlanRenewalSuccessEmailTemplate(user, plan, fee);
+
+            sendHtmlEmail(user.getEmail(), subject, htmlContent);
+            log.info("Sent plan renewal success email to {} for plan {}", user.getEmail(), plan.getName());
+        } catch (Exception e) {
+            log.error("Failed to send plan renewal success email for driver {}: {}",
+                    driver.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendPlanRenewalFailedEmail(Driver driver, Plan oldPlan, Plan newPlan, double requiredFee) {
+        try {
+            User user = driver.getUser();
+            if (user == null || user.getEmail() == null) {
+                log.warn("Cannot send email: User or email is null for driver {}", driver.getUserId());
+                return;
+            }
+
+            String subject = "⚠️ Gia hạn gói cước thất bại";
+            String htmlContent = buildPlanRenewalFailedEmailTemplate(user, oldPlan, newPlan, requiredFee);
+
+            sendHtmlEmail(user.getEmail(), subject, htmlContent);
+            log.info("Sent plan renewal failed email to {} - downgraded from {} to {}",
+                    user.getEmail(), oldPlan.getName(), newPlan.getName());
+        } catch (Exception e) {
+            log.error("Failed to send plan renewal failed email for driver {}: {}",
+                    driver.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    private String buildPlanSubscriptionSuccessEmailTemplate(User user, Plan plan, double fee) {
+        String userName = user.getFullName();
+        String planName = plan.getName();
+        String feeStr = fee > 0 ? currencyFormatter.format(fee) + " VNĐ" : "Miễn phí";
+        String pricePerKwh = currencyFormatter.format(plan.getPricePerKwh()) + " VNĐ/kWh";
+
+        String bodyContent = String.format(
+            "<p>Chúc mừng bạn đã đăng ký gói cước <strong>%s</strong> thành công!</p>" +
+            "<div style='background:#f0f8ff;padding:15px;border-left:4px solid #15919B;margin:20px 0'>" +
+            "<h3 style='margin-top:0;color:#15919B'>📋 Chi tiết gói cước</h3>" +
+            "<ul style='margin:10px 0'>" +
+            "<li><strong>Gói:</strong> %s</li>" +
+            "<li><strong>Phí hàng tháng:</strong> %s</li>" +
+            "<li><strong>Giá điện:</strong> %s</li>" +
+            "<li><strong>Lợi ích:</strong> %s</li>" +
+            "</ul></div>" +
+            "<p>Số tiền <strong>%s</strong> đã được trừ từ ví của bạn.</p>" +
+            "<p>Gói cước sẽ tự động gia hạn vào tháng sau nếu là gói <strong>Cao cấp</strong> hoặc <strong>Tiết kiệm</strong>.</p>",
+            planName, planName, feeStr, pricePerKwh, plan.getBenefits() != null ? plan.getBenefits() : "Không có",
+            feeStr
+        );
+
+        return buildBaseEmailTemplate(userName, bodyContent);
+    }
+
+    private String buildPlanRenewalSuccessEmailTemplate(User user, Plan plan, double fee) {
+        String userName = user.getFullName();
+        String planName = plan.getName();
+        String feeStr = currencyFormatter.format(fee) + " VNĐ";
+
+        String bodyContent = String.format(
+            "<p>Gói cước <strong>%s</strong> của bạn đã được gia hạn thành công!</p>" +
+            "<div style='background:#f0fff0;padding:15px;border-left:4px solid #28a745;margin:20px 0'>" +
+            "<ul style='margin:10px 0'>" +
+            "<li><strong>Gói:</strong> %s</li>" +
+            "<li><strong>Phí đã thanh toán:</strong> %s</li>" +
+            "<li><strong>Ngày gia hạn:</strong> %s</li>" +
+            "</ul></div>" +
+            "<p>Gói cước của bạn sẽ tiếp tục có hiệu lực trong 30 ngày tới.</p>",
+            planName, planName, feeStr,
+            java.time.LocalDateTime.now().format(timeFormatter)
+        );
+
+        return buildBaseEmailTemplate(userName, bodyContent);
+    }
+
+    private String buildPlanRenewalFailedEmailTemplate(User user, Plan oldPlan, Plan newPlan, double requiredFee) {
+        String userName = user.getFullName();
+        String oldPlanName = oldPlan.getName();
+        String newPlanName = newPlan != null ? newPlan.getName() : "Linh hoạt";
+        String feeStr = currencyFormatter.format(requiredFee) + " VNĐ";
+
+        String bodyContent = String.format(
+            "<p>Rất tiếc, gia hạn gói cước <strong>%s</strong> của bạn đã thất bại do số dư ví không đủ.</p>" +
+            "<div style='background:#fff3cd;padding:15px;border-left:4px solid #ffc107;margin:20px 0'>" +
+            "<h3 style='margin-top:0;color:#856404'>⚠️ Thông báo quan trọng</h3>" +
+            "<ul style='margin:10px 0'>" +
+            "<li><strong>Gói cũ:</strong> %s</li>" +
+            "<li><strong>Phí yêu cầu:</strong> %s</li>" +
+            "<li><strong>Gói mới:</strong> %s (Tự động chuyển)</li>" +
+            "</ul></div>" +
+            "<p>Hệ thống đã tự động chuyển bạn sang gói <strong>%s</strong>.</p>" +
+            "<p>Vui lòng <strong>nạp thêm tiền</strong> vào ví để tiếp tục sử dụng gói cước cao cấp.</p>",
+            oldPlanName, oldPlanName, feeStr, newPlanName, newPlanName
+        );
+
+        return buildBaseEmailTemplate(userName, bodyContent);
     }
 }
 

@@ -87,6 +87,7 @@ public enum ErrorCode {
     WALLET_TRANSACTION_NOT_FOUND(19003, "Wallet Transaction Not Found"),
     INVALID_TOPUP_AMOUNT(19004, "Invalid Top-up Amount"),
     WALLET_ALREADY_EXISTS(19005, "Wallet Already Exists For This User"),
+    TRANSACTION_FAILED(19006, "Transaction Failed"),
 
     // Booking related (20xxx)
     VEHICLE_NOT_MATCH_BOOKING(20001, "Vehicle Does Not Match Booking"),
