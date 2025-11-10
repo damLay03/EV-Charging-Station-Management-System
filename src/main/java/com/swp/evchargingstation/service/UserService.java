@@ -39,6 +39,7 @@ public class UserService {
     DriverRepository driverRepository;
     StaffRepository staffRepository;
     AdminRepository adminRepository;
+    PlanRepository planRepository;
 
     WalletService walletService;
 
@@ -211,14 +212,28 @@ public class UserService {
     private void createRoleSpecificRecord(User user) {
         switch (user.getRole()) {
             case DRIVER: {
+                // Tìm plan "Linh hoạt" để gán mặc định cho driver mới
+                Plan defaultPlan = planRepository.findByNameIgnoreCase("Linh hoạt")
+                        .orElse(null);
+
+                if (defaultPlan != null) {
+                    log.info("Found default plan 'Linh hoạt' with ID: {}", defaultPlan.getPlanId());
+                } else {
+                    log.warn("Default plan 'Linh hoạt' not found, driver will be created without plan");
+                }
+
                 Driver driver = Driver.builder()
                         // Không set userId thủ công khi dùng @MapsId
                         .user(user)
                         .address(null)
                         .joinDate(LocalDateTime.now())
+                        .plan(defaultPlan) // Gán plan "Linh hoạt" mặc định
                         .build();
                 driverRepository.save(driver);
-                log.info("Driver record created for user ID: {} at {}", user.getUserId(), driver.getJoinDate());
+                log.info("Driver record created for user ID: {} at {} with plan: {}",
+                        user.getUserId(),
+                        driver.getJoinDate(),
+                        defaultPlan != null ? defaultPlan.getName() : "None");
 
                 // Create wallet for the driver
                 try {
