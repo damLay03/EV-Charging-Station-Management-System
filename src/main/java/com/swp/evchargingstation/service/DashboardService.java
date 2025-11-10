@@ -159,7 +159,7 @@ public class DashboardService {
         log.info("Driver {} requesting current plan", driverId);
 
         Driver driver = driverRepository.findByUserIdWithPlan(driverId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ErrorCode.DRIVER_NOT_FOUND));
 
         if (driver.getPlan() == null) {
             log.warn("Driver {} does not have a plan assigned", driverId);
@@ -173,6 +173,9 @@ public class DashboardService {
 
     private String getCurrentDriverId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            return jwt.getClaim("userId");
+        }
         return authentication.getName();
     }
 
