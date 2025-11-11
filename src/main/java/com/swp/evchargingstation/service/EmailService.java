@@ -18,6 +18,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.text.NumberFormat;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
@@ -367,6 +368,135 @@ public class EmailService {
             "<p>Hệ thống đã tự động chuyển bạn sang gói <strong>%s</strong>.</p>" +
             "<p>Vui lòng <strong>nạp thêm tiền</strong> vào ví để tiếp tục sử dụng gói cước cao cấp.</p>",
             oldPlanName, oldPlanName, feeStr, newPlanName, newPlanName
+        );
+
+        return buildBaseEmailTemplate(userName, bodyContent);
+    }
+
+    @Async
+    public void sendPlanCancellationEmail(Driver driver, Plan plan) {
+        try {
+            User user = driver.getUser();
+            if (user == null || user.getEmail() == null) {
+                log.warn("Cannot send email: User or email is null for driver {}", driver.getUserId());
+                return;
+            }
+
+            String subject = "🔔 Hủy gia hạn tự động thành công";
+            String htmlContent = buildPlanCancellationEmailTemplate(user, plan, driver.getPlanSubscriptionDate());
+
+            sendHtmlEmail(user.getEmail(), subject, htmlContent);
+            log.info("Sent plan cancellation email to {} for plan {}", user.getEmail(), plan.getName());
+        } catch (Exception e) {
+            log.error("Failed to send plan cancellation email for driver {}: {}",
+                    driver.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendPlanReactivationEmail(Driver driver, Plan plan) {
+        try {
+            User user = driver.getUser();
+            if (user == null || user.getEmail() == null) {
+                log.warn("Cannot send email: User or email is null for driver {}", driver.getUserId());
+                return;
+            }
+
+            String subject = "✅ Kích hoạt lại gia hạn tự động";
+            String htmlContent = buildPlanReactivationEmailTemplate(user, plan);
+
+            sendHtmlEmail(user.getEmail(), subject, htmlContent);
+            log.info("Sent plan reactivation email to {} for plan {}", user.getEmail(), plan.getName());
+        } catch (Exception e) {
+            log.error("Failed to send plan reactivation email for driver {}: {}",
+                    driver.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendPlanDowngradedToFlexibleEmail(Driver driver, Plan oldPlan, Plan flexiblePlan) {
+        try {
+            User user = driver.getUser();
+            if (user == null || user.getEmail() == null) {
+                log.warn("Cannot send email: User or email is null for driver {}", driver.getUserId());
+                return;
+            }
+
+            String subject = "📢 Gói cước đã hết hạn";
+            String htmlContent = buildPlanDowngradedToFlexibleEmailTemplate(user, oldPlan, flexiblePlan);
+
+            sendHtmlEmail(user.getEmail(), subject, htmlContent);
+            log.info("Sent plan downgraded to flexible email to {} - {} to {}",
+                    user.getEmail(), oldPlan.getName(), flexiblePlan.getName());
+        } catch (Exception e) {
+            log.error("Failed to send plan downgraded email for driver {}: {}",
+                    driver.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    private String buildPlanCancellationEmailTemplate(User user, Plan plan, LocalDateTime subscriptionDate) {
+        String userName = user.getFullName();
+        String planName = plan.getName();
+        String expiryDate = subscriptionDate != null ?
+                subscriptionDate.plusMonths(1).format(timeFormatter) : "N/A";
+
+        String bodyContent = String.format(
+            "<p>Bạn đã <strong>hủy gia hạn tự động</strong> cho gói cước <strong>%s</strong> thành công.</p>" +
+            "<div style='background:#e8f4f8;padding:15px;border-left:4px solid #17a2b8;margin:20px 0'>" +
+            "<h3 style='margin-top:0;color:#17a2b8'>📋 Thông tin quan trọng</h3>" +
+            "<ul style='margin:10px 0'>" +
+            "<li><strong>Gói hiện tại:</strong> %s</li>" +
+            "<li><strong>Trạng thái:</strong> Vẫn hoạt động đến hết hạn</li>" +
+            "<li><strong>Ngày hết hạn:</strong> %s</li>" +
+            "<li><strong>Sau khi hết hạn:</strong> Tự động chuyển về gói <strong>Linh hoạt</strong></li>" +
+            "</ul></div>" +
+            "<p>⚠️ Gói cước sẽ <strong>KHÔNG tự động gia hạn</strong> vào tháng sau.</p>" +
+            "<p>Bạn vẫn có thể kích hoạt lại gia hạn tự động bất kỳ lúc nào trước khi hết hạn.</p>",
+            planName, planName, expiryDate
+        );
+
+        return buildBaseEmailTemplate(userName, bodyContent);
+    }
+
+    private String buildPlanReactivationEmailTemplate(User user, Plan plan) {
+        String userName = user.getFullName();
+        String planName = plan.getName();
+        String feeStr = currencyFormatter.format(plan.getMonthlyFee()) + " VNĐ";
+
+        String bodyContent = String.format(
+            "<p>Bạn đã <strong>kích hoạt lại gia hạn tự động</strong> cho gói cước <strong>%s</strong> thành công!</p>" +
+            "<div style='background:#d4edda;padding:15px;border-left:4px solid #28a745;margin:20px 0'>" +
+            "<h3 style='margin-top:0;color:#155724'>✅ Xác nhận</h3>" +
+            "<ul style='margin:10px 0'>" +
+            "<li><strong>Gói:</strong> %s</li>" +
+            "<li><strong>Phí hàng tháng:</strong> %s</li>" +
+            "<li><strong>Trạng thái:</strong> Tự động gia hạn được BẬT</li>" +
+            "</ul></div>" +
+            "<p>Gói cước sẽ tự động gia hạn vào tháng sau nếu ví có đủ số dư.</p>" +
+            "<p>Vui lòng đảm bảo ví luôn có đủ <strong>%s</strong> để tránh gián đoạn dịch vụ.</p>",
+            planName, planName, feeStr, feeStr
+        );
+
+        return buildBaseEmailTemplate(userName, bodyContent);
+    }
+
+    private String buildPlanDowngradedToFlexibleEmailTemplate(User user, Plan oldPlan, Plan flexiblePlan) {
+        String userName = user.getFullName();
+        String oldPlanName = oldPlan.getName();
+        String newPlanName = flexiblePlan.getName();
+
+        String bodyContent = String.format(
+            "<p>Gói cước <strong>%s</strong> của bạn đã hết hạn.</p>" +
+            "<div style='background:#fff3cd;padding:15px;border-left:4px solid #ffc107;margin:20px 0'>" +
+            "<h3 style='margin-top:0;color:#856404'>🔄 Thay đổi gói cước</h3>" +
+            "<ul style='margin:10px 0'>" +
+            "<li><strong>Gói cũ:</strong> %s</li>" +
+            "<li><strong>Gói mới:</strong> %s</li>" +
+            "<li><strong>Lý do:</strong> Đã hủy gia hạn tự động</li>" +
+            "</ul></div>" +
+            "<p>Hệ thống đã tự động chuyển bạn sang gói <strong>%s</strong>.</p>" +
+            "<p>Bạn có thể đăng ký lại gói cước cao cấp bất kỳ lúc nào!</p>",
+            oldPlanName, oldPlanName, newPlanName, newPlanName
         );
 
         return buildBaseEmailTemplate(userName, bodyContent);

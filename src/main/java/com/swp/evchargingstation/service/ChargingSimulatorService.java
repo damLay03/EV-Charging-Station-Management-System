@@ -127,17 +127,28 @@ public class ChargingSimulatorService {
             log.info("Updated vehicle {} SOC to {}%", vehicle.getVehicleId(), session.getEndSocPercent());
         }
 
-        // Calculate cost - use default plan or fallback
-        Plan plan = planRepository.findByNameIgnoreCase("Linh hoạt").orElse(null);
+        // Calculate cost - use driver's plan or fallback to "Linh hoạt"
+        Driver driver = session.getDriver();
+        Plan driverPlan = driver != null ? driver.getPlan() : null;
+
+        Plan planToUse = driverPlan;
+        if (planToUse == null) {
+            // Fallback to "Linh hoạt" if driver has no plan
+            planToUse = planRepository.findByNameIgnoreCase("Linh hoạt").orElse(null);
+            log.info("Driver has no plan, using 'Linh hoạt' as fallback for session {}", session.getSessionId());
+        } else {
+            log.info("Using driver's plan '{}' for cost calculation of session {}", planToUse.getName(), session.getSessionId());
+        }
+
         float cost = 0f;
-        if (plan != null) {
-            cost = (session.getEnergyKwh() * plan.getPricePerKwh()) + (session.getDurationMin() * plan.getPricePerMinute());
+        if (planToUse != null) {
+            cost = (session.getEnergyKwh() * planToUse.getPricePerKwh()) + (session.getDurationMin() * planToUse.getPricePerMinute());
             log.info("Calculated cost for session {}: {} kWh * {} + {} min * {} = {}",
                 session.getSessionId(),
                 session.getEnergyKwh(),
-                plan.getPricePerKwh(),
+                planToUse.getPricePerKwh(),
                 session.getDurationMin(),
-                plan.getPricePerMinute(),
+                planToUse.getPricePerMinute(),
                 cost);
         } else {
             log.warn("No plan found, cost will be 0");

@@ -202,18 +202,34 @@ public class ChargingSessionService {
         Integer estimatedTimeRemaining = null;
         float energyConsumed;
 
-        // Use hardcoded fallback to avoid query triggering auto-flush during entity modifications
+        // Get driver's current plan for pricing
+        Driver driver = session.getDriver();
+        Plan driverPlan = driver != null ? driver.getPlan() : null;
+
+        // Use driver's plan if available, otherwise use "Linh hoạt" as fallback
         float pricePerKwh = 3800f; // Default "Linh hoạt" plan price
         float pricePerMinute = 0f; // Default "Linh hoạt" plan price per minute
-        try {
-            Plan plan = planRepository.findByNameIgnoreCase("Linh hoạt").orElse(null);
-            if (plan != null) {
-                pricePerKwh = plan.getPricePerKwh();
-                pricePerMinute = plan.getPricePerMinute();
+
+        if (driverPlan != null) {
+            // Use driver's current plan pricing
+            pricePerKwh = driverPlan.getPricePerKwh();
+            pricePerMinute = driverPlan.getPricePerMinute();
+            log.debug("Using driver's plan '{}' for pricing: {} VND/kWh, {} VND/min",
+                    driverPlan.getName(), pricePerKwh, pricePerMinute);
+        } else {
+            // Fallback to "Linh hoạt" plan
+            try {
+                Plan flexiblePlan = planRepository.findByNameIgnoreCase("Linh hoạt").orElse(null);
+                if (flexiblePlan != null) {
+                    pricePerKwh = flexiblePlan.getPricePerKwh();
+                    pricePerMinute = flexiblePlan.getPricePerMinute();
+                    log.debug("Using fallback 'Linh hoạt' plan for pricing");
+                }
+            } catch (Exception e) {
+                log.warn("Could not fetch plan price, using default: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("Could not fetch plan price, using default: {}", e.getMessage());
         }
+
         float currentCost;
 
         Vehicle vehicle = session.getVehicle();

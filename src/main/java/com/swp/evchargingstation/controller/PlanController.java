@@ -75,6 +75,58 @@ public class PlanController {
                 .build();
     }
 
+    @PostMapping("/cancel-auto-renewal")
+    @PreAuthorize("hasRole('DRIVER')")
+    @Operation(
+            summary = "[DRIVER] Hủy gia hạn tự động",
+            description = "Driver hủy gia hạn tự động cho gói hiện tại. Gói vẫn hoạt động đến hết tháng, sau đó tự động chuyển về gói Linh hoạt."
+    )
+    public ApiResponse<PlanResponse> cancelAutoRenewal() {
+        log.info("Driver requesting to cancel auto-renewal");
+
+        var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String userId = null;
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            userId = jwt.getClaim("userId");
+        }
+
+        if (userId == null) {
+            log.error("Could not extract userId from JWT token");
+            throw new RuntimeException("User ID not found in token");
+        }
+
+        return ApiResponse.<PlanResponse>builder()
+                .result(planService.cancelAutoRenewal(userId))
+                .message("Auto-renewal canceled successfully. Your plan will remain active until the end of the period.")
+                .build();
+    }
+
+    @PostMapping("/reactivate-auto-renewal")
+    @PreAuthorize("hasRole('DRIVER')")
+    @Operation(
+            summary = "[DRIVER] Kích hoạt lại gia hạn tự động",
+            description = "Driver kích hoạt lại gia hạn tự động cho gói hiện tại. Gói sẽ được tự động gia hạn vào tháng sau nếu ví có đủ tiền."
+    )
+    public ApiResponse<PlanResponse> reactivateAutoRenewal() {
+        log.info("Driver requesting to reactivate auto-renewal");
+
+        var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        String userId = null;
+        if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            userId = jwt.getClaim("userId");
+        }
+
+        if (userId == null) {
+            log.error("Could not extract userId from JWT token");
+            throw new RuntimeException("User ID not found in token");
+        }
+
+        return ApiResponse.<PlanResponse>builder()
+                .result(planService.reactivateAutoRenewal(userId))
+                .message("Auto-renewal reactivated successfully. Your plan will auto-renew next month.")
+                .build();
+    }
+
     // ==================== ADMIN ENDPOINTS ====================
 
     @ResponseStatus(HttpStatus.CREATED)
