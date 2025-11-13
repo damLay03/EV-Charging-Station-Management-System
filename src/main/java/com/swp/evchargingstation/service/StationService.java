@@ -48,6 +48,7 @@ public class StationService {
     ChargingSessionRepository chargingSessionRepository;
     PaymentRepository paymentRepository;
     GeocodingService geocodingService;
+    ChargingPointStatusService chargingPointStatusService;
 
     /**
      * Tạo trạm sạc mới với số lượng điểm sạc và công suất chỉ định.

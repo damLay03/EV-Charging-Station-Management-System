@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
@@ -16,6 +18,12 @@ public class ChargingPointResponse {
     String stationId;
     String stationName;
     ChargingPower chargingPower;
-    ChargingPointStatus status;
+    ChargingPointStatus status; // Trạng thái vật lý thực tế của trụ
+    ChargingPointStatus displayStatus; // Trạng thái hiển thị động (bao gồm RESERVED nếu có booking sắp tới)
     String currentSessionId;
+
+    // Thông tin booking sắp tới (nếu có)
+    Long upcomingBookingId;
+    LocalDateTime upcomingBookingTime;
+    String upcomingBookingUserName;
 }

@@ -53,5 +53,27 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("userId") String userId,
             @Param("chargingPointId") String chargingPointId,
             @Param("status") BookingStatus status);
+
+    /**
+     * Tìm booking sắp tới cho một charging point trong khoảng thời gian
+     * (để hiển thị trạng thái RESERVED động)
+     */
+    @Query("SELECT b FROM Booking b WHERE b.chargingPoint.pointId = :chargingPointId " +
+           "AND b.bookingStatus IN ('CONFIRMED', 'IN_PROGRESS') " +
+           "AND b.bookingTime BETWEEN :startTime AND :endTime " +
+           "ORDER BY b.bookingTime ASC")
+    Optional<Booking> findUpcomingBookingInTimeWindow(
+            @Param("chargingPointId") String chargingPointId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
+
+    /**
+     * Tìm tất cả booking cần được đặt thành RESERVED (gần đến giờ booking)
+     */
+    @Query("SELECT b FROM Booking b WHERE b.bookingStatus = 'CONFIRMED' " +
+           "AND b.bookingTime BETWEEN :startTime AND :endTime")
+    List<Booking> findBookingsNearStartTime(
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
 }
 

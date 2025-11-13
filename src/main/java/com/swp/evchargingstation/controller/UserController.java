@@ -79,6 +79,21 @@ public class UserController {
                 .build();
     }
 
+    // ==================== STAFF - DRIVER LOOKUP ====================
+
+    @GetMapping("/drivers/lookup")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(
+            summary = "[STAFF] Tìm driver bằng email",
+            description = "Staff tìm kiếm thông tin driver bằng địa chỉ email để hỗ trợ khách hàng hoặc xử lý incident"
+    )
+    public ApiResponse<DriverResponse> findDriverByEmail(@RequestParam String email) {
+        log.info("Staff searching for driver with email: {}", email);
+        return ApiResponse.<DriverResponse>builder()
+                .result(userService.findDriverByEmail(email))
+                .build();
+    }
+
     // ==================== ADMIN - DRIVER MANAGEMENT ====================
 
     @GetMapping("/drivers")

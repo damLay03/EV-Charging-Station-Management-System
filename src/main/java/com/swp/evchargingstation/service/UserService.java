@@ -510,6 +510,39 @@ public class UserService {
                 .build();
     }
 
+    /**
+     * [STAFF] Tìm driver bằng email
+     */
+    @PreAuthorize("hasRole('STAFF')")
+    public DriverResponse findDriverByEmail(String email) {
+        log.info("Staff searching for driver with email: {}", email);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Kiểm tra user có phải là DRIVER không
+        if (user.getRole() != Role.DRIVER) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        Driver driver = driverRepository.findById(user.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        return DriverResponse.builder()
+                .userId(user.getUserId())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .dateOfBirth(user.getDateOfBirth())
+                .gender(user.getGender())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .fullName(user.getFullName())
+                .role(user.getRole())
+                .address(driver.getAddress())
+                .joinDate(driver.getJoinDate())
+                .build();
+    }
+
     // Helper method: map Driver sang AdminUserResponse
     private AdminUserResponse mapToAdminUserResponse(Driver driver) {
         User user = driver.getUser();

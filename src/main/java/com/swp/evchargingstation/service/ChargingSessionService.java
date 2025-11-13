@@ -43,6 +43,7 @@ public class ChargingSessionService {
     StaffRepository staffRepository;
     BookingRepository bookingRepository;
     WalletService walletService;
+    ChargingPointStatusService chargingPointStatusService;
 
     ChargingSimulatorService simulatorService;
     EmailService emailService;
@@ -381,8 +382,16 @@ public class ChargingSessionService {
                 }
             }
         } else {
-            // No booking, check if point is available
-            if (chargingPoint.getStatus() != ChargingPointStatus.AVAILABLE) {
+            // No booking, check if point is available (using dynamic status check)
+            // Kiểm tra trạng thái hiển thị (có tính đến booking sắp tới)
+            ChargingPointStatus displayStatus = chargingPointStatusService.calculateDisplayStatus(chargingPoint.getPointId());
+
+            if (displayStatus == ChargingPointStatus.RESERVED) {
+                // Trụ đang được reserved cho booking khác
+                throw new AppException(ErrorCode.CHARGING_POINT_RESERVED);
+            }
+
+            if (displayStatus != ChargingPointStatus.AVAILABLE) {
                 throw new AppException(ErrorCode.CHARGING_POINT_NOT_AVAILABLE);
             }
         }
