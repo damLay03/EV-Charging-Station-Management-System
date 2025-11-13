@@ -34,6 +34,10 @@ public class Driver {
     @Column(name = "plan_subscription_date")
     LocalDateTime planSubscriptionDate; // Ngày đăng ký plan (dùng cho auto renew)
 
+    @Column(name = "plan_auto_renew")
+    @Builder.Default
+    Boolean planAutoRenew = true; // Trạng thái tự động gia hạn (mặc định là true)
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     @MapsId

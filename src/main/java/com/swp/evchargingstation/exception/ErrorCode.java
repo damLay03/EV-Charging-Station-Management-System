@@ -93,7 +93,11 @@ public enum ErrorCode {
     BOOKING_NOT_FOUND(20001, "Booking Not Found"),
     VEHICLE_NOT_MATCH_BOOKING(20002, "Vehicle Does Not Match Booking"),
     CHARGING_POINT_RESERVED(20003, "Charging Point Is Reserved"),
-    FORBIDDEN(20004, "Access Forbidden");
+    FORBIDDEN(20004, "Access Forbidden"),
+
+    // Plan subscription related (21xxx)
+    CANNOT_DOWNGRADE_TO_FLEXIBLE(21001, "Cannot Downgrade To Lower Plan While Active Subscription Exists"),
+    PLAN_STILL_ACTIVE(21002, "Current Plan Is Still Active");
 
     private int code;
     private String message;
