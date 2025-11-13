@@ -51,7 +51,7 @@ public class OAuthConfig extends SimpleUrlAuthenticationSuccessHandler {
                             .orElse(null));
 
             if (user == null) {
-                log.info("➕ Creating new user from Google account: {}", email);
+                log.info("Creating new user from Google account: {}", email);
 
                 String firstName = "User";
                 String lastName = "";
@@ -71,7 +71,7 @@ public class OAuthConfig extends SimpleUrlAuthenticationSuccessHandler {
                         .role(Role.DRIVER)
                         .build();
                 user = userRepository.save(user);
-                log.info("✅ User saved with ID: {}", user.getUserId());
+                log.info("User saved with ID: {}", user.getUserId());
 
                 Driver driver = Driver.builder()
                         .user(user)
@@ -79,10 +79,10 @@ public class OAuthConfig extends SimpleUrlAuthenticationSuccessHandler {
                         .build();
                 driverRepository.save(driver);
 
-                log.info("✅ Created new user and driver profile: {}", user.getUserId());
+                log.info("Created new user and driver profile: {}", user.getUserId());
 
             } else if (user.getGoogleId() == null) {
-                log.info("🔗 Linking existing user {} to Google account", email);
+                log.info("Linking existing user {} to Google account", email);
                 user.setGoogleId(googleId);
                 userRepository.save(user);
             }
@@ -93,14 +93,14 @@ public class OAuthConfig extends SimpleUrlAuthenticationSuccessHandler {
 
             // Redirect về frontend với token
             String targetUrl = "http://localhost:5173/auth/google/callback?token=" + token;
-            log.info("🔄 Redirecting to: {}", targetUrl);
+            log.info("Redirecting to: {}", targetUrl);
 
             getRedirectStrategy().sendRedirect(request, response, targetUrl);
 
             log.info("=== OAuth2 Login Success Handler END ===");
 
         } catch (Exception e) {
-            log.error("❌ Error in OAuth2LoginSuccessHandler: ", e);
+            log.error("Error in OAuth2LoginSuccessHandler: ", e);
             response.sendRedirect("http://localhost:5173/login?error=oauth_failed");
         }
     }

@@ -156,6 +156,11 @@ public class ChargingSessionService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
+        // Refresh the session entity from database to get latest updates
+        chargingSessionRepository.flush();
+        session = chargingSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new AppException(ErrorCode.SESSION_NOT_FOUND));
+
         return convertToResponse(session);
     }
 
@@ -163,6 +168,11 @@ public class ChargingSessionService {
      * Chuyển đổi ChargingSession entity sang ChargingSessionResponse
      */
     private com.swp.evchargingstation.dto.response.ChargingSessionResponse convertToResponse(ChargingSession session) {
+        // Refresh session from database to get latest updates (important for IN_PROGRESS sessions)
+        if (session.getStatus() == ChargingSessionStatus.IN_PROGRESS) {
+            session = chargingSessionRepository.findById(session.getSessionId()).orElse(session);
+        }
+
         String stationName = "";
         String stationAddress = "";
         String chargingPointName = "";
@@ -238,16 +248,30 @@ public class ChargingSessionService {
         float energyPerPercent = batteryCapacity > 0 ? (batteryCapacity / 100f) : 0f;
 
         if (session.getStatus() == com.swp.evchargingstation.enums.ChargingSessionStatus.IN_PROGRESS) {
-            // For in-progress sessions, use real-time data
-            currentSoc = (vehicle != null && vehicle.getCurrentSocPercent() != null) ? vehicle.getCurrentSocPercent() : session.getEndSocPercent();
-            elapsedMinutes = (float) java.time.temporal.ChronoUnit.MINUTES.between(session.getStartTime(), java.time.LocalDateTime.now());
+            // For in-progress sessions, use real-time data from simulator
+            // Refresh vehicle data from database to get latest SOC (bypass cache)
+            Vehicle freshVehicle = vehicleRepository.findById(vehicle.getVehicleId())
+                .orElseThrow(() -> new AppException(ErrorCode.VEHICLE_NOT_FOUND));
 
-            // Calculate energy consumed based on SOC gain
-            int socGained = Math.max(0, currentSoc - startSoc);
-            energyConsumed = socGained * energyPerPercent;
+            currentSoc = freshVehicle.getCurrentSocPercent() != null
+                ? freshVehicle.getCurrentSocPercent()
+                : session.getEndSocPercent();
 
-            // Estimate time remaining
-            if (currentSoc < targetSoc && socGained > 0 && elapsedMinutes > 0) {
+            log.debug("Retrieved fresh vehicle SOC: {}% (session.endSocPercent: {}%)",
+                currentSoc, session.getEndSocPercent());
+
+            // Use simulated duration from session (updated by ChargingSimulatorService every tick)
+            elapsedMinutes = session.getDurationMin();
+
+            // Use simulated energy from session (updated by ChargingSimulatorService every tick)
+            energyConsumed = session.getEnergyKwh();
+
+            // Use simulated cost from session (updated by ChargingSimulatorService every tick)
+            currentCost = session.getCostTotal();
+
+            // Estimate time remaining based on current progress
+            if (currentSoc < targetSoc && currentSoc > startSoc && elapsedMinutes > 0) {
+                int socGained = currentSoc - startSoc;
                 int remainingSoc = targetSoc - currentSoc;
                 float avgSocPerMinute = socGained / elapsedMinutes;
                 if (avgSocPerMinute > 0) {
@@ -255,8 +279,8 @@ public class ChargingSessionService {
                 }
             }
 
-            // Calculate current cost based on energy and time
-            currentCost = (energyConsumed * pricePerKwh) + (elapsedMinutes * pricePerMinute);
+            log.debug("Real-time session {}: SOC {}%, Energy {} kWh, Duration {} min, Cost {} VND",
+                session.getSessionId(), currentSoc, energyConsumed, elapsedMinutes, currentCost);
         } else {
             // For completed sessions, use stored data
             currentSoc = session.getEndSocPercent();
@@ -281,14 +305,14 @@ public class ChargingSessionService {
                 .stationAddress(stationAddress)
                 .chargingPointName(chargingPointName)
                 .startSocPercent(session.getStartSocPercent())
-                .endSocPercent(session.getEndSocPercent())
+                .endSocPercent(currentSoc)  // Use currentSoc (refreshed from vehicle) for consistency
                 .energyKwh(session.getEnergyKwh())
                 .costTotal(session.getCostTotal())
                 .status(session.getStatus())
                 .vehicleModel(session.getVehicle() != null && session.getVehicle().getModel() != null ? session.getVehicle().getModel().getModelName() : "")
                 .licensePlate(session.getVehicle() != null ? session.getVehicle().getLicensePlate() : "")
                 // realtime additions
-                .currentSocPercent(currentSoc)
+                .currentSocPercent(currentSoc)  // Same value as endSocPercent for IN_PROGRESS sessions
                 .targetSocPercent(targetSoc)
                 .elapsedTimeMinutes(elapsedMinutes)
                 .estimatedTimeRemainingMinutes(estimatedTimeRemaining)
@@ -496,6 +520,8 @@ public class ChargingSessionService {
         Vehicle vehicle = session.getVehicle();
         if (vehicle != null && vehicle.getCurrentSocPercent() != null) {
             session.setEndSocPercent(vehicle.getCurrentSocPercent());
+            // Save session changes before stopping
+            chargingSessionRepository.saveAndFlush(session);
             log.info("Updated session {} endSocPercent to {}% from vehicle before stopping",
                 sessionId, vehicle.getCurrentSocPercent());
         }
