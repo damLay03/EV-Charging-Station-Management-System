@@ -45,45 +45,28 @@ public class PaymentController {
 
     @PostMapping("/cash/request")
     @PreAuthorize("hasRole('DRIVER')")
-    @Operation(
-            summary = "[DRIVER] Yêu cầu thanh toán bằng tiền mặt",
-            description = "Driver gửi yêu cầu thanh toán bằng tiền mặt cho session đã hoàn thành. Yêu cầu sẽ được gửi đến staff quản lý trạm"
-    )
     public ApiResponse<CashPaymentRequestResponse> requestCashPayment(
             @RequestBody @Valid CashPaymentRequest request) {
-        log.info("Driver requesting cash payment for session: {}", request.getSessionId());
-        return ApiResponse.<CashPaymentRequestResponse>builder()
-                .result(cashPaymentService.requestCashPayment(request.getSessionId()))
-                .build();
+        throw new com.swp.evchargingstation.exception.AppException(
+                com.swp.evchargingstation.exception.ErrorCode.PAYMENT_METHOD_NOT_ALLOWED);
     }
 
     // ==================== DRIVER - ZALOPAY ====================
 
     @PostMapping("/zalopay")
     @PreAuthorize("hasRole('DRIVER')")
-    @Operation(
-            summary = "[DRIVER] Tạo thanh toán ZaloPay",
-            description = "Tạo một đơn thanh toán ZaloPay cho phiên sạc. Trả về URL thanh toán để driver chuyển hướng sang cổng thanh toán ZaloPay"
-    )
     public ApiResponse<String> createZaloPayPayment(@RequestParam String sessionId) {
-        log.info("Driver creating ZaloPay payment for session: {}", sessionId);
-        String paymentUrl = zaloPayService.createPayment(sessionId);
-        return ApiResponse.<String>builder()
-                .result(paymentUrl)
-                .build();
+        throw new com.swp.evchargingstation.exception.AppException(
+                com.swp.evchargingstation.exception.ErrorCode.PAYMENT_METHOD_NOT_ALLOWED);
     }
 
     // ==================== STAFF - PAYMENT PROCESSING ====================
 
     @PostMapping
     @PreAuthorize("hasRole('STAFF')")
-    @Operation(
-            summary = "[STAFF] Xử lý thanh toán cho driver",
-            description = "Staff xử lý thanh toán bằng tiền mặt hoặc thẻ cho các phiên sạc đã hoàn thành"
-    )
     public ApiResponse<String> processPayment(@RequestBody @Valid StaffPaymentRequest request) {
-        log.info("Staff processing payment for session: {}", request.getSessionId());
-        return staffDashboardService.processPaymentForDriver(request);
+        throw new com.swp.evchargingstation.exception.AppException(
+                com.swp.evchargingstation.exception.ErrorCode.PAYMENT_METHOD_NOT_ALLOWED);
     }
 
     @GetMapping("/cash")
@@ -111,16 +94,10 @@ public class PaymentController {
 
     @PatchMapping("/cash/{paymentId}/confirm")
     @PreAuthorize("hasRole('STAFF')")
-    @Operation(
-            summary = "[STAFF] Xác nhận đã nhận tiền mặt từ driver",
-            description = "Staff xác nhận driver đã thanh toán tiền mặt. Sau khi xác nhận, trạng thái thanh toán sẽ chuyển thành COMPLETED"
-    )
     public ApiResponse<CashPaymentRequestResponse> confirmCashPayment(
             @PathVariable String paymentId) {
-        log.info("Staff confirming cash payment: {}", paymentId);
-        return ApiResponse.<CashPaymentRequestResponse>builder()
-                .result(cashPaymentService.confirmCashPayment(paymentId))
-                .build();
+        throw new com.swp.evchargingstation.exception.AppException(
+                com.swp.evchargingstation.exception.ErrorCode.PAYMENT_METHOD_NOT_ALLOWED);
     }
 
     // ==================== STAFF - SESSIONS ====================
@@ -228,4 +205,3 @@ public class PaymentController {
                 .build();
     }
 }
-

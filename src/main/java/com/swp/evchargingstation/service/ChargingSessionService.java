@@ -5,10 +5,7 @@ import com.swp.evchargingstation.dto.response.ChargingSessionResponse;
 import com.swp.evchargingstation.dto.response.DriverDashboardResponse;
 import com.swp.evchargingstation.dto.response.MonthlyAnalyticsResponse;
 import com.swp.evchargingstation.entity.*;
-import com.swp.evchargingstation.enums.BookingStatus;
-import com.swp.evchargingstation.enums.ChargingPointStatus;
-import com.swp.evchargingstation.enums.ChargingSessionStatus;
-import com.swp.evchargingstation.enums.TransactionType;
+import com.swp.evchargingstation.enums.*;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
 import com.swp.evchargingstation.repository.*;
@@ -550,6 +547,13 @@ public class ChargingSessionService {
     }
 
     private void handleBookingPayment(ChargingSession session) {
+        // Idempotency: if a payment already exists and COMPLETED for this session, skip
+        Optional<Payment> existingPayment = paymentRepository.findByChargingSession(session);
+        if (existingPayment.isPresent() && existingPayment.get().getStatus() == PaymentStatus.COMPLETED) {
+            log.info("Payment already COMPLETED for session {}. Skipping wallet settlement.", session.getSessionId());
+            return;
+        }
+
         Optional<Booking> bookingOpt = bookingRepository.findByUserIdAndChargingPointIdAndBookingStatus(
                 session.getDriver().getUser().getUserId(),
                 session.getChargingPoint().getPointId(),
@@ -558,17 +562,52 @@ public class ChargingSessionService {
         if (bookingOpt.isPresent()) {
             Booking booking = bookingOpt.get();
             double totalCost = session.getCostTotal();
-            double deposit = booking.getDepositAmount();
+            double deposit = booking.getDepositAmount() != null ? booking.getDepositAmount() : 0.0;
 
-            if (totalCost > deposit) {
-                double amountToDebit = totalCost - deposit;
-                walletService.debit(Long.parseLong(session.getDriver().getUser().getUserId()), amountToDebit, TransactionType.CHARGING_PAYMENT, "Final payment for session " + session.getSessionId());
-            } else {
-                double amountToRefund = deposit - totalCost;
-                if (amountToRefund > 0) {
-                    walletService.credit(Long.parseLong(session.getDriver().getUser().getUserId()), amountToRefund, TransactionType.BOOKING_DEPOSIT_REFUND, "Refund for booking deposit, session " + session.getSessionId());
+            // Try to locate the payment created during stopSessionLogic
+            Optional<Payment> paymentOpt = existingPayment.isPresent() ? existingPayment : paymentRepository.findByChargingSession(session);
+
+            try {
+                if (totalCost > deposit) {
+                    double amountToDebit = totalCost - deposit;
+                    walletService.debit(
+                            session.getDriver().getUser().getUserId(),
+                            amountToDebit,
+                            TransactionType.CHARGING_PAYMENT,
+                            "Final payment for session " + session.getSessionId(),
+                            booking.getId(),
+                            session.getSessionId()
+                    );
+                } else {
+                    double amountToRefund = deposit - totalCost;
+                    if (amountToRefund > 0) {
+                        walletService.credit(
+                                session.getDriver().getUser().getUserId(),
+                                amountToRefund,
+                                TransactionType.BOOKING_DEPOSIT_REFUND,
+                                "Refund for booking deposit, session " + session.getSessionId(),
+                                null,
+                                null,
+                                booking.getId(),
+                                session.getSessionId()
+                        );
+                    }
                 }
+
+                // Mark payment as COMPLETED via wallet if it exists
+                paymentOpt.ifPresent(p -> {
+                    p.setStatus(PaymentStatus.COMPLETED);
+                    p.setPaymentMethod(Payment.PaymentMethod.WALLET);
+                    p.setPaidAt(LocalDateTime.now());
+                    paymentRepository.save(p);
+                });
+
+            } catch (Exception ex) {
+                // Any failure: leave payment UNPAID; staff or user can pay later
+                log.error("Auto wallet settlement failed for session {}: {}", session.getSessionId(), ex.getMessage(), ex);
             }
+
+            // Update booking status to COMPLETED regardless of settlement path
             booking.setBookingStatus(BookingStatus.COMPLETED);
             bookingRepository.save(booking);
         }

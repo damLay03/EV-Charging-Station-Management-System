@@ -63,6 +63,7 @@ public enum ErrorCode {
 
     // Payment related
     PAYMENT_ALREADY_COMPLETED(16002, "Payment Already Completed"),
+    PAYMENT_METHOD_NOT_ALLOWED(16003, "Only wallet payments are allowed for charging sessions"),
 
     // ZaloPay errors (17xxx)
     ZALOPAY_API_ERROR(17000, "ZaloPay API error"),

@@ -91,17 +91,41 @@ public class OAuthConfig extends SimpleUrlAuthenticationSuccessHandler {
 
             log.info("🎉 Google login successful: userId={}, role={}", user.getUserId(), user.getRole());
 
-            // Redirect về frontend với token
-            String targetUrl = "http://localhost:5173/auth/google/callback?token=" + token;
-            log.info("Redirecting to: {}", targetUrl);
+            // Xác định frontend URL dựa trên request origin
+            String origin = request.getHeader("Origin");
+            String referer = request.getHeader("Referer");
+
+            String frontendUrl;
+            if (origin != null && (origin.contains("web.khoahtd.id.vn") || origin.contains("evchargingstation.khoahtd.id.vn"))) {
+                frontendUrl = "https://web.khoahtd.id.vn";
+            } else if (referer != null && (referer.contains("web.khoahtd.id.vn") || referer.contains("evchargingstation.khoahtd.id.vn"))) {
+                frontendUrl = "https://web.khoahtd.id.vn";
+            } else {
+                // Fallback to localhost for development
+                frontendUrl = "http://localhost:5173";
+            }
+
+            String targetUrl = frontendUrl + "/auth/google/callback?token=" + token;
+            log.info("🔄 Redirecting to: {}", targetUrl);
 
             getRedirectStrategy().sendRedirect(request, response, targetUrl);
 
             log.info("=== OAuth2 Login Success Handler END ===");
 
         } catch (Exception e) {
-            log.error("Error in OAuth2LoginSuccessHandler: ", e);
-            response.sendRedirect("http://localhost:5173/login?error=oauth_failed");
+            log.error("❌ Error in OAuth2LoginSuccessHandler: ", e);
+
+            // Xác định frontend URL cho error redirect
+            String origin = request.getHeader("Origin");
+            String referer = request.getHeader("Referer");
+            String frontendUrl = "http://localhost:5173";
+
+            if ((origin != null && origin.contains("web.khoahtd.id.vn")) ||
+                (referer != null && referer.contains("web.khoahtd.id.vn"))) {
+                frontendUrl = "https://web.khoahtd.id.vn";
+            }
+
+            response.sendRedirect(frontendUrl + "/login?error=oauth_failed");
         }
     }
 }

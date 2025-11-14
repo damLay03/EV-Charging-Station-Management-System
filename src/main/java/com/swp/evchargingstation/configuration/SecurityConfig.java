@@ -92,6 +92,12 @@ public class SecurityConfig {
                 //frontend
                 "http://localhost:5173", "http://localhost:5174", "http://localhost:5175",
 
+                // Domain Cloudflare của Backend
+                "https://evchargingstation.khoahtd.id.vn",
+
+                // Domain Cloudflare của Frontend
+                "https://web.khoahtd.id.vn",
+
                 //ngrok
                 "https://overintense-hee-unaxiomatic.ngrok-free.dev",
                 "https://unendued-somnolent-rosemarie.ngrok-free.dev"

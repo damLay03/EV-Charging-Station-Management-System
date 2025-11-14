@@ -150,45 +150,8 @@ public class StaffDashboardService {
      */
     @Transactional
     public ApiResponse<String> processPaymentForDriver(StaffPaymentRequest request) {
-        String staffUserId = getCurrentStaffUserId();
-        Staff staff = staffRepository.findById(staffUserId)
-                .orElseThrow(() -> new AppException(ErrorCode.STAFF_NOT_FOUND));
-
-        ChargingSession session = chargingSessionRepository.findById(request.getSessionId())
-                .orElseThrow(() -> new AppException(ErrorCode.SESSION_NOT_FOUND));
-
-        // Kiểm tra session thuộc station của staff
-        if (!session.getChargingPoint().getStation().getStationId()
-                .equals(staff.getStation().getStationId())) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
-        }
-
-        // Kiểm tra đã thanh toán chưa
-        if (paymentRepository.existsByChargingSession_SessionId(session.getSessionId())) {
-            throw new AppException(ErrorCode.PAYMENT_ALREADY_EXISTS);
-        }
-
-        // Payment is now using CASH method (enum based)
-        Payment payment = Payment.builder()
-                .payer(session.getDriver())
-                .amount(request.getAmount())
-                .paymentMethod(Payment.PaymentMethod.CASH)
-                .paymentTime(LocalDateTime.now())
-                .status(PaymentStatus.COMPLETED)
-                .txnReference("STAFF_" + System.currentTimeMillis())
-                .chargingSession(session)
-                .paidAt(LocalDateTime.now())
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-
-        paymentRepository.save(payment);
-
-        return ApiResponse.<String>builder()
-                .code(200)
-                .message("Thanh toán thành công")
-                .result("Payment ID: " + payment.getPaymentId())
-                .build();
+        throw new com.swp.evchargingstation.exception.AppException(
+                com.swp.evchargingstation.exception.ErrorCode.PAYMENT_METHOD_NOT_ALLOWED);
     }
 
     /**

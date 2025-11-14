@@ -79,12 +79,12 @@ public class Payment {
     private String zpTransToken;  // ZaloPay transaction token
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "payment_method", nullable = false)
+    @Column(name = "payment_method", nullable = false, length = 20) // use VARCHAR to avoid enum mismatch truncation
     private PaymentMethod paymentMethod;
 
     public enum PaymentMethod {
         CASH,
         ZALOPAY,
-        WALLET  // Payment via wallet
+        WALLET  // Wallet balance payment for charging session
     }
 }

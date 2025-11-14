@@ -34,6 +34,19 @@ public class ChargingSimulatorService {
     WalletService walletService;
     EmailService emailService;
 
+    private void ensureWalletExists(String userId) {
+        try {
+            walletService.getWallet(userId);
+        } catch (Exception ex) {
+            try {
+                walletService.createWalletByUserId(userId);
+                log.info("Created wallet for user {} (auto)", userId);
+            } catch (Exception ignored) {
+                // If already exists or cannot create, ignore; debit will throw later and be handled
+            }
+        }
+    }
+
     // Phase 2: background simulation tick, runs every 1 second
     // Chạy mỗi 1 giây thực tế, giả lập 4 giây (tốc độ 4x)
     // Ví dụ: Sạc 180 phút thực tế chỉ mất 45 phút hệ thống
@@ -95,42 +108,48 @@ public class ChargingSimulatorService {
                 float timePerTickMinutes = 4.0f / 60.0f; // 4 giây = 0.0667 phút
                 float timePerTickHours = timePerTickMinutes / 60.0f; // Chuyển phút sang giờ
                 float energyPerTick = actualPowerKw * timePerTickHours; // kWh = kW × hours
-                float socAddedPerTick = (energyPerTick / capacityKwh) * 100.0f;
 
-                int currentSoc = session.getEndSocPercent();
-                float newSocFloat = currentSoc + socAddedPerTick;
-                int newSocRounded = Math.round(newSocFloat);
-
-                log.debug("Session {}: Power={} kW, Capacity={} kWh, Time={} min, Energy={} kWh, SOC+={} %, New SOC={} %",
-                    session.getSessionId(), actualPowerKw, capacityKwh, timePerTickMinutes,
-                    energyPerTick, socAddedPerTick, newSocRounded);
-
-                // Cập nhật thời gian giả lập: mỗi tick = 4 giây = 0.0667 phút
+                // Cập nhật thời gian & năng lượng tích lũy
                 session.setDurationMin(session.getDurationMin() + timePerTickMinutes);
                 session.setEnergyKwh(session.getEnergyKwh() + energyPerTick);
+
+                // Tính SOC dựa trên tổng năng lượng đã nạp kể từ đầu phiên (ổn định hơn, tránh lỗi làm tròn)
+                float energySinceStart = session.getEnergyKwh();
+                float socIncreaseFromEnergy = (energySinceStart / capacityKwh) * 100.0f;
+                float computedSoc = session.getStartSocPercent() + socIncreaseFromEnergy;
+                int newSocRounded = Math.min(100, Math.round(computedSoc));
+
+                log.debug("Session {} tick: +{} kWh (total {} kWh), +{} min (total {}), computed SOC={} (rounded {}%)",
+                        session.getSessionId(), energyPerTick, session.getEnergyKwh(),
+                        timePerTickMinutes, session.getDurationMin(), computedSoc, newSocRounded);
 
                 // Tính chi phí real-time dựa trên plan của driver
                 Driver driver = session.getDriver();
                 Plan driverPlan = driver != null ? driver.getPlan() : null;
-
                 if (driverPlan == null) {
-                    // Fallback to "Linh hoạt" plan
                     driverPlan = planRepository.findByNameIgnoreCase("Linh hoạt").orElse(null);
                 }
-
                 if (driverPlan != null) {
                     float currentCost = (session.getEnergyKwh() * driverPlan.getPricePerKwh())
-                                      + (session.getDurationMin() * driverPlan.getPricePerMinute());
+                            + (session.getDurationMin() * driverPlan.getPricePerMinute());
                     session.setCostTotal(currentCost);
                 }
 
                 if (newSocRounded >= targetSoc) {
                     // Đạt mục tiêu, dừng sạc
                     session.setEndSocPercent(targetSoc);
-                    vehicle.setCurrentSocPercent(targetSoc);
 
-                    // Save vehicle before stopping session to ensure SOC is updated
-                    vehicleRepository.saveAndFlush(vehicle);
+                    // Refresh vehicle từ database để đảm bảo nó được quản lý bởi EntityManager
+                    Vehicle managedVehicle = vehicleRepository.findById(vehicle.getVehicleId())
+                        .orElseThrow(() -> new RuntimeException("Vehicle not found"));
+
+                    managedVehicle.setCurrentSocPercent(targetSoc);
+
+                    // Save vehicle and session before stopping to ensure SOC is updated
+                    chargingSessionRepository.saveAndFlush(session);
+                    vehicleRepository.saveAndFlush(managedVehicle);
+
+                    log.info("🎯 Session {} reached target SOC {}%. Stopping session.", session.getSessionId(), targetSoc);
 
                     stopSessionLogic(session, ChargingSessionStatus.COMPLETED);
 
@@ -138,22 +157,19 @@ public class ChargingSimulatorService {
                     sendCompletionEmailAsync(session);
                 } else {
                     // Cập nhật SOC cho session và vehicle
-                    log.debug("Before update - Vehicle {}: currentSoc was {}%, updating to {}%",
-                        vehicle.getVehicleId(), vehicle.getCurrentSocPercent(), newSocRounded);
-
                     session.setEndSocPercent(newSocRounded);
-                    vehicle.setCurrentSocPercent(newSocRounded);
+
+                    Vehicle managedVehicle = vehicleRepository.findById(vehicle.getVehicleId())
+                            .orElseThrow(() -> new RuntimeException("Vehicle not found: "));
+                    managedVehicle.setCurrentSocPercent(newSocRounded);
 
                     // Flush both to database immediately for real-time updates
                     chargingSessionRepository.saveAndFlush(session);
-                    vehicleRepository.saveAndFlush(vehicle);
+                    vehicleRepository.saveAndFlush(managedVehicle);
 
                     log.info("✅ Session {} updated: SOC {}%, Energy {} kWh, Duration {} min, Cost {} VND",
-                        session.getSessionId(), newSocRounded, session.getEnergyKwh(),
-                        session.getDurationMin(), session.getCostTotal());
-
-                    log.debug("After save - Vehicle {}: currentSoc is now {}%",
-                        vehicle.getVehicleId(), vehicle.getCurrentSocPercent());
+                            session.getSessionId(), newSocRounded, session.getEnergyKwh(),
+                            session.getDurationMin(), session.getCostTotal());
                 }
             } catch (Exception ex) {
                 log.error("Error simulating session {}: {}", session.getSessionId(), ex.getMessage(), ex);
@@ -251,7 +267,7 @@ public class ChargingSimulatorService {
                         .amount(cost)
                         .status(PaymentStatus.UNPAID)
                         .chargingSession(session)
-                        .paymentMethod(Payment.PaymentMethod.CASH) // Set default payment method
+                        .paymentMethod(Payment.PaymentMethod.WALLET) // default session payment = WALLET
                         .createdAt(LocalDateTime.now())
                         .build();
 
@@ -273,29 +289,45 @@ public class ChargingSimulatorService {
                             booking.getId(), session.getSessionId());
 
                     try {
-                        // Auto-deduct charging cost from wallet
-                        walletService.debit(
-                                userId,
-                                (double) cost,
-                                TransactionType.CHARGING_PAYMENT,
-                                String.format("Auto-payment for charging session %s", session.getSessionId()),
-                                null,
-                                session.getSessionId()
-                        );
+                        // Ensure wallet exists to avoid WALLET_NOT_FOUND
+                        ensureWalletExists(userId);
+                        // Net settlement between cost and deposit
+                        double deposit = booking.getDepositAmount() != null ? booking.getDepositAmount() : 0.0;
+                        double totalCost = cost;
 
-                        // Refund booking deposit
-                        walletService.credit(
-                                userId,
-                                booking.getDepositAmount(),
-                                TransactionType.BOOKING_DEPOSIT_REFUND,
-                                String.format("Deposit refund for booking #%d", booking.getId()),
-                                null,
-                                null,
-                                booking.getId(),
-                                session.getSessionId()
-                        );
+                        if (totalCost > deposit) {
+                            double amountToDebit = totalCost - deposit;
+                            // Debit only the remaining amount after applying deposit
+                            walletService.debit(
+                                    userId,
+                                    amountToDebit,
+                                    TransactionType.CHARGING_PAYMENT,
+                                    String.format("Auto-net debit for charging session %s (cost %.0f - deposit %.0f)",
+                                            session.getSessionId(), totalCost, deposit),
+                                    booking.getId(),
+                                    session.getSessionId()
+                            );
+                            // No deposit refund because it was used to offset the cost
+                            log.info("Auto-payment net debit {} VND for session {} (deposit applied).", amountToDebit, session.getSessionId());
+                        } else {
+                            double refund = deposit - totalCost;
+                            if (refund > 0) {
+                                walletService.credit(
+                                        userId,
+                                        refund,
+                                        TransactionType.BOOKING_DEPOSIT_REFUND,
+                                        String.format("Deposit refund %.0f for booking #%d (session %s)",
+                                                refund, booking.getId(), session.getSessionId()),
+                                        null,
+                                        null,
+                                        booking.getId(),
+                                        session.getSessionId()
+                                );
+                                log.info("Auto-refunded {} VND deposit for booking #{} (session {}).", refund, booking.getId(), session.getSessionId());
+                            }
+                        }
 
-                        // Update payment status to COMPLETED
+                        // Update payment status to COMPLETED via wallet
                         payment.setStatus(PaymentStatus.COMPLETED);
                         payment.setPaymentMethod(Payment.PaymentMethod.WALLET);
                         payment.setPaidAt(LocalDateTime.now());
@@ -305,13 +337,37 @@ public class ChargingSimulatorService {
                         booking.setBookingStatus(BookingStatus.COMPLETED);
                         bookingRepository.save(booking);
 
-                        log.info("Successfully auto-processed payment for session {}. Charged: {} VND, Refunded deposit: {} VND",
-                                session.getSessionId(), cost, booking.getDepositAmount());
+                        log.info("Successfully auto-processed payment for session {}. Total cost: {} VND, Deposit: {} VND",
+                                session.getSessionId(), totalCost, deposit);
 
                     } catch (Exception e) {
                         log.error("Failed to auto-process wallet payment for session {}: {}. Payment remains UNPAID.",
                                 session.getSessionId(), e.getMessage(), e);
                         // Payment remains UNPAID, user needs to manually pay
+                    }
+                } else {
+                    // No booking associated: attempt to auto-debit full cost from driver's wallet
+                    String userId = session.getDriver().getUserId();
+                    try {
+                        ensureWalletExists(userId);
+                        walletService.debit(
+                                userId,
+                                (double) cost,
+                                TransactionType.CHARGING_PAYMENT,
+                                String.format("Auto wallet payment for session %s", session.getSessionId()),
+                                null,
+                                session.getSessionId()
+                        );
+
+                        payment.setStatus(PaymentStatus.COMPLETED);
+                        payment.setPaymentMethod(Payment.PaymentMethod.WALLET);
+                        payment.setPaidAt(LocalDateTime.now());
+                        paymentRepository.save(payment);
+
+                        log.info("Auto-paid {} VND from wallet for session {} (no booking).", cost, session.getSessionId());
+                    } catch (Exception e) {
+                        log.warn("Auto wallet payment failed for session {} (no booking): {}. Payment remains UNPAID.",
+                                session.getSessionId(), e.getMessage());
                     }
                 }
                 // Note: Email will be sent by caller after transaction commits
@@ -347,4 +403,3 @@ public class ChargingSimulatorService {
         }
     }
 }
-
