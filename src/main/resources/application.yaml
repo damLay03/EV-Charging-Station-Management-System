@@ -1,4 +1,5 @@
 server:
+  forward-headers-strategy: framework
   port: 8080
   servlet:
     context-path: /evchargingstation
@@ -41,12 +42,14 @@ spring:
           google:
 #            client-id: ${GOOGLE_CLIENT_ID:102327400957-mlr70knom5iamckfoe80000t402t8mc5.apps.googleusercontent.com}
 #            client-secret: ${GOOGLE_CLIENT_SECRET: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}
-            client-id: ${GOOGLE_CLIENT_ID:723852771001-d531s6n8g6efoamb7npfrt9i2nih4nt8.apps.googleusercontent.com}
-            client-secret: ${GOOGLE_CLIENT_SECRET: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}
+#            client-id: ${GOOGLE_CLIENT_ID:723852771001-d531s6n8g6efoamb7npfrt9i2nih4nt8.apps.googleusercontent.com}
+            client-id: ${GOOGLE_CLIENT_ID:102327400957-hik2prd0hkl8r94tfr2kfvbl1o12k33n.apps.googleusercontent.com}
+#            client-secret: ${GOOGLE_CLIENT_SECRET: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}
+            client-secret: ${GOOGLE_CLIENT_SECRET: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}
 #            client-id: ${GOOGLE_CLIENT_ID}
 #            client-secret: ${GOOGLE_CLIENT_SECRET}
             scope: email,profile
-            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            redirect-uri: "https://evchargingstation.khoahtd.id.vn/evchargingstation/login/oauth2/code/{registrationId}"
         provider:
           google:
             authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
@@ -80,7 +83,7 @@ zalopay:
   key1: "sdngKKJmqEMzvh5QQcdD2A9XBSKUNaYn"  # Sandbox Key1
   key2: "trMrHtvjo6myautxDUiAcYsVtaeQ8nhf"  # Sandbox Key2
   endpoint: "https://sb-openapi.zalopay.vn/v2/create"  # Sandbox
-  callback-url: "https://unendued-somnolent-rosemarie.ngrok-free.dev/evchargingstation/api/webhooks/zalopay/callback"
+  callback-url: "https://evchargingstation.khoahtd.id.vn/evchargingstation/api/webhooks/zalopay/callback"
   redirect-url: "${app.base-url}/payment-result"
 
 #logging:

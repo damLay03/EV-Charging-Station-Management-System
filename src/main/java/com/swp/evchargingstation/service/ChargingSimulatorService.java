@@ -34,8 +34,9 @@ public class ChargingSimulatorService {
     WalletService walletService;
     EmailService emailService;
 
-    // Phase 2: background simulation tick, runs every 1 seconds
-    // Chạy mỗi 1 giây
+    // Phase 2: background simulation tick, runs every 1 second
+    // Chạy mỗi 1 giây thực tế, giả lập 4 giây (tốc độ 4x)
+    // Ví dụ: Sạc 180 phút thực tế chỉ mất 45 phút hệ thống
     @Scheduled(fixedRate = 1000)
     @Transactional
     public void simulateChargingTick() {
@@ -47,11 +48,35 @@ public class ChargingSimulatorService {
 
         for (ChargingSession session : activeSessions) {
             try {
+                // Get vehicle from repository to ensure it's managed by EntityManager
                 Vehicle vehicle = session.getVehicle();
-                ChargingPoint point = session.getChargingPoint();
-                if (vehicle == null || point == null) continue;
+                if (vehicle == null) {
+                    log.warn("Session {} has no vehicle. Skipping.", session.getSessionId());
+                    continue;
+                }
 
-                float powerKw = point.getChargingPower().getPowerKw();
+                // Refresh vehicle from database to ensure it's in managed state
+                vehicle = vehicleRepository.findById(vehicle.getVehicleId())
+                    .orElse(vehicle);
+
+                ChargingPoint point = session.getChargingPoint();
+                if (point == null) {
+                    log.warn("Session {} has no charging point. Skipping.", session.getSessionId());
+                    continue;
+                }
+
+                // Lấy công suất trụ sạc
+                float chargingPointPowerKw = point.getChargingPower().getPowerKw();
+
+                // Lấy công suất tối đa xe có thể nhận
+                float vehicleMaxPowerKw = vehicle.getMaxChargingPowerKw();
+
+                // Công suất thực tế = MIN(công suất trụ, công suất tối đa xe)
+                float actualPowerKw = Math.min(chargingPointPowerKw, vehicleMaxPowerKw);
+
+                log.debug("Session {}: Charging point power = {} kW, Vehicle max power = {} kW, Actual power = {} kW",
+                    session.getSessionId(), chargingPointPowerKw, vehicleMaxPowerKw, actualPowerKw);
+
                 float capacityKwh = vehicle.getBatteryCapacityKwh();
                 int targetSoc = session.getTargetSocPercent() != null ? session.getTargetSocPercent() : 100;
 
@@ -65,33 +90,70 @@ public class ChargingSimulatorService {
                     session.setEndSocPercent(session.getStartSocPercent());
                 }
 
-                // Giả lập 1 giây một tick (vì fixedRate = 1000ms)
-                // Tăng tốc độ sạc lên để test dễ hơn: mỗi tick = 1 phút thay vì 1 giây
-                float timePerTickMinutes = 1.0f; // Mỗi tick = 1 phút
-                float energyPerTick = powerKw * (timePerTickMinutes / 60.0f); // Năng lượng trong 1 phút
+                // Giả lập: 1 giây thực = 4 giây giả lập (tốc độ 4x)
+                // Mỗi tick (1 giây thực) = 4 giây giả lập = 4/60 phút = 0.0667 phút
+                float timePerTickMinutes = 4.0f / 60.0f; // 4 giây = 0.0667 phút
+                float timePerTickHours = timePerTickMinutes / 60.0f; // Chuyển phút sang giờ
+                float energyPerTick = actualPowerKw * timePerTickHours; // kWh = kW × hours
                 float socAddedPerTick = (energyPerTick / capacityKwh) * 100.0f;
 
                 int currentSoc = session.getEndSocPercent();
                 float newSocFloat = currentSoc + socAddedPerTick;
                 int newSocRounded = Math.round(newSocFloat);
 
-                // Cập nhật thời gian: mỗi tick = 1 phút
+                log.debug("Session {}: Power={} kW, Capacity={} kWh, Time={} min, Energy={} kWh, SOC+={} %, New SOC={} %",
+                    session.getSessionId(), actualPowerKw, capacityKwh, timePerTickMinutes,
+                    energyPerTick, socAddedPerTick, newSocRounded);
+
+                // Cập nhật thời gian giả lập: mỗi tick = 4 giây = 0.0667 phút
                 session.setDurationMin(session.getDurationMin() + timePerTickMinutes);
                 session.setEnergyKwh(session.getEnergyKwh() + energyPerTick);
+
+                // Tính chi phí real-time dựa trên plan của driver
+                Driver driver = session.getDriver();
+                Plan driverPlan = driver != null ? driver.getPlan() : null;
+
+                if (driverPlan == null) {
+                    // Fallback to "Linh hoạt" plan
+                    driverPlan = planRepository.findByNameIgnoreCase("Linh hoạt").orElse(null);
+                }
+
+                if (driverPlan != null) {
+                    float currentCost = (session.getEnergyKwh() * driverPlan.getPricePerKwh())
+                                      + (session.getDurationMin() * driverPlan.getPricePerMinute());
+                    session.setCostTotal(currentCost);
+                }
 
                 if (newSocRounded >= targetSoc) {
                     // Đạt mục tiêu, dừng sạc
                     session.setEndSocPercent(targetSoc);
                     vehicle.setCurrentSocPercent(targetSoc);
+
+                    // Save vehicle before stopping session to ensure SOC is updated
+                    vehicleRepository.saveAndFlush(vehicle);
+
                     stopSessionLogic(session, ChargingSessionStatus.COMPLETED);
 
                     // Send email after session stopped (outside transaction)
                     sendCompletionEmailAsync(session);
                 } else {
+                    // Cập nhật SOC cho session và vehicle
+                    log.debug("Before update - Vehicle {}: currentSoc was {}%, updating to {}%",
+                        vehicle.getVehicleId(), vehicle.getCurrentSocPercent(), newSocRounded);
+
                     session.setEndSocPercent(newSocRounded);
                     vehicle.setCurrentSocPercent(newSocRounded);
-                    chargingSessionRepository.save(session);
-                    vehicleRepository.save(vehicle);
+
+                    // Flush both to database immediately for real-time updates
+                    chargingSessionRepository.saveAndFlush(session);
+                    vehicleRepository.saveAndFlush(vehicle);
+
+                    log.info("✅ Session {} updated: SOC {}%, Energy {} kWh, Duration {} min, Cost {} VND",
+                        session.getSessionId(), newSocRounded, session.getEnergyKwh(),
+                        session.getDurationMin(), session.getCostTotal());
+
+                    log.debug("After save - Vehicle {}: currentSoc is now {}%",
+                        vehicle.getVehicleId(), vehicle.getCurrentSocPercent());
                 }
             } catch (Exception ex) {
                 log.error("Error simulating session {}: {}", session.getSessionId(), ex.getMessage(), ex);
@@ -122,9 +184,23 @@ public class ChargingSimulatorService {
         // Update vehicle's final SOC
         Vehicle vehicle = session.getVehicle();
         if (vehicle != null && session.getEndSocPercent() > 0) {
-            vehicle.setCurrentSocPercent(session.getEndSocPercent());
-            vehicleRepository.save(vehicle);
-            log.info("Updated vehicle {} SOC to {}%", vehicle.getVehicleId(), session.getEndSocPercent());
+            // Refresh vehicle from database to ensure it's managed
+            Vehicle managedVehicle = vehicleRepository.findById(vehicle.getVehicleId())
+                .orElse(vehicle);
+
+            log.info("Updating vehicle {} SOC from {}% to {}%",
+                managedVehicle.getVehicleId(),
+                managedVehicle.getCurrentSocPercent(),
+                session.getEndSocPercent());
+
+            managedVehicle.setCurrentSocPercent(session.getEndSocPercent());
+            vehicleRepository.saveAndFlush(managedVehicle);
+
+            log.info("✅ Vehicle {} SOC updated to {}%",
+                managedVehicle.getVehicleId(),
+                managedVehicle.getCurrentSocPercent());
+        } else if (vehicle != null) {
+            log.warn("Vehicle {} has invalid endSocPercent: {}", vehicle.getVehicleId(), session.getEndSocPercent());
         }
 
         // Calculate cost - use driver's plan or fallback to "Linh hoạt"
