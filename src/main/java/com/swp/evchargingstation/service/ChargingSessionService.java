@@ -393,7 +393,9 @@ public class ChargingSessionService {
                 bookingRepository.save(booking);
             } else {
                 // Not within check-in window, treat as normal session start, but the point might be reserved
-                 if (chargingPoint.getStatus() == ChargingPointStatus.RESERVED) {
+                // Sử dụng displayStatus thay vì status vật lý
+                ChargingPointStatus displayStatus = chargingPointStatusService.calculateDisplayStatus(chargingPoint.getPointId());
+                if (displayStatus == ChargingPointStatus.RESERVED) {
                     throw new AppException(ErrorCode.CHARGING_POINT_RESERVED);
                 }
             }
