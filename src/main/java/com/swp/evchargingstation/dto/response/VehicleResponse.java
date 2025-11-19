@@ -45,4 +45,8 @@ public class VehicleResponse {
     public float getMaxChargingPowerKw() {
         return model != null ? model.getMaxChargingPowerKw() : 0f;
     }
+
+    public String getImageUrl() {
+        return model != null ? model.getImageUrl() : null;
+    }
 }

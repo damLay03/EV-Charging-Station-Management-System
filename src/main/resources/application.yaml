@@ -6,10 +6,19 @@ server:
 
 spring:
   datasource:
+    # MySQL Configuration
     url: jdbc:mysql://localhost:3306/railway
     username: root
     password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
+    # SQL Server Configuration
+#    url: jdbc:sqlserver://localhost:1433;databaseName=TGreen;encrypt=true;trustServerCertificate=true
+#    username: sa
+#    password: 12345
+#    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+    # MySQL Remote Configurations (Backup)
 #    url: jdbc:mysql://shinkansen.proxy.rlwy.net:33758/railway
 #    username: root
 #    password: vHfJPAeFUGvFYTaqGrsDTgwqAdgdzTri
@@ -27,6 +36,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+#        dialect: org.hibernate.dialect.SQLServerDialect
         format_sql: true
 
   springdoc:
