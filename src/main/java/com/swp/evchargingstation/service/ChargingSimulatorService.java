@@ -33,6 +33,7 @@ public class ChargingSimulatorService {
     BookingRepository bookingRepository;
     WalletService walletService;
     EmailService emailService;
+    PaymentSettlementService paymentSettlementService;
 
     private void ensureWalletExists(String userId) {
         try {
@@ -61,6 +62,16 @@ public class ChargingSimulatorService {
 
         for (ChargingSession session : activeSessions) {
             try {
+                // Reload latest state to avoid overwriting manual/staff stop updates
+                session = chargingSessionRepository.findById(session.getSessionId()).orElse(null);
+                if (session == null) {
+                    continue;
+                }
+                if (session.getStatus() != ChargingSessionStatus.IN_PROGRESS) {
+                    log.debug("Skip session {}: status is {} (no longer IN_PROGRESS)", session.getSessionId(), session.getStatus());
+                    continue;
+                }
+
                 // Get vehicle from repository to ensure it's managed by EntityManager
                 Vehicle vehicle = session.getVehicle();
                 if (vehicle == null) {
@@ -258,120 +269,11 @@ public class ChargingSimulatorService {
 
         // Automatically create Payment record with UNPAID status when session is COMPLETED
         if (finalStatus == ChargingSessionStatus.COMPLETED) {
-            // Check if payment already exists (avoid duplicate)
-            boolean paymentExists = paymentRepository.findByChargingSession(session).isPresent();
-
-            if (!paymentExists) {
-                Payment payment = Payment.builder()
-                        .payer(session.getDriver())
-                        .amount(cost)
-                        .status(PaymentStatus.UNPAID)
-                        .chargingSession(session)
-                        .paymentMethod(Payment.PaymentMethod.WALLET) // default session payment = WALLET
-                        .createdAt(LocalDateTime.now())
-                        .build();
-
-                paymentRepository.save(payment);
-                log.info("Created UNPAID payment for completed session {} with amount {}", session.getSessionId(), cost);
-
-                // Check if this session is related to a booking (IN_PROGRESS status)
-                Optional<Booking> relatedBooking = bookingRepository.findByUserIdAndChargingPointIdAndBookingStatus(
-                        session.getDriver().getUserId(),
-                        session.getChargingPoint().getPointId(),
-                        BookingStatus.IN_PROGRESS
-                );
-
-                if (relatedBooking.isPresent()) {
-                    Booking booking = relatedBooking.get();
-                    String userId = session.getDriver().getUserId();
-
-                    log.info("Found related booking #{} for session {}. Processing automatic wallet payment.",
-                            booking.getId(), session.getSessionId());
-
-                    try {
-                        // Ensure wallet exists to avoid WALLET_NOT_FOUND
-                        ensureWalletExists(userId);
-                        // Net settlement between cost and deposit
-                        double deposit = booking.getDepositAmount() != null ? booking.getDepositAmount() : 0.0;
-                        double totalCost = cost;
-
-                        if (totalCost > deposit) {
-                            double amountToDebit = totalCost - deposit;
-                            // Debit only the remaining amount after applying deposit
-                            walletService.debit(
-                                    userId,
-                                    amountToDebit,
-                                    TransactionType.CHARGING_PAYMENT,
-                                    String.format("Auto-net debit for charging session %s (cost %.0f - deposit %.0f)",
-                                            session.getSessionId(), totalCost, deposit),
-                                    booking.getId(),
-                                    session.getSessionId()
-                            );
-                            // No deposit refund because it was used to offset the cost
-                            log.info("Auto-payment net debit {} VND for session {} (deposit applied).", amountToDebit, session.getSessionId());
-                        } else {
-                            double refund = deposit - totalCost;
-                            if (refund > 0) {
-                                walletService.credit(
-                                        userId,
-                                        refund,
-                                        TransactionType.BOOKING_DEPOSIT_REFUND,
-                                        String.format("Deposit refund %.0f for booking #%d (session %s)",
-                                                refund, booking.getId(), session.getSessionId()),
-                                        null,
-                                        null,
-                                        booking.getId(),
-                                        session.getSessionId()
-                                );
-                                log.info("Auto-refunded {} VND deposit for booking #{} (session {}).", refund, booking.getId(), session.getSessionId());
-                            }
-                        }
-
-                        // Update payment status to COMPLETED via wallet
-                        payment.setStatus(PaymentStatus.COMPLETED);
-                        payment.setPaymentMethod(Payment.PaymentMethod.WALLET);
-                        payment.setPaidAt(LocalDateTime.now());
-                        paymentRepository.save(payment);
-
-                        // Update booking status to COMPLETED
-                        booking.setBookingStatus(BookingStatus.COMPLETED);
-                        bookingRepository.save(booking);
-
-                        log.info("Successfully auto-processed payment for session {}. Total cost: {} VND, Deposit: {} VND",
-                                session.getSessionId(), totalCost, deposit);
-
-                    } catch (Exception e) {
-                        log.error("Failed to auto-process wallet payment for session {}: {}. Payment remains UNPAID.",
-                                session.getSessionId(), e.getMessage(), e);
-                        // Payment remains UNPAID, user needs to manually pay
-                    }
-                } else {
-                    // No booking associated: attempt to auto-debit full cost from driver's wallet
-                    String userId = session.getDriver().getUserId();
-                    try {
-                        ensureWalletExists(userId);
-                        walletService.debit(
-                                userId,
-                                (double) cost,
-                                TransactionType.CHARGING_PAYMENT,
-                                String.format("Auto wallet payment for session %s", session.getSessionId()),
-                                null,
-                                session.getSessionId()
-                        );
-
-                        payment.setStatus(PaymentStatus.COMPLETED);
-                        payment.setPaymentMethod(Payment.PaymentMethod.WALLET);
-                        payment.setPaidAt(LocalDateTime.now());
-                        paymentRepository.save(payment);
-
-                        log.info("Auto-paid {} VND from wallet for session {} (no booking).", cost, session.getSessionId());
-                    } catch (Exception e) {
-                        log.warn("Auto wallet payment failed for session {} (no booking): {}. Payment remains UNPAID.",
-                                session.getSessionId(), e.getMessage());
-                    }
-                }
-                // Note: Email will be sent by caller after transaction commits
-                // to avoid transaction issues with async operations
+            try {
+                // Run settlement in a separate transaction; if it fails, don't rollback stop flow
+                paymentSettlementService.settlePaymentForCompletedSession(session, cost);
+            } catch (Exception ex) {
+                log.error("Settlement failed for session {}: {}. Leaving payment UNPAID.", session.getSessionId(), ex.getMessage(), ex);
             }
         }
 
