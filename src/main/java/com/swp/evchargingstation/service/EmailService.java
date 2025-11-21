@@ -501,5 +501,136 @@ public class EmailService {
 
         return buildBaseEmailTemplate(userName, bodyContent);
     }
+
+    // ==================== VEHICLE APPROVAL EMAIL ====================
+
+    @Async
+    public void sendVehicleApprovedEmail(User user, com.swp.evchargingstation.entity.Vehicle vehicle) {
+        try {
+            if (user == null || user.getEmail() == null) {
+                log.warn("Cannot send email: User or email is null for vehicle {}", vehicle.getVehicleId());
+                return;
+            }
+
+            String subject = "✅ Xe của bạn đã được phê duyệt";
+            String htmlContent = buildVehicleApprovedEmailTemplate(user, vehicle);
+
+            sendHtmlEmail(user.getEmail(), subject, htmlContent);
+            log.info("Sent vehicle approved email to {} for vehicle {}", user.getEmail(), vehicle.getLicensePlate());
+        } catch (Exception e) {
+            log.error("Failed to send vehicle approved email for vehicle {}: {}", vehicle.getVehicleId(), e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendVehicleRejectedEmail(User user, com.swp.evchargingstation.entity.Vehicle vehicle, String rejectionReason) {
+        try {
+            if (user == null || user.getEmail() == null) {
+                log.warn("Cannot send email: User or email is null for vehicle {}", vehicle.getVehicleId());
+                return;
+            }
+
+            String subject = "❌ Yêu cầu đăng ký xe bị từ chối";
+            String htmlContent = buildVehicleRejectedEmailTemplate(user, vehicle, rejectionReason);
+
+            sendHtmlEmail(user.getEmail(), subject, htmlContent);
+            log.info("Sent vehicle rejected email to {} for vehicle {}", user.getEmail(), vehicle.getLicensePlate());
+        } catch (Exception e) {
+            log.error("Failed to send vehicle rejected email for vehicle {}: {}", vehicle.getVehicleId(), e.getMessage(), e);
+        }
+    }
+
+    private String buildVehicleApprovedEmailTemplate(User user, com.swp.evchargingstation.entity.Vehicle vehicle) {
+        String userName = (user.getFirstName() != null ? user.getFirstName() : "Bạn");
+
+        String bodyContent = String.format("""
+            <h2 style="color: #10b981; margin-bottom: 20px;">🎉 Xe của bạn đã được phê duyệt!</h2>
+            
+            <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #10b981; margin-bottom: 20px;">
+                <p style="margin: 0 0 10px 0;"><strong>Thông tin xe:</strong></p>
+                <table style="width: 100%%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 8px 0; color: #666;">Biển số xe:</td>
+                        <td style="padding: 8px 0; font-weight: bold;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: #666;">Mẫu xe:</td>
+                        <td style="padding: 8px 0; font-weight: bold;">%s %s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: #666;">Thời gian phê duyệt:</td>
+                        <td style="padding: 8px 0; font-weight: bold;">%s</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div style="background-color: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <p style="margin: 0 0 10px 0; font-size: 14px;">✨ <strong>Bây giờ bạn có thể:</strong></p>
+                <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #666;">
+                    <li style="margin-bottom: 5px;">Sử dụng xe này để đặt chỗ và sạc tại các trạm sạc</li>
+                    <li style="margin-bottom: 5px;">Xem thông tin xe trong danh sách xe của bạn</li>
+                    <li>Bắt đầu các phiên sạc ngay lập tức</li>
+                </ul>
+            </div>
+            
+            <p style="color: #666; font-size: 14px; margin-top: 20px;">
+                Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi! 🚗⚡
+            </p>
+            """,
+            vehicle.getLicensePlate(),
+            vehicle.getBrand().toString(),
+            vehicle.getModel().name(),
+            vehicle.getApprovedAt() != null ? vehicle.getApprovedAt().format(timeFormatter) : "N/A"
+        );
+
+        return buildBaseEmailTemplate(userName, bodyContent);
+    }
+
+    private String buildVehicleRejectedEmailTemplate(User user, com.swp.evchargingstation.entity.Vehicle vehicle, String rejectionReason) {
+        String userName = (user.getFirstName() != null ? user.getFirstName() : "Bạn");
+
+        String bodyContent = String.format("""
+            <h2 style="color: #ef4444; margin-bottom: 20px;">❌ Yêu cầu đăng ký xe bị từ chối</h2>
+            
+            <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444; margin-bottom: 20px;">
+                <p style="margin: 0 0 10px 0;"><strong>Thông tin xe:</strong></p>
+                <table style="width: 100%%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 8px 0; color: #666;">Biển số xe:</td>
+                        <td style="padding: 8px 0; font-weight: bold;">%s</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: #666;">Mẫu xe:</td>
+                        <td style="padding: 8px 0; font-weight: bold;">%s %s</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div style="background-color: #fff7ed; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+                <p style="margin: 0 0 10px 0; font-weight: bold; color: #f59e0b;">📝 Lý do từ chối:</p>
+                <p style="margin: 0; color: #666; font-size: 14px; line-height: 1.6;">%s</p>
+            </div>
+            
+            <div style="background-color: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <p style="margin: 0 0 10px 0; font-size: 14px;">💡 <strong>Bước tiếp theo:</strong></p>
+                <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #666;">
+                    <li style="margin-bottom: 5px;">Vui lòng kiểm tra và sửa lại giấy tờ xe theo yêu cầu</li>
+                    <li style="margin-bottom: 5px;">Chụp lại ảnh giấy tờ xe rõ ràng, đầy đủ thông tin</li>
+                    <li>Nộp lại đơn đăng ký xe mới trên hệ thống</li>
+                </ul>
+            </div>
+            
+            <p style="color: #666; font-size: 14px; margin-top: 20px;">
+                Nếu có thắc mắc, vui lòng liên hệ với chúng tôi để được hỗ trợ. Cảm ọn bạn!
+            </p>
+            """,
+            vehicle.getLicensePlate(),
+            vehicle.getBrand().toString(),
+            vehicle.getModel().name(),
+            rejectionReason != null ? rejectionReason : "Không có lý do cụ thể"
+        );
+
+        return buildBaseEmailTemplate(userName, bodyContent);
+    }
 }
 

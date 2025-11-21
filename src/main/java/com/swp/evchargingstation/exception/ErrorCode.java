@@ -26,7 +26,7 @@ public enum ErrorCode {
     STAFF_NOT_FOUND(4001, "Staff Not Found"),
     STAFF_ALREADY_ASSIGNED(4002, "Staff Already Assigned"),
     STAFF_NOT_IN_STATION(4003, "Staff Not In This Station"),
-    // --- Vehicle related ---
+    // Vehicle related ---
     VEHICLE_NOT_FOUND(5001, "Vehicle Not Found"),
     LICENSE_PLATE_EXISTED(5002, "License Plate Already Exists"),
     VEHICLE_NOT_BELONG_TO_DRIVER(5003, "Vehicle Does Not Belong To This Driver"),
@@ -98,7 +98,18 @@ public enum ErrorCode {
 
     // Plan subscription related (21xxx)
     CANNOT_DOWNGRADE_TO_FLEXIBLE(21001, "Cannot Downgrade To Lower Plan While Active Subscription Exists"),
-    PLAN_STILL_ACTIVE(21002, "Current Plan Is Still Active");
+    PLAN_STILL_ACTIVE(21002, "Current Plan Is Still Active"),
+
+    // Vehicle Approval related (22xxx)
+    VEHICLE_ALREADY_PROCESSED(22001, "Vehicle Registration Already Processed"),
+    VEHICLE_NOT_APPROVED(22002, "Vehicle Not Approved For Charging"),
+    ADMIN_NOT_FOUND(22003, "Admin Not Found"),
+
+    // File Upload related (23xxx)
+    INVALID_FILE(23001, "Invalid File"),
+    INVALID_FILE_TYPE(23002, "Invalid File Type. Only Images Are Allowed"),
+    FILE_TOO_LARGE(23003, "File Size Exceeds 5MB Limit"),
+    UPLOAD_FAILED(23004, "Failed To Upload File");
 
     private int code;
     private String message;

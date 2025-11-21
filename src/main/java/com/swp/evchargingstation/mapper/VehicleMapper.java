@@ -8,5 +8,10 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface VehicleMapper {
     @Mapping(target = "ownerId", source = "owner.userId")
+    @Mapping(target = "ownerName", source = "owner.user.fullName")
+    @Mapping(target = "ownerEmail", source = "owner.user.email")
+    @Mapping(target = "ownerPhone", source = "owner.user.phone")
+    @Mapping(target = "approvedByAdminId", source = "approvedBy.userId")
+    @Mapping(target = "approvedByAdminName", source = "approvedBy.user.fullName")
     VehicleResponse toVehicleResponse(Vehicle vehicle);
 }

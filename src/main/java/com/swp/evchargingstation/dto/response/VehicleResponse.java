@@ -2,8 +2,11 @@ package com.swp.evchargingstation.dto.response;
 
 import com.swp.evchargingstation.enums.VehicleBrand;
 import com.swp.evchargingstation.enums.VehicleModel;
+import com.swp.evchargingstation.enums.VehicleRegistrationStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -16,6 +19,25 @@ public class VehicleResponse {
     VehicleModel model;
     String ownerId;
     Integer currentSocPercent;
+
+    // Driver/Owner information
+    String ownerName;        // Tên đầy đủ của driver
+    String ownerEmail;       // Email của driver
+    String ownerPhone;       // Số điện thoại của driver
+
+    // Approval fields - 6 ảnh
+    String documentFrontImageUrl; // Ảnh mặt trước cà vẹt
+    String documentBackImageUrl;  // Ảnh mặt sau cà vẹt
+    String frontImageUrl;         // Ảnh đầu xe
+    String sideLeftImageUrl;      // Ảnh thân xe - bên trái
+    String sideRightImageUrl;     // Ảnh thân xe - bên phải
+    String rearImageUrl;          // Ảnh đuôi xe
+    VehicleRegistrationStatus approvalStatus;
+    String rejectionReason;
+    LocalDateTime submittedAt;
+    LocalDateTime approvedAt;
+    String approvedByAdminId;
+    String approvedByAdminName;
 
     // Computed fields from model enum
     public VehicleBrand getBrand() {
