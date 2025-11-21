@@ -1,11 +1,14 @@
 package com.swp.evchargingstation.configuration;
 
 import com.swp.evchargingstation.entity.Driver;
+import com.swp.evchargingstation.entity.Plan;
 import com.swp.evchargingstation.entity.User;
 import com.swp.evchargingstation.enums.Role;
 import com.swp.evchargingstation.repository.DriverRepository;
+import com.swp.evchargingstation.repository.PlanRepository;
 import com.swp.evchargingstation.repository.UserRepository;
 import com.swp.evchargingstation.service.AuthenticationService;
+import com.swp.evchargingstation.service.WalletService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,8 @@ public class OAuthConfig extends SimpleUrlAuthenticationSuccessHandler {
     private final DriverRepository driverRepository;
     private final AuthenticationService authenticationService;
     private final PasswordEncoder passwordEncoder;
+    private final WalletService walletService;
+    private final PlanRepository planRepository;
 
     @Override
     @Transactional
@@ -73,13 +78,35 @@ public class OAuthConfig extends SimpleUrlAuthenticationSuccessHandler {
                 user = userRepository.save(user);
                 log.info("User saved with ID: {}", user.getUserId());
 
+                // Find default plan "Linh hoạt"
+                Plan defaultPlan = planRepository.findByNameIgnoreCase("Linh hoạt")
+                        .orElse(null);
+
+                if (defaultPlan != null) {
+                    log.info("Found default plan 'Linh hoạt' for Google OAuth user");
+                } else {
+                    log.warn("Default plan 'Linh hoạt' not found for Google OAuth user");
+                }
+
                 Driver driver = Driver.builder()
                         .user(user)
                         .joinDate(LocalDateTime.now())
+                        .plan(defaultPlan) // Assign default plan
                         .build();
                 driverRepository.save(driver);
 
-                log.info("Created new user and driver profile: {}", user.getUserId());
+                log.info("Created new user and driver profile: {} with plan: {}",
+                        user.getUserId(),
+                        defaultPlan != null ? defaultPlan.getName() : "None");
+
+                // Create wallet for the new Google OAuth user (linked via user_id)
+                try {
+                    walletService.createWallet(user);
+                    log.info("✅ Wallet created for Google OAuth user: {}", user.getUserId());
+                } catch (Exception e) {
+                    log.error("❌ Failed to create wallet for Google OAuth user: {}", user.getUserId(), e);
+                    // Don't throw exception, allow login to continue
+                }
 
             } else if (user.getGoogleId() == null) {
                 log.info("Linking existing user {} to Google account", email);

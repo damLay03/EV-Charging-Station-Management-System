@@ -1,4 +1,4 @@
-package com.swp.evchargingstation.dto;
+package com.swp.evchargingstation.dto.request;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;
@@ -6,7 +6,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-public class BookingRequestDto {
+public class BookingRequest {
     @NotBlank(message = "Vehicle ID is required")
     private String vehicleId;
 
@@ -18,7 +18,7 @@ public class BookingRequestDto {
     private LocalDateTime bookingTime;
 
     @NotNull(message = "Desired percentage is required")
-    @Min(value = 10, message = "Minimum charge percentage is 10%")
+    @Min(value = 1, message = "Minimum charge percentage is 1%")
     @Max(value = 100, message = "Maximum charge percentage is 100%")
     private Float desiredPercentage;
 }

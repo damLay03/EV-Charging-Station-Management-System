@@ -491,6 +491,7 @@ public class ChargingSessionService {
     }
 
     // Phase 3: Stop charging by user (cancel)
+    // ĐƠN GIẢN: Chỉ gọi completeSession, không cần logic phức tạp
     @Transactional
     @PreAuthorize("hasRole('DRIVER')")
     public ChargingSessionResponse stopSessionByUser(String sessionId, String driverId) {
@@ -504,50 +505,16 @@ public class ChargingSessionService {
             throw new AppException(ErrorCode.CHARGING_SESSION_NOT_ACTIVE);
         }
 
-        // Eager load entities BEFORE stopSessionLogic to avoid lazy loading issues
-        Driver driver = session.getDriver();
-        if (driver != null && driver.getUser() != null) {
-            driver.getUser().getEmail(); // Force load
-        }
-        ChargingPoint chargingPoint = session.getChargingPoint();
-        if (chargingPoint != null && chargingPoint.getStation() != null) {
-            chargingPoint.getStation().getName(); // Force load
-            chargingPoint.getStation().getAddress(); // Force load
-        }
+        log.info("Driver {} manually stopping session {}", driverId, sessionId);
 
-        // Update session's endSocPercent from vehicle before stopping
-        Vehicle vehicle = session.getVehicle();
-        if (vehicle != null && vehicle.getCurrentSocPercent() != null) {
-            session.setEndSocPercent(vehicle.getCurrentSocPercent());
-            // Save session changes before stopping
-            chargingSessionRepository.saveAndFlush(session);
-            log.info("Updated session {} endSocPercent to {}% from vehicle before stopping",
-                sessionId, vehicle.getCurrentSocPercent());
-        }
+        // ĐƠN GIẢN: Gọi complete session (đã handle tất cả logic)
+        chargingSimulatorService.completeSession(sessionId);
 
-        // Dừng thủ công cũng set status = COMPLETED (giống sạc đầy) để có thể thanh toán
-        chargingSimulatorService.stopSessionLogic(session, ChargingSessionStatus.COMPLETED);
+        // Reload để lấy data mới
+        session = chargingSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new AppException(ErrorCode.CHARGING_SESSION_NOT_FOUND));
 
-        // Settle payment in separate transaction to avoid rollback impacting manual stop
-        try {
-            paymentSettlementService.settlePaymentForCompletedSession(session, session.getCostTotal());
-        } catch (Exception ex) {
-            log.warn("Settlement failed for session {} after manual stop: {}. Payment stays UNPAID.", sessionId, ex.getMessage());
-        }
-
-        // Send email after transaction (will be sent after method completes and transaction commits)
-        // Reuse driver and chargingPoint variables already loaded above
-        if (driver != null && driver.getUser() != null) {
-            driver.getUser().getEmail(); // Force load for async email
-        }
-        if (chargingPoint != null && chargingPoint.getStation() != null) {
-            chargingPoint.getStation().getName(); // Force load for async email
-            chargingPoint.getStation().getAddress(); // Force load for async email
-        }
-
-        emailService.sendChargingCompleteEmail(session);
-
-        log.info("Driver {} stopped session {} manually", driverId, sessionId);
+        log.info("✅ Driver {} stopped session {} successfully", driverId, sessionId);
         return convertToResponse(session);
     }
 
@@ -666,24 +633,16 @@ public class ChargingSessionService {
             throw new AppException(ErrorCode.CHARGING_SESSION_NOT_ACTIVE);
         }
 
-        // Update session's endSocPercent from vehicle before stopping
-        Vehicle vehicle = session.getVehicle();
-        if (vehicle != null && vehicle.getCurrentSocPercent() != null) {
-            session.setEndSocPercent(vehicle.getCurrentSocPercent());
-            log.info("Updated session {} endSocPercent to {}% from vehicle before stopping",
-                sessionId, vehicle.getCurrentSocPercent());
-        }
+        log.info("Staff {} manually stopping session {} at station {}", userId, sessionId, station.getStationId());
 
-        // Dừng phiên sạc với trạng thái COMPLETED để có thể thanh toán
-        chargingSimulatorService.stopSessionLogic(session, ChargingSessionStatus.COMPLETED);
-        log.info("Staff {} stopped session {} at station {}", userId, sessionId, station.getStationId());
+        // ĐƠN GIẢN: Gọi complete session (đã handle tất cả logic)
+        chargingSimulatorService.completeSession(sessionId);
 
-        // Settle payment in separate transaction to avoid rollback impacting staff stop
-        try {
-            paymentSettlementService.settlePaymentForCompletedSession(session, session.getCostTotal());
-        } catch (Exception ex) {
-            log.warn("Settlement failed for session {} (staff stop): {}. Payment stays UNPAID.", sessionId, ex.getMessage());
-        }
+        // Reload to get fresh status
+        session = chargingSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new AppException(ErrorCode.CHARGING_SESSION_NOT_FOUND));
+
+        log.info("✅ Staff {} stopped session {} successfully", userId, sessionId);
 
         return convertToResponse(session);
     }

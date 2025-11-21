@@ -1,4 +1,4 @@
-package com.swp.evchargingstation.dto;
+package com.swp.evchargingstation.dto.response;
 
 import com.swp.evchargingstation.enums.BookingStatus;
 import lombok.AllArgsConstructor;
@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BookingResponseDto {
+public class BookingResponse {
     private Long id;
     private String userName;
     private String userEmail;

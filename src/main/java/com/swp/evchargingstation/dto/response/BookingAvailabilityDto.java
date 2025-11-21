@@ -1,4 +1,4 @@
-package com.swp.evchargingstation.dto;
+package com.swp.evchargingstation.dto.response;
 
 import lombok.Builder;
 import lombok.Data;

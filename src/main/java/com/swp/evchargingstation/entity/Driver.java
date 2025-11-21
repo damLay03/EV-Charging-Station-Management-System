@@ -38,6 +38,9 @@ public class Driver {
     @Builder.Default
     Boolean planAutoRenew = true; // Trạng thái tự động gia hạn (mặc định là true)
 
+    // Note: Wallet is linked via user_id in Wallet entity (OneToOne with User)
+    // No direct relationship here to keep database schema simple
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     @MapsId

@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class WalletBalanceResponse {
-    private Long walletId;
+    private String walletId; // Changed from Long to String (UUID)
     private String userId;
     private Double balance;
     private String updatedAt;

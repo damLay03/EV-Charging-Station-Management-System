@@ -1,8 +1,8 @@
 package com.swp.evchargingstation.controller;
 
-import com.swp.evchargingstation.dto.BookingAvailabilityDto;
-import com.swp.evchargingstation.dto.BookingRequestDto;
-import com.swp.evchargingstation.dto.BookingResponseDto;
+import com.swp.evchargingstation.dto.response.BookingAvailabilityDto;
+import com.swp.evchargingstation.dto.request.BookingRequest;
+import com.swp.evchargingstation.dto.response.BookingResponse;
 import com.swp.evchargingstation.service.BookingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -43,18 +43,18 @@ public class BookingController {
                description = "Create a new charging station booking with deposit payment")
     @PostMapping
     @PreAuthorize("hasRole('DRIVER')")
-    public ResponseEntity<BookingResponseDto> createBooking(
-            @Valid @RequestBody BookingRequestDto bookingRequestDto,
+    public ResponseEntity<BookingResponse> createBooking(
+            @Valid @RequestBody BookingRequest bookingRequest,
             @AuthenticationPrincipal Jwt jwt) {
         String email = jwt.getSubject(); // Lấy email từ "sub" claim
-        return ResponseEntity.ok(bookingService.createBooking(bookingRequestDto, email));
+        return ResponseEntity.ok(bookingService.createBooking(bookingRequest, email));
     }
 
     @Operation(summary = "Get booking by ID",
                description = "Get detailed information about a specific booking")
     @GetMapping("/{bookingId}")
     @PreAuthorize("hasRole('DRIVER')")
-    public ResponseEntity<BookingResponseDto> getBooking(
+    public ResponseEntity<BookingResponse> getBooking(
             @PathVariable Long bookingId,
             @AuthenticationPrincipal Jwt jwt) {
         String email = jwt.getSubject();
@@ -65,7 +65,7 @@ public class BookingController {
                description = "Get all bookings for the authenticated user")
     @GetMapping("/my-bookings")
     @PreAuthorize("hasRole('DRIVER')")
-    public ResponseEntity<List<BookingResponseDto>> getMyBookings(
+    public ResponseEntity<List<BookingResponse>> getMyBookings(
             @AuthenticationPrincipal Jwt jwt) {
         String email = jwt.getSubject();
         return ResponseEntity.ok(bookingService.getUserBookings(email));
@@ -75,7 +75,7 @@ public class BookingController {
                description = "Cancel a confirmed booking and get deposit refund")
     @PutMapping("/{bookingId}/cancel")
     @PreAuthorize("hasRole('DRIVER')")
-    public ResponseEntity<BookingResponseDto> cancelBooking(
+    public ResponseEntity<BookingResponse> cancelBooking(
             @PathVariable Long bookingId,
             @AuthenticationPrincipal Jwt jwt) {
         String email = jwt.getSubject();
@@ -86,7 +86,7 @@ public class BookingController {
                description = "Check-in to start charging session (must be within 15 minutes of booking time)")
     @PutMapping("/{bookingId}/check-in")
     @PreAuthorize("hasRole('DRIVER')")
-    public ResponseEntity<BookingResponseDto> checkInBooking(
+    public ResponseEntity<BookingResponse> checkInBooking(
             @PathVariable Long bookingId,
             @AuthenticationPrincipal Jwt jwt) {
         String email = jwt.getSubject();

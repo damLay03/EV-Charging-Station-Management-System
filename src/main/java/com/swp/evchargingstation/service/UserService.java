@@ -235,7 +235,7 @@ public class UserService {
                         driver.getJoinDate(),
                         defaultPlan != null ? defaultPlan.getName() : "None");
 
-                // Create wallet for the driver
+                // Create wallet for the driver (linked via user_id)
                 try {
                     walletService.createWallet(user);
                     log.info("Wallet created for driver: {}", user.getUserId());

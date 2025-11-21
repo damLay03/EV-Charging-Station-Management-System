@@ -1,8 +1,8 @@
 package com.swp.evchargingstation.service;
 
-import com.swp.evchargingstation.dto.BookingAvailabilityDto;
-import com.swp.evchargingstation.dto.BookingRequestDto;
-import com.swp.evchargingstation.dto.BookingResponseDto;
+import com.swp.evchargingstation.dto.response.BookingAvailabilityDto;
+import com.swp.evchargingstation.dto.request.BookingRequest;
+import com.swp.evchargingstation.dto.response.BookingResponse;
 import com.swp.evchargingstation.entity.*;
 import com.swp.evchargingstation.enums.BookingStatus;
 import com.swp.evchargingstation.enums.ChargingPointStatus;
@@ -98,7 +98,7 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponseDto createBooking(BookingRequestDto bookingRequestDto, String email) {
+    public BookingResponse createBooking(BookingRequest bookingRequest, String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
@@ -116,22 +116,22 @@ public class BookingService {
 
         // Check availability
         BookingAvailabilityDto availability = checkAvailability(
-                bookingRequestDto.getChargingPointId(),
-                bookingRequestDto.getBookingTime(),
-                bookingRequestDto.getVehicleId()
+                bookingRequest.getChargingPointId(),
+                bookingRequest.getBookingTime(),
+                bookingRequest.getVehicleId()
         );
 
         if (!availability.isAvailable()) {
             throw new AppException(ErrorCode.VALIDATION_FAILED);
         }
 
-        if (bookingRequestDto.getDesiredPercentage() > availability.getMaxChargePercentage()) {
+        if (bookingRequest.getDesiredPercentage() > availability.getMaxChargePercentage()) {
             throw new AppException(ErrorCode.VALIDATION_FAILED);
         }
 
-        ChargingPoint chargingPoint = chargingPointRepository.findById(bookingRequestDto.getChargingPointId())
+        ChargingPoint chargingPoint = chargingPointRepository.findById(bookingRequest.getChargingPointId())
                 .orElseThrow(() -> new AppException(ErrorCode.CHARGING_POINT_NOT_FOUND));
-        Vehicle vehicle = vehicleRepository.findById(bookingRequestDto.getVehicleId())
+        Vehicle vehicle = vehicleRepository.findById(bookingRequest.getVehicleId())
                 .orElseThrow(() -> new AppException(ErrorCode.VEHICLE_NOT_FOUND));
 
         // Verify vehicle belongs to user (via Driver/owner)
@@ -140,9 +140,9 @@ public class BookingService {
         }
 
         // Calculate estimated end time
-        double requiredEnergy = vehicle.getBatteryCapacityKwh() * (bookingRequestDto.getDesiredPercentage() / 100.0);
+        double requiredEnergy = vehicle.getBatteryCapacityKwh() * (bookingRequest.getDesiredPercentage() / 100.0);
         double chargingTimeHours = requiredEnergy / (chargingPoint.getChargingPower().getPowerKw() / 1000.0);
-        LocalDateTime estimatedEndTime = bookingRequestDto.getBookingTime().plusMinutes((long) (chargingTimeHours * 60));
+        LocalDateTime estimatedEndTime = bookingRequest.getBookingTime().plusMinutes((long) (chargingTimeHours * 60));
 
         // Debit deposit from wallet
         walletService.debit(user.getUserId(), DEPOSIT_AMOUNT, TransactionType.BOOKING_DEPOSIT,
@@ -155,9 +155,9 @@ public class BookingService {
         booking.setUser(user);
         booking.setVehicle(vehicle);
         booking.setChargingPoint(chargingPoint);
-        booking.setBookingTime(bookingRequestDto.getBookingTime());
+        booking.setBookingTime(bookingRequest.getBookingTime());
         booking.setEstimatedEndTime(estimatedEndTime);
-        booking.setDesiredPercentage(bookingRequestDto.getDesiredPercentage());
+        booking.setDesiredPercentage(bookingRequest.getDesiredPercentage());
         booking.setDepositAmount(DEPOSIT_AMOUNT);
         booking.setBookingStatus(BookingStatus.CONFIRMED);
         booking.setCreatedAt(LocalDateTime.now());
@@ -174,13 +174,13 @@ public class BookingService {
         // - Scheduled job sẽ tự động cập nhật trạng thái vật lý khi cần thiết
 
         log.info("Booking created successfully - ID: {}, User: {}, Point: {}, Time: {}",
-                savedBooking.getId(), user.getEmail(), chargingPoint.getName(), bookingRequestDto.getBookingTime());
+                savedBooking.getId(), user.getEmail(), chargingPoint.getName(), bookingRequest.getBookingTime());
 
         return convertToDto(savedBooking);
     }
 
     @Transactional(readOnly = true)
-    public BookingResponseDto getBookingById(Long bookingId, String email) {
+    public BookingResponse getBookingById(Long bookingId, String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
@@ -196,7 +196,7 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
-    public List<BookingResponseDto> getUserBookings(String email) {
+    public List<BookingResponse> getUserBookings(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
@@ -207,7 +207,7 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponseDto cancelBooking(Long bookingId, String email) {
+    public BookingResponse cancelBooking(Long bookingId, String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
@@ -244,7 +244,7 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponseDto checkInBooking(Long bookingId, String userId) {
+    public BookingResponse checkInBooking(Long bookingId, String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
@@ -310,8 +310,8 @@ public class BookingService {
         }
     }
 
-    private BookingResponseDto convertToDto(Booking booking) {
-        return BookingResponseDto.builder()
+    private BookingResponse convertToDto(Booking booking) {
+        return BookingResponse.builder()
                 .id(booking.getId())
                 .userName(booking.getUser().getFullName())
                 .userEmail(booking.getUser().getEmail())
