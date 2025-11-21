@@ -5,6 +5,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Getter
@@ -16,9 +17,8 @@ import java.time.LocalDateTime;
 @Table(name = "wallets")
 public class Wallet {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
-    Long id;
+    @Column(name = "wallet_id", length = 36, nullable = false)
+    String walletId;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
@@ -32,6 +32,15 @@ public class Wallet {
     LocalDateTime updatedAt;
 
     @PrePersist
+    protected void onCreate() {
+        // Generate UUID if not set
+        if (this.walletId == null) {
+            this.walletId = UUID.randomUUID().toString();
+        }
+        // Set timestamp
+        this.updatedAt = LocalDateTime.now();
+    }
+
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();

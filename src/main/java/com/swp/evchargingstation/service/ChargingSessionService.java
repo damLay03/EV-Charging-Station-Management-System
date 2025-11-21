@@ -40,10 +40,10 @@ public class ChargingSessionService {
     StaffRepository staffRepository;
     BookingRepository bookingRepository;
     WalletService walletService;
-    ChargingPointStatusService chargingPointStatusService;
-
-    ChargingSimulatorService simulatorService;
     EmailService emailService;
+    PaymentSettlementService paymentSettlementService;
+    private final ChargingPointStatusService chargingPointStatusService;
+    private final ChargingSimulatorService chargingSimulatorService;
 
     /**
      * Lấy dashboard overview của driver đang đăng nhập
@@ -491,6 +491,7 @@ public class ChargingSessionService {
     }
 
     // Phase 3: Stop charging by user (cancel)
+    // ĐƠN GIẢN: Chỉ gọi completeSession, không cần logic phức tạp
     @Transactional
     @PreAuthorize("hasRole('DRIVER')")
     public ChargingSessionResponse stopSessionByUser(String sessionId, String driverId) {
@@ -504,115 +505,17 @@ public class ChargingSessionService {
             throw new AppException(ErrorCode.CHARGING_SESSION_NOT_ACTIVE);
         }
 
-        // Eager load entities BEFORE stopSessionLogic to avoid lazy loading issues
-        Driver driver = session.getDriver();
-        if (driver != null && driver.getUser() != null) {
-            driver.getUser().getEmail(); // Force load
-        }
-        ChargingPoint chargingPoint = session.getChargingPoint();
-        if (chargingPoint != null && chargingPoint.getStation() != null) {
-            chargingPoint.getStation().getName(); // Force load
-            chargingPoint.getStation().getAddress(); // Force load
-        }
+        log.info("Driver {} manually stopping session {}", driverId, sessionId);
 
-        // Update session's endSocPercent from vehicle before stopping
-        Vehicle vehicle = session.getVehicle();
-        if (vehicle != null && vehicle.getCurrentSocPercent() != null) {
-            session.setEndSocPercent(vehicle.getCurrentSocPercent());
-            // Save session changes before stopping
-            chargingSessionRepository.saveAndFlush(session);
-            log.info("Updated session {} endSocPercent to {}% from vehicle before stopping",
-                sessionId, vehicle.getCurrentSocPercent());
-        }
+        // ĐƠN GIẢN: Gọi complete session (đã handle tất cả logic)
+        chargingSimulatorService.completeSession(sessionId);
 
-        // Dừng thủ công cũng set status = COMPLETED (giống sạc đầy) để có thể thanh toán
-        simulatorService.stopSessionLogic(session, ChargingSessionStatus.COMPLETED);
+        // Reload để lấy data mới
+        session = chargingSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new AppException(ErrorCode.CHARGING_SESSION_NOT_FOUND));
 
-        // Handle booking completion and payment
-        handleBookingPayment(session);
-
-
-        // Send email after transaction (will be sent after method completes and transaction commits)
-        // Reuse driver and chargingPoint variables already loaded above
-        if (driver != null && driver.getUser() != null) {
-            driver.getUser().getEmail(); // Force load for async email
-        }
-        if (chargingPoint != null && chargingPoint.getStation() != null) {
-            chargingPoint.getStation().getName(); // Force load for async email
-            chargingPoint.getStation().getAddress(); // Force load for async email
-        }
-
-        emailService.sendChargingCompleteEmail(session);
-
-        log.info("Driver {} stopped session {} manually", driverId, sessionId);
+        log.info("✅ Driver {} stopped session {} successfully", driverId, sessionId);
         return convertToResponse(session);
-    }
-
-    private void handleBookingPayment(ChargingSession session) {
-        // Idempotency: if a payment already exists and COMPLETED for this session, skip
-        Optional<Payment> existingPayment = paymentRepository.findByChargingSession(session);
-        if (existingPayment.isPresent() && existingPayment.get().getStatus() == PaymentStatus.COMPLETED) {
-            log.info("Payment already COMPLETED for session {}. Skipping wallet settlement.", session.getSessionId());
-            return;
-        }
-
-        Optional<Booking> bookingOpt = bookingRepository.findByUserIdAndChargingPointIdAndBookingStatus(
-                session.getDriver().getUser().getUserId(),
-                session.getChargingPoint().getPointId(),
-                BookingStatus.IN_PROGRESS);
-
-        if (bookingOpt.isPresent()) {
-            Booking booking = bookingOpt.get();
-            double totalCost = session.getCostTotal();
-            double deposit = booking.getDepositAmount() != null ? booking.getDepositAmount() : 0.0;
-
-            // Try to locate the payment created during stopSessionLogic
-            Optional<Payment> paymentOpt = existingPayment.isPresent() ? existingPayment : paymentRepository.findByChargingSession(session);
-
-            try {
-                if (totalCost > deposit) {
-                    double amountToDebit = totalCost - deposit;
-                    walletService.debit(
-                            session.getDriver().getUser().getUserId(),
-                            amountToDebit,
-                            TransactionType.CHARGING_PAYMENT,
-                            "Final payment for session " + session.getSessionId(),
-                            booking.getId(),
-                            session.getSessionId()
-                    );
-                } else {
-                    double amountToRefund = deposit - totalCost;
-                    if (amountToRefund > 0) {
-                        walletService.credit(
-                                session.getDriver().getUser().getUserId(),
-                                amountToRefund,
-                                TransactionType.BOOKING_DEPOSIT_REFUND,
-                                "Refund for booking deposit, session " + session.getSessionId(),
-                                null,
-                                null,
-                                booking.getId(),
-                                session.getSessionId()
-                        );
-                    }
-                }
-
-                // Mark payment as COMPLETED via wallet if it exists
-                paymentOpt.ifPresent(p -> {
-                    p.setStatus(PaymentStatus.COMPLETED);
-                    p.setPaymentMethod(Payment.PaymentMethod.WALLET);
-                    p.setPaidAt(LocalDateTime.now());
-                    paymentRepository.save(p);
-                });
-
-            } catch (Exception ex) {
-                // Any failure: leave payment UNPAID; staff or user can pay later
-                log.error("Auto wallet settlement failed for session {}: {}", session.getSessionId(), ex.getMessage(), ex);
-            }
-
-            // Update booking status to COMPLETED regardless of settlement path
-            booking.setBookingStatus(BookingStatus.COMPLETED);
-            bookingRepository.save(booking);
-        }
     }
 
     // ==================== STAFF - MY STATION SESSIONS MANAGEMENT ====================
@@ -730,19 +633,16 @@ public class ChargingSessionService {
             throw new AppException(ErrorCode.CHARGING_SESSION_NOT_ACTIVE);
         }
 
-        // Update session's endSocPercent from vehicle before stopping
-        Vehicle vehicle = session.getVehicle();
-        if (vehicle != null && vehicle.getCurrentSocPercent() != null) {
-            session.setEndSocPercent(vehicle.getCurrentSocPercent());
-            log.info("Updated session {} endSocPercent to {}% from vehicle before stopping",
-                sessionId, vehicle.getCurrentSocPercent());
-        }
+        log.info("Staff {} manually stopping session {} at station {}", userId, sessionId, station.getStationId());
 
-        // Dừng phiên sạc với trạng thái COMPLETED để có thể thanh toán
-        simulatorService.stopSessionLogic(session, ChargingSessionStatus.COMPLETED);
-        log.info("Staff {} stopped session {} at station {}", userId, sessionId, station.getStationId());
+        // ĐƠN GIẢN: Gọi complete session (đã handle tất cả logic)
+        chargingSimulatorService.completeSession(sessionId);
 
-        handleBookingPayment(session);
+        // Reload to get fresh status
+        session = chargingSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new AppException(ErrorCode.CHARGING_SESSION_NOT_FOUND));
+
+        log.info("✅ Staff {} stopped session {} successfully", userId, sessionId);
 
         return convertToResponse(session);
     }

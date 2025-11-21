@@ -13,7 +13,10 @@ import java.util.Optional;
 @Repository
 public interface WalletTransactionRepository extends JpaRepository<WalletTransaction, Long> {
     List<WalletTransaction> findByWalletOrderByTimestampDesc(Wallet wallet);
-    List<WalletTransaction> findByWalletIdOrderByTimestampDesc(Long walletId);
+
+    // Query by wallet's UUID using underscore notation to navigate nested property
+    List<WalletTransaction> findByWallet_WalletIdOrderByTimestampDesc(String walletId);
+
     Optional<WalletTransaction> findByExternalTransactionIdAndStatus(String externalTransactionId, TransactionStatus status);
     List<WalletTransaction> findByWalletAndTimestampBetween(Wallet wallet, LocalDateTime start, LocalDateTime end);
 }

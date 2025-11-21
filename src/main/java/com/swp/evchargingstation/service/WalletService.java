@@ -62,7 +62,7 @@ public class WalletService {
     public WalletBalanceResponse getWalletBalance(String userId) {
         Wallet wallet = getWallet(userId);
         return WalletBalanceResponse.builder()
-                .walletId(wallet.getId())
+                .walletId(wallet.getWalletId())
                 .userId(wallet.getUser().getUserId())
                 .balance(wallet.getBalance())
                 .updatedAt(wallet.getUpdatedAt() != null ?
