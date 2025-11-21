@@ -1,6 +1,5 @@
 package com.swp.evchargingstation.service;
 
-import com.swp.evchargingstation.dto.request.VehicleCreationRequest;
 import com.swp.evchargingstation.dto.request.VehicleUpdateRequest;
 import com.swp.evchargingstation.dto.response.VehicleResponse;
 import com.swp.evchargingstation.entity.Driver;
@@ -37,11 +36,20 @@ public class VehicleService {
     UserRepository userRepository;
     ChargingSessionRepository chargingSessionRepository;
     VehicleMapper vehicleMapper;
+    com.swp.evchargingstation.repository.AdminRepository adminRepository;
+    CloudinaryService cloudinaryService;
+    EmailService emailService;
 
-    // NOTE: Driver tạo xe mới cho chính mình
+    // NOTE: Driver tạo xe mới và upload 4 ảnh trong 1 request
     @PreAuthorize("hasRole('DRIVER')")
     @Transactional
-    public VehicleResponse createVehicle(VehicleCreationRequest request) {
+    public VehicleResponse createVehicleWithDocument(String modelStr, String licensePlate,
+                                                      org.springframework.web.multipart.MultipartFile documentFrontImage,
+                                                      org.springframework.web.multipart.MultipartFile documentBackImage,
+                                                      org.springframework.web.multipart.MultipartFile frontImage,
+                                                      org.springframework.web.multipart.MultipartFile sideLeftImage,
+                                                      org.springframework.web.multipart.MultipartFile sideRightImage,
+                                                      org.springframework.web.multipart.MultipartFile rearImage) {
         var context = SecurityContextHolder.getContext();
         String email = context.getAuthentication().getName();
 
@@ -52,20 +60,48 @@ public class VehicleService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         // Validate biển số xe không trùng
-        if (vehicleRepository.existsByLicensePlate(request.getLicensePlate())) {
+        if (vehicleRepository.existsByLicensePlate(licensePlate)) {
             throw new AppException(ErrorCode.LICENSE_PLATE_EXISTED);
         }
 
-        log.info("Driver '{}' creating vehicle with license plate '{}', model '{}'",
-                user.getUserId(), request.getLicensePlate(), request.getModel());
+        // Parse VehicleModel from string
+        VehicleModel model;
+        try {
+            model = VehicleModel.valueOf(modelStr);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid vehicle model: {}", modelStr);
+            throw new AppException(ErrorCode.INVALID_VEHICLE_MODEL_FOR_BRAND);
+        }
 
-        VehicleModel model = request.getModel();
+        log.info("Driver '{}' creating vehicle with license plate '{}', model '{}' (uploading 6 images)",
+                user.getUserId(), licensePlate, model);
 
-        // Random current SOC percent từ 20-80 để giả lập
+        // Step 1: Upload 6 ảnh lên Cloudinary
+        log.info("Uploading 6 vehicle images for vehicle {}", licensePlate);
+
+        String documentFrontImageUrl = cloudinaryService.uploadVehicleDocument(documentFrontImage);
+        log.info("1/6 - Document front image uploaded: {}", documentFrontImageUrl);
+
+        String documentBackImageUrl = cloudinaryService.uploadVehicleDocument(documentBackImage);
+        log.info("2/6 - Document back image uploaded: {}", documentBackImageUrl);
+
+        String frontImageUrl = cloudinaryService.uploadVehicleDocument(frontImage);
+        log.info("3/6 - Front image uploaded: {}", frontImageUrl);
+
+        String sideLeftImageUrl = cloudinaryService.uploadVehicleDocument(sideLeftImage);
+        log.info("4/6 - Side left image uploaded: {}", sideLeftImageUrl);
+
+        String sideRightImageUrl = cloudinaryService.uploadVehicleDocument(sideRightImage);
+        log.info("5/6 - Side right image uploaded: {}", sideRightImageUrl);
+
+        String rearImageUrl = cloudinaryService.uploadVehicleDocument(rearImage);
+        log.info("6/6 - Rear image uploaded: {}", rearImageUrl);
+
+        // Step 2: Tạo vehicle với 6 URL ảnh
         int randomSoc = 20 + (int) (Math.random() * 61); // Random từ 20 đến 80
 
         Vehicle vehicle = Vehicle.builder()
-                .licensePlate(request.getLicensePlate())
+                .licensePlate(licensePlate)
                 .model(model)
                 .owner(driver)
                 .currentSocPercent(randomSoc)
@@ -75,26 +111,57 @@ public class VehicleService {
                 .brandValue(model.getBrand())
                 .maxChargingPowerValue(model.getMaxChargingPower())
                 .maxChargingPowerKwValue(model.getMaxChargingPowerKw())
+                // Approval fields - 6 ảnh
+                .documentFrontImageUrl(documentFrontImageUrl)
+                .documentBackImageUrl(documentBackImageUrl)
+                .frontImageUrl(frontImageUrl)
+                .sideLeftImageUrl(sideLeftImageUrl)
+                .sideRightImageUrl(sideRightImageUrl)
+                .rearImageUrl(rearImageUrl)
+                .approvalStatus(com.swp.evchargingstation.enums.VehicleRegistrationStatus.PENDING)
+                .submittedAt(java.time.LocalDateTime.now())
                 .build();
 
         Vehicle saved = vehicleRepository.save(vehicle);
-        log.info("Vehicle '{}' created successfully with brand '{}', SOC {}%, max charging power {} auto-detected from model",
-                saved.getVehicleId(), saved.getBrand(), saved.getCurrentSocPercent(), saved.getMaxChargingPower());
+        log.info("Vehicle '{}' submitted for approval, brand '{}', SOC {}%, status: PENDING, 6 images uploaded",
+                saved.getVehicleId(), saved.getBrand(), saved.getCurrentSocPercent());
 
         return vehicleMapper.toVehicleResponse(saved);
     }
 
-    // NOTE: Driver lấy danh sách xe của chính mình
+
+    // NOTE: Driver lấy danh sách xe đã được phê duyệt (APPROVED) - dùng để chọn xe khi sạc
     @PreAuthorize("hasRole('DRIVER')")
     @Transactional(readOnly = true)
-    public List<VehicleResponse> getMyVehicles() {
+    public List<VehicleResponse> getMyApprovedVehicles() {
         var context = SecurityContextHolder.getContext();
         String email = context.getAuthentication().getName();
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        log.info("Driver '{}' fetching their vehicles", user.getUserId());
+        log.info("Driver '{}' fetching their APPROVED vehicles", user.getUserId());
+
+        List<Vehicle> vehicles = vehicleRepository.findByOwner_UserIdAndApprovalStatus(
+                user.getUserId(),
+                com.swp.evchargingstation.enums.VehicleRegistrationStatus.APPROVED
+        );
+        return vehicles.stream()
+                .map(vehicleMapper::toVehicleResponse)
+                .toList();
+    }
+
+    // NOTE: Driver lấy TẤT CẢ yêu cầu đăng ký xe (PENDING, APPROVED, REJECTED)
+    @PreAuthorize("hasRole('DRIVER')")
+    @Transactional(readOnly = true)
+    public List<VehicleResponse> getMyAllVehicleRequests() {
+        var context = SecurityContextHolder.getContext();
+        String email = context.getAuthentication().getName();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        log.info("Driver '{}' fetching ALL their vehicle registration requests", user.getUserId());
 
         List<Vehicle> vehicles = vehicleRepository.findByOwner_UserId(user.getUserId());
         return vehicles.stream()
@@ -356,9 +423,116 @@ public class VehicleService {
                         .brand(model.getBrand())
                         .batteryCapacityKwh(model.getBatteryCapacityKwh())
                         .batteryType(model.getBatteryType())
+
                         .maxChargingPower(model.getMaxChargingPower())
                         .maxChargingPowerKw(model.getMaxChargingPowerKw())
                         .build())
                 .toList();
+    }
+    // ==================== VEHICLE APPROVAL METHODS ====================
+
+    // NOTE: ADMIN - Get all pending vehicle registrations
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional(readOnly = true)
+    public List<VehicleResponse> getPendingVehicles() {
+        log.info("Admin fetching all pending vehicle registrations");
+        List<Vehicle> vehicles = vehicleRepository.findByApprovalStatus(
+                com.swp.evchargingstation.enums.VehicleRegistrationStatus.PENDING);
+        return vehicles.stream()
+                .map(vehicleMapper::toVehicleResponse)
+                .toList();
+    }
+
+    // NOTE: ADMIN - Get all vehicles (with any status)
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional(readOnly = true)
+    public List<VehicleResponse> getAllVehiclesWithStatus() {
+        log.info("Admin fetching all vehicles");
+        List<Vehicle> vehicles = vehicleRepository.findAll();
+        return vehicles.stream()
+                .map(vehicleMapper::toVehicleResponse)
+                .toList();
+    }
+
+    // NOTE: ADMIN - Approve vehicle registration
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public VehicleResponse approveVehicle(String vehicleId) {
+        var context = SecurityContextHolder.getContext();
+        String email = context.getAuthentication().getName();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        com.swp.evchargingstation.entity.Admin admin = adminRepository.findById(user.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.ADMIN_NOT_FOUND));
+
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new AppException(ErrorCode.VEHICLE_NOT_FOUND));
+
+        // Check if already processed
+        if (vehicle.getApprovalStatus() != com.swp.evchargingstation.enums.VehicleRegistrationStatus.PENDING) {
+            throw new AppException(ErrorCode.VEHICLE_ALREADY_PROCESSED);
+        }
+
+        vehicle.setApprovalStatus(com.swp.evchargingstation.enums.VehicleRegistrationStatus.APPROVED);
+        vehicle.setApprovedAt(java.time.LocalDateTime.now());
+        vehicle.setApprovedBy(admin);
+        vehicle.setRejectionReason(null);
+
+        Vehicle saved = vehicleRepository.save(vehicle);
+        log.info("Admin '{}' approved vehicle '{}' with license plate '{}'",
+                admin.getUserId(), vehicleId, vehicle.getLicensePlate());
+
+        // Send email notification to driver
+        try {
+            emailService.sendVehicleApprovedEmail(vehicle.getOwner().getUser(), vehicle);
+        } catch (Exception e) {
+            log.error("Failed to send approval email for vehicle {}: {}", vehicleId, e.getMessage());
+            // Don't fail the approval if email fails
+        }
+
+        return vehicleMapper.toVehicleResponse(saved);
+    }
+
+    // NOTE: ADMIN - Reject vehicle registration
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public VehicleResponse rejectVehicle(String vehicleId, String rejectionReason) {
+        var context = SecurityContextHolder.getContext();
+        String email = context.getAuthentication().getName();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        com.swp.evchargingstation.entity.Admin admin = adminRepository.findById(user.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.ADMIN_NOT_FOUND));
+
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new AppException(ErrorCode.VEHICLE_NOT_FOUND));
+
+        // Check if already processed
+        if (vehicle.getApprovalStatus() != com.swp.evchargingstation.enums.VehicleRegistrationStatus.PENDING) {
+            throw new AppException(ErrorCode.VEHICLE_ALREADY_PROCESSED);
+        }
+
+        vehicle.setApprovalStatus(com.swp.evchargingstation.enums.VehicleRegistrationStatus.REJECTED);
+        vehicle.setApprovedAt(java.time.LocalDateTime.now());
+        vehicle.setApprovedBy(admin);
+        vehicle.setRejectionReason(rejectionReason);
+
+        Vehicle saved = vehicleRepository.save(vehicle);
+        log.info("Admin '{}' rejected vehicle '{}' with license plate '{}'. Reason: {}",
+                admin.getUserId(), vehicleId, vehicle.getLicensePlate(), rejectionReason);
+
+        // Send email notification to driver
+        try {
+            emailService.sendVehicleRejectedEmail(vehicle.getOwner().getUser(), vehicle, rejectionReason);
+        } catch (Exception e) {
+            log.error("Failed to send rejection email for vehicle {}: {}", vehicleId, e.getMessage());
+            // Don't fail the rejection if email fails
+        }
+
+        return vehicleMapper.toVehicleResponse(saved);
     }
 }

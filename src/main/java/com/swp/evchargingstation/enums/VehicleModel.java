@@ -21,31 +21,31 @@ public enum VehicleModel {
 
     // Tesla Models
     TESLA_MODEL_3("Model 3 Standard Range", VehicleBrand.TESLA, 60.0f, "LFP (Lithium Iron Phosphate)", "170 kW", 170f,
-            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763582867/tesla-model-3_tucyxr.avif"),
+            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763619341/tesla-model-3_lc7n2r.jpg"),
     TESLA_MODEL_3_LONG_RANGE("Model 3 Long Range", VehicleBrand.TESLA, 82.0f, "NCA (Nickel Cobalt Aluminum)", "250 kW", 250f,
-            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763582867/tesla-model-3-long-range_znr9kg.avif"),
+            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763619339/tesla-model-3-long-range_ojpe6k.jpg"),
     TESLA_MODEL_Y("Model Y Standard Range", VehicleBrand.TESLA, 60.0f, "LFP (Lithium Iron Phosphate)", "170 kW", 170f,
-            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763582867/tesla-model-y_c0zgik.avif"),
+            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763619339/tesla-model-y_y5qqbk.jpg"),
     TESLA_MODEL_Y_LONG_RANGE("Model Y Long Range", VehicleBrand.TESLA, 82.0f, "NCA (Nickel Cobalt Aluminum)", "250 kW", 250f,
-            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763582866/tesla-model-y-long-range_zqpa6n.avif"),
+            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763619340/tesla-model-y-long-range_j43rfh.jpg"),
     TESLA_MODEL_S("Model S", VehicleBrand.TESLA, 100.0f, "NCA (Nickel Cobalt Aluminum)", "250 kW", 250f,
-            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763582866/tesla-model-s_o02pyh.avif"),
+            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763619339/tesla-model-s_vt71il.jpg"),
     TESLA_MODEL_X("Model X", VehicleBrand.TESLA, 100.0f, "NCA (Nickel Cobalt Aluminum)", "250 kW", 250f,
-            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763582866/tesla-model-x_pgu1dw.avif"),
+            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763619339/tesla-model-x_ewbfbz.jpg"),
 
     // BYD Models
     BYD_ATTO_3("Atto 3", VehicleBrand.BYD, 60.48f, "Blade Battery (LFP)", "88 kW", 88f,
-            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763582887/byd-atto-3_fpp47l.jpg"),
+            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763619340/byd-atto-3_cl4cbf.png"),
     BYD_DOLPHIN("Dolphin", VehicleBrand.BYD, 44.9f, "Blade Battery (LFP)", "60 kW", 60f,
-            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763582880/byd-dolphin_pmnna8.jpg"),
+            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763619339/byd-dolphin_usitn5.png"),
     BYD_SEAL("Seal", VehicleBrand.BYD, 82.56f, "Blade Battery (LFP)", "150 kW", 150f,
-            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763582869/byd-seal_iuezmu.jpg"),
+            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763619342/byd-seal_lyve7e.png"),
     BYD_HAN("Han EV", VehicleBrand.BYD, 85.44f, "Blade Battery (LFP)", "120 kW", 120f,
-            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763582868/byd-han_g32cip.jpg"),
+            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763619342/byd-han_haao4j.png"),
     BYD_TANG("Tang EV", VehicleBrand.BYD, 108.8f, "Blade Battery (LFP)", "170 kW", 170f,
-            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763582880/byd-tang_vl8ytg.jpg"),
+            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763619342/byd-tang_lel6l0.png"),
     BYD_YUAN_PLUS("Yuan Plus", VehicleBrand.BYD, 50.12f, "Blade Battery (LFP)", "70 kW", 70f,
-            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763582880/byd-yuan-plus_eviwei.jpg");
+            "https://res.cloudinary.com/dppc2tng8/image/upload/v1763619342/byd-yuan-plus_hjevit.png");
 
     private final String modelName;
     private final VehicleBrand brand;

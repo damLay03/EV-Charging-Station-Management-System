@@ -96,6 +96,12 @@ zalopay:
   callback-url: "https://evchargingstation.khoahtd.id.vn/evchargingstation/api/webhooks/zalopay/callback"
   redirect-url: "${app.base-url}/payment-result"
 
+# Cloudinary Configuration
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:dppc2tng8}
+  api-key: ${CLOUDINARY_API_KEY:223295131955916}
+  api-secret: ${CLOUDINARY_API_SECRET:1RF3CqXX5RECtSxkAxr5cO1G8KY}
+
 #logging:
 #  level:
 #    root: INFO
