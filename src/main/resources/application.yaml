@@ -6,14 +6,14 @@ server:
 
 spring:
   datasource:
-    # MySQL Configuration
+#     MySQL Configuration
     url: jdbc:mysql://localhost:3306/railway
     username: root
     password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
 
     # SQL Server Configuration
-#    url: jdbc:sqlserver://localhost:1433;databaseName=TGreen;encrypt=true;trustServerCertificate=true
+#    url: jdbc:sqlserver://localhost:1433;databaseName=temp1;encrypt=true;trustServerCertificate=true
 #    username: sa
 #    password: 12345
 #    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
