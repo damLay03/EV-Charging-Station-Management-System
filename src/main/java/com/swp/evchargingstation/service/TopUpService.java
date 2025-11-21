@@ -121,7 +121,7 @@ public class TopUpService {
                 .amount(amount.longValue())
                 .embedData(embedData)
                 .item(item)
-                .description("Top-up wallet for user " + userId)
+                .description("Nạp tiền ví cho người dùng " + userId)
                 .bankCode("")
                 .mac(mac)
                 .callbackUrl(zaloPayConfig.getCallbackUrl() + "/topup")  // Use separate topup callback
@@ -155,7 +155,7 @@ public class TopUpService {
                 .transactionType(TransactionType.TOPUP_ZALOPAY)
                 .status(TransactionStatus.PENDING)
                 .timestamp(LocalDateTime.now())
-                .description("Top-up via ZaloPay")
+                .description("Nạp tiền qua ZaloPay")
                 .externalTransactionId(appTransId)
                 .build();
 
@@ -168,7 +168,7 @@ public class TopUpService {
                 .orderUrl(zaloPayResponse.getOrderUrl())
                 .appTransId(appTransId)
                 .transactionId(transaction.getId())
-                .message("Top-up order created successfully")
+                .message("Tạo đơn nạp tiền thành công")
                 .build();
     }
 
