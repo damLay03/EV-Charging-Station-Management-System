@@ -23,4 +23,5 @@ public class IncidentResponse {
     IncidentStatus status;
     String assignedStaffName;
     LocalDateTime resolvedAt;
+    String imageUrl;
 }

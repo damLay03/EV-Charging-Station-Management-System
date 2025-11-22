@@ -35,5 +35,6 @@ public interface StaffDashboardMapper {
     @Mapping(target = "stationName", expression = "java(incident.getStation() != null ? incident.getStation().getName() : \"N/A\")")
     @Mapping(target = "chargingPointName", expression = "java(incident.getChargingPoint() != null ? incident.getChargingPoint().getName() : null)")
     @Mapping(target = "assignedStaffName", expression = "java(incident.getAssignedStaff() != null && incident.getAssignedStaff().getUser() != null ? incident.getAssignedStaff().getUser().getFullName() : null)")
+    @Mapping(target = "imageUrl", source = "imageUrl")
     IncidentResponse toIncidentResponse(Incident incident);
 }

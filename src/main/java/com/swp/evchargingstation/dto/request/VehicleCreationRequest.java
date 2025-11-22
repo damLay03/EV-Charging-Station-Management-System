@@ -15,7 +15,4 @@ public class VehicleCreationRequest {
 
     @NotNull(message = "Model xe không được để trống")
     VehicleModel model;
-
-    @NotBlank(message = "Giấy tờ xe không được để trống")
-    String documentImageUrl; // Cloudinary URL của giấy tờ xe
 }

@@ -56,4 +56,7 @@ public class Incident {
 
     @Column(name = "resolved_at")
     LocalDateTime resolvedAt;
+
+    @Column(name = "image_url")
+    String imageUrl;
 }

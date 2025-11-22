@@ -6,8 +6,8 @@ import com.swp.evchargingstation.dto.response.ApiResponse;
 import com.swp.evchargingstation.dto.response.IncidentResponse;
 import com.swp.evchargingstation.service.IncidentService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -31,15 +32,37 @@ public class IncidentController {
     // ==================== STAFF ENDPOINTS ====================
 
     @ResponseStatus(HttpStatus.CREATED)
-    @PostMapping
+    @PostMapping(consumes = "multipart/form-data")
     @PreAuthorize("hasRole('STAFF')")
     @Operation(
             summary = "[STAFF] Tạo báo cáo sự cố",
-            description = "Staff có thể báo cáo sự cố tại trạm của họ. Trạng thái mặc định: WAITING"
+            description = "Staff có thể báo cáo sự cố tại trạm của họ. Trạng thái mặc định: WAITING. Có thể upload 1 ảnh mô tả sự cố (optional)."
     )
-    public ApiResponse<IncidentResponse> createIncident(@RequestBody @Valid IncidentCreationRequest request) {
-        log.info("Staff creating incident report for station: {}", request.getStationId());
-        return incidentService.createIncident(request);
+    public ApiResponse<IncidentResponse> createIncident(
+            @Parameter(description = "ID của trạm sạc", required = true, example = "ST001")
+            @RequestParam("stationId") String stationId,
+
+            @Parameter(description = "ID của điểm sạc bị sự cố", required = true, example = "CP001")
+            @RequestParam("chargingPointId") String chargingPointId,
+
+            @Parameter(description = "Mô tả chi tiết về sự cố", required = true, example = "Cổng sạc không hoạt động, có mùi khét")
+            @RequestParam("description") String description,
+
+            @Parameter(description = "Mức độ nghiêm trọng (MINOR, MODERATE, CRITICAL, EMERGENCY)", required = true, example = "CRITICAL")
+            @RequestParam("severity") String severity,
+
+            @Parameter(description = "Ảnh mô tả sự cố (jpg, jpeg, png, max 5MB) - optional")
+            @RequestPart(value = "image", required = false) MultipartFile image) {
+        log.info("Staff creating incident report for station: {}", stationId);
+
+        IncidentCreationRequest request = IncidentCreationRequest.builder()
+                .stationId(stationId)
+                .chargingPointId(chargingPointId)
+                .description(description)
+                .severity(com.swp.evchargingstation.enums.IncidentSeverity.valueOf(severity))
+                .build();
+
+        return incidentService.createIncident(request, image);
     }
 
     @GetMapping("/my-station")
@@ -55,18 +78,33 @@ public class IncidentController {
                 .build();
     }
 
-    @PatchMapping("/{incidentId}")
+    @PatchMapping(value = "/{incidentId}", consumes = "multipart/form-data")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
     @Operation(
             summary = "[STAFF/ADMIN] Cập nhật sự cố",
             description = "Staff: chỉ có thể cập nhật description của sự cố tại trạm của họ. " +
-                         "Admin: có thể cập nhật cả description và status (WAITING -> WORKING -> DONE)"
+                         "Admin: có thể cập nhật cả description và status (WAITING -> WORKING -> DONE). " +
+                         "Có thể upload 1 ảnh mới để thay thế ảnh cũ (optional)."
     )
     public ApiResponse<IncidentResponse> updateIncident(
             @PathVariable String incidentId,
-            @RequestBody @Valid IncidentUpdateRequest request) {
+
+            @Parameter(description = "Trạng thái mới của sự cố (WAITING, WORKING, DONE) - chỉ ADMIN", required = false, example = "WORKING")
+            @RequestParam(value = "status", required = false) String status,
+
+            @Parameter(description = "Cập nhật mô tả sự cố", required = false, example = "Đã kiểm tra, cần thay thế linh kiện")
+            @RequestParam(value = "description", required = false) String description,
+
+            @Parameter(description = "Ảnh mới thay thế ảnh cũ (jpg, jpeg, png, max 5MB) - optional")
+            @RequestPart(value = "image", required = false) MultipartFile image) {
         log.info("Updating incident {}", incidentId);
-        return incidentService.updateIncident(incidentId, request);
+
+        IncidentUpdateRequest request = IncidentUpdateRequest.builder()
+                .status(status != null ? com.swp.evchargingstation.enums.IncidentStatus.valueOf(status) : null)
+                .description(description)
+                .build();
+
+        return incidentService.updateIncident(incidentId, request, image);
     }
 
     // ==================== ADMIN ENDPOINTS ====================
@@ -107,4 +145,3 @@ public class IncidentController {
         return incidentService.deleteIncident(incidentId);
     }
 }
-

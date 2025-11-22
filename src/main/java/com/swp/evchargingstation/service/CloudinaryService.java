@@ -76,6 +76,59 @@ public class CloudinaryService {
     }
 
     /**
+     * Upload incident image to Cloudinary
+     * @param file MultipartFile from staff
+     * @return Cloudinary secure URL
+     */
+    public String uploadIncidentImage(MultipartFile file) {
+        // Validate file
+        if (file == null || file.isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_FILE);
+        }
+
+        // Validate file type
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new AppException(ErrorCode.INVALID_FILE_TYPE);
+        }
+
+        // Validate file size (max 5MB)
+        long maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.getSize() > maxSize) {
+            throw new AppException(ErrorCode.FILE_TOO_LARGE);
+        }
+
+        try {
+            log.info("Uploading incident image to Cloudinary, filename: {}, size: {} bytes",
+                    file.getOriginalFilename(), file.getSize());
+
+            // Upload to Cloudinary
+            Map<String, Object> uploadResult = cloudinary.uploader().upload(
+                    file.getBytes(),
+                    ObjectUtils.asMap(
+                            "folder", "incident-images",
+                            "resource_type", "image",
+                            "format", "jpg",
+                            "quality", "auto:good",
+                            "transformation", new com.cloudinary.Transformation()
+                                    .width(1200)
+                                    .height(1200)
+                                    .crop("limit")
+                    )
+            );
+
+            String secureUrl = (String) uploadResult.get("secure_url");
+            log.info("Incident image uploaded successfully to Cloudinary: {}", secureUrl);
+
+            return secureUrl;
+
+        } catch (IOException e) {
+            log.error("Failed to upload incident image to Cloudinary", e);
+            throw new AppException(ErrorCode.UPLOAD_FAILED);
+        }
+    }
+
+    /**
      * Delete image from Cloudinary by URL
      * @param imageUrl Cloudinary URL
      */
@@ -140,4 +193,3 @@ public class CloudinaryService {
         }
     }
 }
-

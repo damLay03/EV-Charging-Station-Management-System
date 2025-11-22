@@ -17,8 +17,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,6 +35,7 @@ public class IncidentService {
     UserRepository userRepository;
     ChargingPointRepository chargingPointRepository;
     StaffDashboardMapper staffDashboardMapper;
+    CloudinaryService cloudinaryService;
 
     /**
      * Get current user ID from JWT token
@@ -63,7 +66,7 @@ public class IncidentService {
      * Trạng thái mặc định: WAITING (chờ admin duyệt)
      */
     @Transactional
-    public ApiResponse<IncidentResponse> createIncident(IncidentCreationRequest request) {
+    public ApiResponse<IncidentResponse> createIncident(IncidentCreationRequest request, MultipartFile image) {
         String staffUserId = getCurrentUserId();
 
         Staff staff = staffRepository.findById(staffUserId)
@@ -88,6 +91,12 @@ public class IncidentService {
                     .orElseThrow(() -> new AppException(ErrorCode.CHARGING_POINT_NOT_FOUND));
         }
 
+        // Upload image if provided
+        String imageUrl = null;
+        if (image != null) {
+            imageUrl = cloudinaryService.uploadIncidentImage(image);
+        }
+
         Incident incident = Incident.builder()
                 .reporter(staffUser)
                 .station(station)
@@ -97,6 +106,7 @@ public class IncidentService {
                 .severity(request.getSeverity())
                 .status(IncidentStatus.WAITING)  // Mặc định là WAITING
                 .assignedStaff(staff)
+                .imageUrl(imageUrl)
                 .build();
 
         incident = incidentRepository.save(incident);
@@ -135,9 +145,10 @@ public class IncidentService {
      * STAFF/ADMIN: Cập nhật incident
      * - STAFF: chỉ có thể cập nhật description của incident tại station của mình
      * - ADMIN: có thể cập nhật cả description và status của bất kỳ incident nào
+     * - Cả STAFF và ADMIN đều có thể cập nhật ảnh (thay thế ảnh cũ)
      */
     @Transactional
-    public ApiResponse<IncidentResponse> updateIncident(String incidentId, IncidentUpdateRequest request) {
+    public ApiResponse<IncidentResponse> updateIncident(String incidentId, IncidentUpdateRequest request, MultipartFile image) {
         String userId = getCurrentUserId();
         boolean isAdminUser = isAdmin();
 
@@ -157,6 +168,17 @@ public class IncidentService {
                 if (request.getStatus() == IncidentStatus.DONE) {
                     incident.setResolvedAt(LocalDateTime.now());
                 }
+            }
+
+            // Update image if provided
+            if (image != null) {
+                // Delete old image
+                if (incident.getImageUrl() != null) {
+                    cloudinaryService.deleteImage(incident.getImageUrl());
+                }
+                // Upload new image
+                String newImageUrl = cloudinaryService.uploadIncidentImage(image);
+                incident.setImageUrl(newImageUrl);
             }
 
             incident = incidentRepository.save(incident);
@@ -186,6 +208,17 @@ public class IncidentService {
             // Staff chỉ có thể cập nhật description
             if (request.getDescription() != null) {
                 incident.setDescription(request.getDescription());
+            }
+
+            // Update image if provided
+            if (image != null) {
+                // Delete old image
+                if (incident.getImageUrl() != null) {
+                    cloudinaryService.deleteImage(incident.getImageUrl());
+                }
+                // Upload new image
+                String newImageUrl = cloudinaryService.uploadIncidentImage(image);
+                incident.setImageUrl(newImageUrl);
             }
 
             incident = incidentRepository.save(incident);
@@ -235,6 +268,11 @@ public class IncidentService {
         Incident incident = incidentRepository.findById(incidentId)
                 .orElseThrow(() -> new AppException(ErrorCode.INCIDENT_NOT_FOUND));
 
+        // Delete image from Cloudinary
+        if (incident.getImageUrl() != null) {
+            cloudinaryService.deleteImage(incident.getImageUrl());
+        }
+
         incidentRepository.delete(incident);
 
         log.info("Admin {} deleted incident {}", adminUserId, incidentId);
@@ -244,4 +282,3 @@ public class IncidentService {
                 .build();
     }
 }
-
