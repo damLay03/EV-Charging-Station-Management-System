@@ -45,6 +45,11 @@ public class PaymentController {
 
     @PostMapping("/cash/request")
     @PreAuthorize("hasRole('DRIVER')")
+    @Operation(
+            summary = "[DRIVER] Tạo yêu cầu thanh toán bằng tiền mặt",
+            description = "Driver gửi yêu cầu thanh toán bằng tiền mặt cho phiên sạc. " +
+                    "Yêu cầu sẽ được gửi đến staff để xác nhận. Phương thức này hiện đã bị vô hiệu hóa"
+    )
     public ApiResponse<CashPaymentRequestResponse> requestCashPayment(
             @RequestBody @Valid CashPaymentRequest request) {
         throw new com.swp.evchargingstation.exception.AppException(
@@ -55,7 +60,14 @@ public class PaymentController {
 
     @PostMapping("/zalopay")
     @PreAuthorize("hasRole('DRIVER')")
-    public ApiResponse<String> createZaloPayPayment(@RequestParam String sessionId) {
+    @Operation(
+            summary = "[DRIVER] Tạo thanh toán qua ZaloPay",
+            description = "Driver tạo thanh toán qua cổng thanh toán ZaloPay cho phiên sạc. " +
+                    "Trả về URL thanh toán để driver thực hiện thanh toán. Phương thức này hiện đã bị vô hiệu hóa"
+    )
+    public ApiResponse<String> createZaloPayPayment(
+            @Parameter(description = "ID của phiên sạc cần thanh toán", example = "SESSION_123")
+            @RequestParam String sessionId) {
         throw new com.swp.evchargingstation.exception.AppException(
                 com.swp.evchargingstation.exception.ErrorCode.PAYMENT_METHOD_NOT_ALLOWED);
     }
@@ -64,6 +76,11 @@ public class PaymentController {
 
     @PostMapping
     @PreAuthorize("hasRole('STAFF')")
+    @Operation(
+            summary = "[STAFF] Xử lý thanh toán",
+            description = "Staff xử lý thanh toán cho phiên sạc. " +
+                    "Staff có thể xác nhận thanh toán cho các phiên sạc tại trạm của mình. Phương thức này hiện đã bị vô hiệu hóa"
+    )
     public ApiResponse<String> processPayment(@RequestBody @Valid StaffPaymentRequest request) {
         throw new com.swp.evchargingstation.exception.AppException(
                 com.swp.evchargingstation.exception.ErrorCode.PAYMENT_METHOD_NOT_ALLOWED);
@@ -94,7 +111,13 @@ public class PaymentController {
 
     @PatchMapping("/cash/{paymentId}/confirm")
     @PreAuthorize("hasRole('STAFF')")
+    @Operation(
+            summary = "[STAFF] Xác nhận thanh toán tiền mặt",
+            description = "Staff xác nhận đã nhận được thanh toán tiền mặt từ driver cho một yêu cầu thanh toán. " +
+                    "Sau khi xác nhận, trạng thái thanh toán sẽ chuyển từ PENDING sang COMPLETED. Phương thức này hiện đã bị vô hiệu hóa"
+    )
     public ApiResponse<CashPaymentRequestResponse> confirmCashPayment(
+            @Parameter(description = "ID của thanh toán cần xác nhận", example = "PAY_123")
             @PathVariable String paymentId) {
         throw new com.swp.evchargingstation.exception.AppException(
                 com.swp.evchargingstation.exception.ErrorCode.PAYMENT_METHOD_NOT_ALLOWED);

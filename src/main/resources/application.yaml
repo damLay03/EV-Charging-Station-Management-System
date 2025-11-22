@@ -6,14 +6,14 @@ server:
 
 spring:
   datasource:
-    # MySQL Configuration
+#     MySQL Configuration
     url: jdbc:mysql://localhost:3306/railway
     username: root
     password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
 
     # SQL Server Configuration
-#    url: jdbc:sqlserver://localhost:1433;databaseName=TGreen;encrypt=true;trustServerCertificate=true
+#    url: jdbc:sqlserver://localhost:1433;databaseName=temp1;encrypt=true;trustServerCertificate=true
 #    username: sa
 #    password: 12345
 #    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
@@ -89,6 +89,12 @@ zalopay:
   endpoint: "https://sb-openapi.zalopay.vn/v2/create"  # Sandbox
   callback-url: "https://evchargingstation.khoahtd.id.vn/evchargingstation/api/webhooks/zalopay/callback"
   redirect-url: "${app.base-url}/payment-result"
+
+# Cloudinary Configuration
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:dppc2tng8}
+  api-key: ${CLOUDINARY_API_KEY:223295131955916}
+  api-secret: ${CLOUDINARY_API_SECRET:1RF3CqXX5RECtSxkAxr5cO1G8KY}
 
 #logging:
 #  level:

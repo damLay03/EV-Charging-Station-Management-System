@@ -85,7 +85,7 @@ public class BookingService {
             maxChargePercentage = Math.min(100.0, (availableEnergy / vehicle.getBatteryCapacityKwh()) * 100);
 
             if (maxChargePercentage < 100.0) {
-                message = String.format("Bạn có thể sạc tối đa đến %.1f%% (next booking starts at %s)",
+                message = String.format("Bạn có thể sạc tối đa đến %.1f%% (lượt đặt tiếp theo bắt đầu lúc %s)",
                         maxChargePercentage, nextBooking.getBookingTime());
             }
         }

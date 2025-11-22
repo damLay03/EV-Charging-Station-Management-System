@@ -567,12 +567,18 @@ public class UserService {
             joinDate = driver.getJoinDate().toLocalDate();
         }
 
+        // Lay plan name tu Driver entity
+        String planName = null;
+        if (driver.getPlan() != null) {
+            planName = driver.getPlan().getName();
+        }
+
         return AdminUserResponse.builder()
                 .fullName(user.getFullName())
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .joinDate(joinDate) // Lay tu Driver entity
-                .planName(null) // Removed subscription support
+                .planName(planName) // Lay tu Plan entity
                 .sessionCount(sessionCount)
                 .totalSpent(totalSpent)
                 .status("Hoạt động") // Mac dinh "Hoat dong", co the customize sau
