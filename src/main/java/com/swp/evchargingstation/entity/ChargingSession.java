@@ -66,4 +66,9 @@ public class ChargingSession {
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     ChargingSessionStatus status;
+
+    // ✅ NEW: Link to booking (if session started from a booking)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_id")
+    Booking booking;
 }

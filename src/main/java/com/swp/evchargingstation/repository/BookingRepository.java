@@ -75,5 +75,47 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findBookingsNearStartTime(
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime);
+
+    /**
+     * Tìm booking cuối cùng trước một thời điểm (để kiểm tra buffer time)
+     */
+    @Query("SELECT b FROM Booking b " +
+           "WHERE b.chargingPoint.pointId = :pointId " +
+           "AND b.bookingTime < :time " +
+           "AND b.bookingStatus IN ('CONFIRMED', 'IN_PROGRESS') " +
+           "ORDER BY b.bookingTime DESC")
+    Optional<Booking> findLastBookingBefore(
+            @Param("pointId") String pointId,
+            @Param("time") LocalDateTime time);
+
+    /**
+     * Tìm booking tiếp theo sau một thời điểm (để kiểm tra buffer time)
+     */
+    @Query("SELECT b FROM Booking b " +
+           "WHERE b.chargingPoint.pointId = :pointId " +
+           "AND b.bookingTime > :time " +
+           "AND b.bookingStatus IN ('CONFIRMED', 'IN_PROGRESS') " +
+           "ORDER BY b.bookingTime ASC")
+    Optional<Booking> findNextBookingAfter(
+            @Param("pointId") String pointId,
+            @Param("time") LocalDateTime time);
+
+    /**
+     * Tìm các booking sắp tới cho một trụ (để auto-terminate session)
+     */
+    @Query("SELECT b FROM Booking b " +
+           "WHERE b.chargingPoint.pointId = :pointId " +
+           "AND b.bookingTime BETWEEN :start AND :end " +
+           "AND b.bookingStatus = 'CONFIRMED' " +
+           "ORDER BY b.bookingTime ASC")
+    List<Booking> findUpcomingBookingsForPoint(
+            @Param("pointId") String pointId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    /**
+     * Tìm tất cả bookings theo status (để check timeout)
+     */
+    List<Booking> findByBookingStatus(BookingStatus status);
 }
 

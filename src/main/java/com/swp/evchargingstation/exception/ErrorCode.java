@@ -95,6 +95,8 @@ public enum ErrorCode {
     VEHICLE_NOT_MATCH_BOOKING(20002, "Phương tiện không khớp với đặt chỗ"),
     CHARGING_POINT_RESERVED(20003, "Trụ sạc đã được đặt trước"),
     FORBIDDEN(20004, "Truy cập bị cấm"),
+    CHARGING_POINT_BUSY(20005, "Trụ sạc hiện đang bận"),
+    INSUFFICIENT_TIME_BETWEEN_BOOKINGS(20006, "Không đủ thời gian giữa các booking"),
 
     // Plan subscription related (21xxx)
     CANNOT_DOWNGRADE_TO_FLEXIBLE(21001, "Không thể hạ cấp xuống gói thấp hơn khi đang có gói đăng ký hoạt động"),

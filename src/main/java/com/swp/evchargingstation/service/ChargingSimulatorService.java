@@ -37,6 +37,7 @@ public class ChargingSimulatorService {
     VehicleRepository vehicleRepository;
     ChargingPointRepository chargingPointRepository;
     PlanRepository planRepository;
+    BookingRepository bookingRepository; // Added for BUG #2 fix
     EmailService emailService;
     PaymentSettlementService paymentSettlementService;
 
@@ -182,6 +183,15 @@ public class ChargingSimulatorService {
         session.setStatus(ChargingSessionStatus.COMPLETED);
         session.setEndTime(LocalDateTime.now());
 
+        // ✅ NEW: Update booking status to COMPLETED if session has booking
+        if (session.getBooking() != null) {
+            Booking booking = session.getBooking();
+            booking.setBookingStatus(com.swp.evchargingstation.enums.BookingStatus.COMPLETED);
+            bookingRepository.save(booking);
+            log.info("✅ Booking #{} marked as COMPLETED (linked to session {})",
+                     booking.getId(), sessionId);
+        }
+
         // Update vehicle SOC cuối cùng
         Vehicle vehicle = session.getVehicle();
         if (vehicle != null) {
@@ -192,7 +202,24 @@ public class ChargingSimulatorService {
         // Release charging point
         ChargingPoint point = session.getChargingPoint();
         if (point != null) {
-            point.setStatus(ChargingPointStatus.AVAILABLE);
+            // FIX BUG #2: Kiểm tra upcoming booking trước khi set AVAILABLE
+            LocalDateTime now = LocalDateTime.now();
+            List<Booking> upcomingBookings = bookingRepository.findUpcomingBookingsForPoint(
+                point.getPointId(),
+                now,
+                now.plusMinutes(30) // Check booking trong 30 phút tới
+            );
+
+            if (!upcomingBookings.isEmpty()) {
+                // Có booking sắp tới → Giữ RESERVED thay vì AVAILABLE
+                point.setStatus(ChargingPointStatus.RESERVED);
+                log.info("Keeping point {} RESERVED due to upcoming booking at {}",
+                         point.getName(), upcomingBookings.getFirst().getBookingTime());
+            } else {
+                // Không có booking gần → Set AVAILABLE
+                point.setStatus(ChargingPointStatus.AVAILABLE);
+            }
+
             point.setCurrentSession(null);
             chargingPointRepository.save(point);
         }
@@ -208,7 +235,7 @@ public class ChargingSimulatorService {
         // Lưu session
         chargingSessionRepository.save(session);
 
-        log.info("✅ Session {} completed: SOC {}%, Energy {} kWh, Cost {} VND",
+        log.info("Session {} completed: SOC {}%, Energy {} kWh, Cost {} VND",
             sessionId, session.getEndSocPercent(), session.getEnergyKwh(), session.getCostTotal());
 
         // Settlement & Email (fire and forget)

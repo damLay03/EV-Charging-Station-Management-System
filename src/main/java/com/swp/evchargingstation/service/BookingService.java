@@ -35,6 +35,8 @@ public class BookingService {
     private static final double DEPOSIT_AMOUNT = 50000;
     private static final int CHECK_IN_WINDOW_MINUTES = 15; // Người dùng phải check-in trong vòng 15 phút
     private static final int BOOKING_EXPIRY_MINUTES = 15; // Booking tự động expire sau 15 phút nếu không check-in
+    private static final int BUFFER_BETWEEN_BOOKINGS_MINUTES = 15; // Buffer time giữa các booking
+    private static final int MIN_BOOKING_DURATION_MINUTES = 15; // Thời gian booking tối thiểu
 
     public BookingAvailabilityDto checkAvailability(String chargingPointId, LocalDateTime bookingTime, String vehicleId) {
         // Validate booking time (must be in future and within 24 hours)
@@ -55,6 +57,46 @@ public class BookingService {
 
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new AppException(ErrorCode.VEHICLE_NOT_FOUND));
+
+        // SOLUTION 1: Kiểm tra xem có active session đang chạy không
+        ChargingSession activeSession = chargingPoint.getCurrentSession();
+        if (activeSession != null && activeSession.getStatus() == com.swp.evchargingstation.enums.ChargingSessionStatus.IN_PROGRESS) {
+            // Ước tính thời gian kết thúc session
+            LocalDateTime estimatedEndTime = calculateEstimatedEndTime(activeSession);
+
+            // Thêm buffer 15 phút để an toàn
+            LocalDateTime safeAvailableTime = estimatedEndTime.plusMinutes(BUFFER_BETWEEN_BOOKINGS_MINUTES);
+
+            if (safeAvailableTime.isAfter(bookingTime)) {
+                return BookingAvailabilityDto.builder()
+                        .available(false)
+                        .maxChargePercentage(0.0)
+                        .message(String.format("Trụ hiện đang có phiên sạc, dự kiến kết thúc lúc %02d:%02d. Thời gian sớm nhất có thể đặt: %02d:%02d",
+                                estimatedEndTime.getHour(), estimatedEndTime.getMinute(),
+                                safeAvailableTime.getHour(), safeAvailableTime.getMinute()))
+                        .build();
+            }
+        }
+
+        // SOLUTION 2: Kiểm tra buffer time với booking trước đó
+        Optional<Booking> previousBooking = bookingRepository.findLastBookingBefore(
+                chargingPoint.getPointId(), bookingTime);
+
+        if (previousBooking.isPresent()) {
+            LocalDateTime prevEndTime = previousBooking.get().getEstimatedEndTime();
+            LocalDateTime minStartTime = prevEndTime.plusMinutes(BUFFER_BETWEEN_BOOKINGS_MINUTES);
+
+            if (bookingTime.isBefore(minStartTime)) {
+                return BookingAvailabilityDto.builder()
+                        .available(false)
+                        .maxChargePercentage(0.0)
+                        .message(String.format("Cần buffer %d phút sau booking trước (kết thúc lúc %02d:%02d). Thời gian sớm nhất: %02d:%02d",
+                                BUFFER_BETWEEN_BOOKINGS_MINUTES,
+                                prevEndTime.getHour(), prevEndTime.getMinute(),
+                                minStartTime.getHour(), minStartTime.getMinute()))
+                        .build();
+            }
+        }
 
         // Check if there's any conflicting booking at the requested time
         Optional<Booking> conflictingBooking = bookingRepository.findConflictingBooking(
@@ -81,12 +123,26 @@ public class BookingService {
         if (nextBookingOpt.isPresent()) {
             Booking nextBooking = nextBookingOpt.get();
             Duration timeSlot = Duration.between(bookingTime, nextBooking.getBookingTime());
-            double availableEnergy = (chargingPoint.getChargingPower().getPowerKw() / 1000.0) * (timeSlot.toMinutes() / 60.0);
+
+            // SOLUTION 2: Trừ đi buffer time
+            long availableMinutes = timeSlot.toMinutes() - BUFFER_BETWEEN_BOOKINGS_MINUTES;
+
+            if (availableMinutes < MIN_BOOKING_DURATION_MINUTES) {
+                return BookingAvailabilityDto.builder()
+                        .available(false)
+                        .maxChargePercentage(0.0)
+                        .message(String.format("Không đủ thời gian giữa các booking (cần tối thiểu %d phút + %d phút buffer)",
+                                MIN_BOOKING_DURATION_MINUTES, BUFFER_BETWEEN_BOOKINGS_MINUTES))
+                        .build();
+            }
+
+            double availableEnergy = (chargingPoint.getChargingPower().getPowerKw() / 1000.0) * (availableMinutes / 60.0);
             maxChargePercentage = Math.min(100.0, (availableEnergy / vehicle.getBatteryCapacityKwh()) * 100);
 
             if (maxChargePercentage < 100.0) {
-                message = String.format("Bạn có thể sạc tối đa đến %.1f%% (lượt đặt tiếp theo bắt đầu lúc %s)",
-                        maxChargePercentage, nextBooking.getBookingTime());
+                message = String.format("Bạn có tối đa %d phút sạc (đến %.1f%%). Booking tiếp theo: %02d:%02d",
+                        availableMinutes, maxChargePercentage,
+                        nextBooking.getBookingTime().getHour(), nextBooking.getBookingTime().getMinute());
             }
         }
 
@@ -258,6 +314,8 @@ public class BookingService {
 
         // Only allow check-in for CONFIRMED bookings
         if (booking.getBookingStatus() != BookingStatus.CONFIRMED) {
+            log.warn("Check-in rejected - Booking #{} status is {}, expected CONFIRMED",
+                     bookingId, booking.getBookingStatus());
             throw new AppException(ErrorCode.VALIDATION_FAILED);
         }
 
@@ -267,20 +325,25 @@ public class BookingService {
 
         // Validate check-in time window
         if (now.isBefore(checkInStart)) {
+            log.warn("Check-in too early - Booking #{} at {}, current time: {}, can check-in from: {}",
+                     bookingId, booking.getBookingTime(), now, checkInStart);
             throw new AppException(ErrorCode.VALIDATION_FAILED);
         }
 
         if (now.isAfter(checkInEnd)) {
+            log.warn("Check-in too late - Booking #{} expired. Booking time: {}, current time: {}, deadline was: {}",
+                     bookingId, booking.getBookingTime(), now, checkInEnd);
             throw new AppException(ErrorCode.VALIDATION_FAILED);
         }
 
         // Update booking status to IN_PROGRESS
         // ChargingPoint status will be updated when charging session starts
         booking.setBookingStatus(BookingStatus.IN_PROGRESS);
+        booking.setCheckedInAt(LocalDateTime.now()); // Track check-in time
         Booking savedBooking = bookingRepository.save(booking);
 
-        log.info("Booking checked in - ID: {}, User: {}, Point: {}",
-                bookingId, userId, booking.getChargingPoint().getName());
+        log.info("Booking checked in - ID: {}, User: {}, Point: {}, Time: {}",
+                bookingId, userId, booking.getChargingPoint().getName(), LocalDateTime.now());
 
         return convertToDto(savedBooking);
     }
@@ -300,6 +363,15 @@ public class BookingService {
             booking.setBookingStatus(BookingStatus.EXPIRED);
             bookingRepository.save(booking);
 
+            // FIX BUG #3: Free up the charging point
+            ChargingPoint point = booking.getChargingPoint();
+            if (point.getStatus() == ChargingPointStatus.RESERVED && point.getCurrentSession() == null) {
+                point.setStatus(ChargingPointStatus.AVAILABLE);
+                chargingPointRepository.save(point);
+                log.info("Freed up charging point {} after booking #{} expired",
+                         point.getName(), booking.getId());
+            }
+
             // No refund for expired bookings - deposit is forfeited
             log.info("Booking expired - ID: {}, User: {}, Deposit forfeited",
                     booking.getId(), booking.getUser().getEmail());
@@ -307,6 +379,69 @@ public class BookingService {
 
         if (!expiredBookings.isEmpty()) {
             log.info("Processed {} expired bookings", expiredBookings.size());
+        }
+    }
+
+    /**
+     * NEW: Auto-cancel bookings đã check-in nhưng không start session trong 10 phút
+     * Chạy mỗi 2 phút để check timeout
+     */
+    @Scheduled(cron = "0 */2 * * * *") // Run every 2 minutes
+    @Transactional
+    public void processCheckedInTimeouts() {
+        LocalDateTime timeoutThreshold = LocalDateTime.now().minusMinutes(10);
+
+        // Tìm bookings đã check-in (IN_PROGRESS) nhưng chưa có session
+        List<Booking> checkedInBookings = bookingRepository.findByBookingStatus(BookingStatus.IN_PROGRESS);
+
+        int timeoutCount = 0;
+        for (Booking booking : checkedInBookings) {
+            // Skip nếu chưa có checkedInAt (dữ liệu cũ)
+            if (booking.getCheckedInAt() == null) {
+                continue;
+            }
+
+            // Check timeout: check-in > 10 phút mà chưa có session
+            if (booking.getCheckedInAt().isBefore(timeoutThreshold)) {
+                // Kiểm tra xem đã có session chưa bằng cách check ChargingPoint
+                ChargingPoint point = booking.getChargingPoint();
+                boolean hasActiveSession = point.getCurrentSession() != null &&
+                                          point.getCurrentSession().getStatus() == com.swp.evchargingstation.enums.ChargingSessionStatus.IN_PROGRESS;
+
+                if (!hasActiveSession) {
+                    // Timeout: Check-in rồi nhưng không start session
+                    booking.setBookingStatus(BookingStatus.EXPIRED);
+                    bookingRepository.save(booking);
+
+                    // Free up charging point
+                    if (point.getStatus() == ChargingPointStatus.RESERVED && point.getCurrentSession() == null) {
+                        point.setStatus(ChargingPointStatus.AVAILABLE);
+                        chargingPointRepository.save(point);
+                    }
+
+                    // Refund 50% deposit (penalty for not starting)
+                    double refundAmount = booking.getDepositAmount() * 0.5;
+                    walletService.credit(
+                        booking.getUser().getUserId(),
+                        refundAmount,
+                        TransactionType.BOOKING_REFUND,
+                        String.format("Partial refund (50%%) for booking #%d - check-in timeout", booking.getId()),
+                        null, null, booking.getId(), null
+                    );
+
+                    log.warn("⚠️ Booking #{} check-in timeout - User: {}, Point: {}, Refunded: {} VND (50%)",
+                            booking.getId(),
+                            booking.getUser().getEmail(),
+                            point.getName(),
+                            refundAmount);
+
+                    timeoutCount++;
+                }
+            }
+        }
+
+        if (timeoutCount > 0) {
+            log.info("Processed {} check-in timeouts (10 minutes)", timeoutCount);
         }
     }
 
@@ -326,6 +461,45 @@ public class BookingService {
                 .depositAmount(booking.getDepositAmount())
                 .bookingStatus(booking.getBookingStatus())
                 .createdAt(booking.getCreatedAt())
+                // ✅ Fields để frontend auto-start session
+                .chargingPointId(booking.getChargingPoint().getPointId())
+                .vehicleId(booking.getVehicle().getVehicleId())
+                .currentSocPercent(booking.getVehicle().getCurrentSocPercent())
                 .build();
+    }
+
+    /**
+     * Tính toán thời gian dự kiến kết thúc session dựa trên:
+     * - SOC hiện tại và target SOC
+     * - Charging power của trụ
+     * - Battery capacity của xe
+     * - Safety margin 20% (charging curve, nhiệt độ, etc.)
+     */
+    private LocalDateTime calculateEstimatedEndTime(ChargingSession session) {
+        double currentSoc = session.getStartSocPercent(); // SOC hiện tại
+        double targetSoc = session.getTargetSocPercent() != null ? session.getTargetSocPercent() : 100;
+        double remainingPercent = targetSoc - currentSoc;
+
+        if (remainingPercent <= 0) {
+            // Nếu đã đạt target hoặc target không hợp lệ, assume sẽ kết thúc trong 5 phút
+            return LocalDateTime.now().plusMinutes(5);
+        }
+
+        Vehicle vehicle = session.getVehicle();
+        ChargingPoint point = session.getChargingPoint();
+
+        double requiredEnergy = (remainingPercent / 100.0) * vehicle.getBatteryCapacityKwh();
+        double chargingPowerKw = point.getChargingPower().getPowerKw() / 1000.0;
+
+        // Tính thời gian lý thuyết
+        double hoursNeeded = requiredEnergy / chargingPowerKw;
+
+        // Thêm 20% safety margin để tính đến charging curve (sạc chậm dần khi gần đầy)
+        double safetyFactor = 1.2;
+        double adjustedHours = hoursNeeded * safetyFactor;
+
+        long minutesNeeded = (long) (adjustedHours * 60);
+
+        return LocalDateTime.now().plusMinutes(minutesNeeded);
     }
 }

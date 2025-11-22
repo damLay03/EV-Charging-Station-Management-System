@@ -18,6 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -400,31 +401,55 @@ public class ChargingSessionService {
         ChargingPoint chargingPoint = chargingPointRepository.findById(request.getChargingPointId())
                 .orElseThrow(() -> new AppException(ErrorCode.CHARGING_POINT_NOT_FOUND));
 
-        // Booking check
+        // ✅ FIX: Booking check - tìm cả CONFIRMED (chưa check-in) và IN_PROGRESS (đã check-in)
         Optional<Booking> bookingOpt = bookingRepository.findByUserIdAndChargingPointIdAndBookingStatus(
-                driver.getUser().getUserId(), chargingPoint.getPointId(), BookingStatus.CONFIRMED);
+                driver.getUser().getUserId(), chargingPoint.getPointId(), BookingStatus.IN_PROGRESS);
+
+        // Nếu không tìm thấy IN_PROGRESS, thử tìm CONFIRMED (cho phép check-in + start session cùng lúc)
+        if (bookingOpt.isEmpty()) {
+            bookingOpt = bookingRepository.findByUserIdAndChargingPointIdAndBookingStatus(
+                    driver.getUser().getUserId(), chargingPoint.getPointId(), BookingStatus.CONFIRMED);
+        }
 
         if (bookingOpt.isPresent()) {
             Booking booking = bookingOpt.get();
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime bookingTime = booking.getBookingTime();
-            // Check-in window: ±10 minutes
-            if (now.isAfter(bookingTime.minusMinutes(10)) && now.isBefore(bookingTime.plusMinutes(10))) {
-                if (!booking.getVehicle().getVehicleId().equals(request.getVehicleId())) {
-                    throw new AppException(ErrorCode.VEHICLE_NOT_MATCH_BOOKING);
-                }
-                // Valid check-in
-                booking.setBookingStatus(BookingStatus.IN_PROGRESS);
-                bookingRepository.save(booking);
-            } else {
-                // Not within check-in window, treat as normal session start, but the point might be reserved
-                // Sử dụng displayStatus thay vì status vật lý
-                ChargingPointStatus displayStatus = chargingPointStatusService.calculateDisplayStatus(chargingPoint.getPointId());
-                if (displayStatus == ChargingPointStatus.RESERVED) {
-                    throw new AppException(ErrorCode.CHARGING_POINT_RESERVED);
-                }
+
+            log.info("✅ Found booking #{} with status {} for user {} at point {}",
+                     booking.getId(), booking.getBookingStatus(),
+                     driver.getUser().getUserId(), chargingPoint.getPointId());
+
+            // Validate vehicle matches booking
+            if (!booking.getVehicle().getVehicleId().equals(request.getVehicleId())) {
+                log.error("❌ Vehicle mismatch - Booking has vehicle {}, request has vehicle {}",
+                          booking.getVehicle().getVehicleId(), request.getVehicleId());
+                throw new AppException(ErrorCode.VEHICLE_NOT_MATCH_BOOKING);
             }
+
+            // Nếu booking vẫn CONFIRMED, auto check-in
+            if (booking.getBookingStatus() == BookingStatus.CONFIRMED) {
+                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime checkInStart = booking.getBookingTime().minusMinutes(15);
+                LocalDateTime checkInEnd = booking.getBookingTime().plusMinutes(15);
+
+                if (now.isBefore(checkInStart) || now.isAfter(checkInEnd)) {
+                    log.error("❌ Check-in window validation failed - Now: {}, Window: {} to {}",
+                              now, checkInStart, checkInEnd);
+                    throw new AppException(ErrorCode.VALIDATION_FAILED);
+                }
+
+                booking.setBookingStatus(BookingStatus.IN_PROGRESS);
+                booking.setCheckedInAt(now);
+                bookingRepository.save(booking);
+                log.info("✅ Auto check-in booking #{} when starting session", booking.getId());
+            }
+
+            // ✅ User có booking hợp lệ → SKIP ALL OTHER CHECKS, cho phép start session ngay
+            log.info("✅ User has valid booking #{} - BYPASSING all availability checks", booking.getId());
+
+            // IMPORTANT: Jump to validation section, skip display status check
         } else {
+            log.info("ℹ️ No booking found for user {} at point {} - checking availability",
+                     driver.getUser().getUserId(), chargingPoint.getPointId());
             // No booking, check if point is available (using dynamic status check)
             // Kiểm tra trạng thái hiển thị (có tính đến booking sắp tới)
             ChargingPointStatus displayStatus = chargingPointStatusService.calculateDisplayStatus(chargingPoint.getPointId());
@@ -436,6 +461,49 @@ public class ChargingSessionService {
 
             if (displayStatus != ChargingPointStatus.AVAILABLE) {
                 throw new AppException(ErrorCode.CHARGING_POINT_NOT_AVAILABLE);
+            }
+
+            // FIX BUG #1: Kiểm tra upcoming bookings trong 3 giờ tới
+            LocalDateTime now = LocalDateTime.now();
+            List<Booking> upcomingBookings = bookingRepository.findUpcomingBookingsForPoint(
+                chargingPoint.getPointId(),
+                now,
+                now.plusHours(3)
+            );
+
+            if (!upcomingBookings.isEmpty()) {
+                Booking nextBooking = upcomingBookings.getFirst();
+                Duration timeUntilBooking = Duration.between(now, nextBooking.getBookingTime());
+
+                // Ước tính thời gian sạc cần thiết
+                double remainingPercent = target - (vehicle.getCurrentSocPercent() != null ? vehicle.getCurrentSocPercent() : 0);
+                double requiredEnergy = (remainingPercent / 100.0) * vehicle.getBatteryCapacityKwh();
+                double chargingPowerKw = chargingPoint.getChargingPower().getPowerKw() / 1000.0;
+                double hoursNeeded = requiredEnergy / chargingPowerKw;
+
+                // Thêm 20% safety margin
+                long estimatedMinutes = (long) (hoursNeeded * 60 * 1.2);
+                long availableMinutes = timeUntilBooking.toMinutes() - 15; // -15 phút buffer
+
+                if (estimatedMinutes > availableMinutes) {
+                    // Không đủ thời gian
+                    String errorMessage = String.format(
+                        "Trụ sạc có booking lúc %02d:%02d. " +
+                        "Không đủ thời gian để sạc đến %d%% (cần ~%d phút, chỉ có %d phút). " +
+                        "Vui lòng giảm target SOC hoặc chọn trụ khác.",
+                        nextBooking.getBookingTime().getHour(),
+                        nextBooking.getBookingTime().getMinute(),
+                        target,
+                        estimatedMinutes,
+                        availableMinutes
+                    );
+                    log.warn("Walk-in rejected: {}", errorMessage);
+                    throw new AppException(ErrorCode.CHARGING_POINT_RESERVED);
+                }
+
+                // Đủ thời gian - Log warning
+                log.warn("Walk-in session starting with upcoming booking at {}. Available: {} min, Estimated: {} min",
+                    nextBooking.getBookingTime(), availableMinutes, estimatedMinutes);
             }
         }
 
@@ -451,6 +519,12 @@ public class ChargingSessionService {
         // Create session
         int currentSoc = vehicle.getCurrentSocPercent() != null ? vehicle.getCurrentSocPercent() : 0;
 
+        // ✅ NEW: Lấy booking reference nếu có
+        Booking linkedBooking = null;
+        if (bookingOpt.isPresent()) {
+            linkedBooking = bookingOpt.get();
+        }
+
         ChargingSession newSession = ChargingSession.builder()
                 .driver(driver)
                 .vehicle(vehicle)
@@ -464,6 +538,7 @@ public class ChargingSessionService {
                 .costTotal(0f)
                 .startedByUser(driver.getUser())
                 .status(ChargingSessionStatus.IN_PROGRESS)
+                .booking(linkedBooking)  // ✅ NEW: Link booking to session
                 .build();
 
         chargingSessionRepository.saveAndFlush(newSession);
@@ -518,7 +593,7 @@ public class ChargingSessionService {
         session = chargingSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new AppException(ErrorCode.CHARGING_SESSION_NOT_FOUND));
 
-        log.info("✅ Driver {} stopped session {} successfully", driverId, sessionId);
+        log.info("Driver {} stopped session {} successfully", driverId, sessionId);
         return convertToResponse(session);
     }
 
@@ -646,7 +721,7 @@ public class ChargingSessionService {
         session = chargingSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new AppException(ErrorCode.CHARGING_SESSION_NOT_FOUND));
 
-        log.info("✅ Staff {} stopped session {} successfully", userId, sessionId);
+        log.info("Staff {} stopped session {} successfully", userId, sessionId);
 
         return convertToResponse(session);
     }

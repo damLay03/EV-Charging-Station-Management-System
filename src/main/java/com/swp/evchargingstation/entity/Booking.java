@@ -48,6 +48,9 @@ public class Booking {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    // Thời điểm user check-in (để track timeout)
+    private LocalDateTime checkedInAt;
 }
 
 

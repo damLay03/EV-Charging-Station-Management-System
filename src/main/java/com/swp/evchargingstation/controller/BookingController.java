@@ -89,8 +89,8 @@ public class BookingController {
     public ResponseEntity<BookingResponse> checkInBooking(
             @PathVariable Long bookingId,
             @AuthenticationPrincipal Jwt jwt) {
-        String email = jwt.getSubject();
-        return ResponseEntity.ok(bookingService.checkInBooking(bookingId, email));
+        String userId = jwt.getClaim("userId"); // ✅ Fix: Lấy userId thay vì email
+        return ResponseEntity.ok(bookingService.checkInBooking(bookingId, userId));
     }
 }
 

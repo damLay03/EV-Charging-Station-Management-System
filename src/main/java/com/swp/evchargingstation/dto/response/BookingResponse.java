@@ -27,5 +27,10 @@ public class BookingResponse {
     private Double depositAmount;
     private BookingStatus bookingStatus;
     private LocalDateTime createdAt;
+
+    // ✅ Fields để frontend auto-start session
+    private String chargingPointId;  // Cần cho startSession request
+    private String vehicleId;         // ✅ String vì Vehicle.vehicleId là String (UUID)
+    private Integer currentSocPercent; // ✅ SOC hiện tại của xe
 }
 
