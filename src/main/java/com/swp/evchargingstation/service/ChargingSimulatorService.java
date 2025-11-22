@@ -73,19 +73,19 @@ public class ChargingSimulatorService {
      */
     @Transactional
     public void updateSessionProgress(String sessionId) {
-        // Reload session để có data mới nhất
-        ChargingSession session = chargingSessionRepository.findById(sessionId).orElse(null);
+        // Fetch session với tất cả relationships để tránh lazy loading exception
+        ChargingSession session = chargingSessionRepository.findByIdWithRelationships(sessionId).orElse(null);
         if (session == null || session.getStatus() != ChargingSessionStatus.IN_PROGRESS) {
             return; // Session đã bị stop từ nơi khác
         }
 
-        Vehicle vehicle = vehicleRepository.findById(session.getVehicle().getVehicleId()).orElse(null);
+        Vehicle vehicle = session.getVehicle();
         if (vehicle == null) {
             return;
         }
 
         ChargingPoint point = session.getChargingPoint();
-        if (point == null) {
+        if (point == null || point.getChargingPower() == null) {
             return;
         }
 
@@ -165,7 +165,7 @@ public class ChargingSimulatorService {
      */
     @Transactional
     public void completeSession(String sessionId) {
-        ChargingSession session = chargingSessionRepository.findById(sessionId).orElse(null);
+        ChargingSession session = chargingSessionRepository.findByIdWithRelationships(sessionId).orElse(null);
         if (session == null) {
             return;
         }
