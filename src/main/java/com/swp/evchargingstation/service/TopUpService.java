@@ -213,21 +213,27 @@ public class TopUpService {
                         return new AppException(ErrorCode.WALLET_TRANSACTION_NOT_FOUND);
                     });
 
-            // Update wallet balance
-            Wallet wallet = transaction.getWallet();
-            wallet.setBalance(wallet.getBalance() + amount);
-            wallet.setUpdatedAt(LocalDateTime.now());
-            walletRepository.save(wallet);
-
-            log.info("Updated wallet balance for user: {}. New balance: {}",
-                    wallet.getUser().getUserId(), wallet.getBalance());
-
-            // Update transaction status to COMPLETED
+            // Mark old transaction as COMPLETED
             transaction.setStatus(TransactionStatus.COMPLETED);
             transactionRepository.save(transaction);
 
+            // Use WalletService.credit() to update balance and send email
+            Wallet wallet = transaction.getWallet();
+            String userId = wallet.getUser().getUserId();
+
+            walletService.credit(
+                userId,
+                (double) amount,
+                TransactionType.TOPUP_ZALOPAY,
+                String.format("ZaloPay top-up - Transaction: %s", appTransId),
+                appTransId,
+                null,
+                null,
+                null
+            );
+
             log.info("Top-up completed successfully: {}. Amount: {}, User: {}",
-                    appTransId, amount, wallet.getUser().getUserId());
+                    appTransId, amount, userId);
 
             return createCallbackResponse(1, "Success");
 

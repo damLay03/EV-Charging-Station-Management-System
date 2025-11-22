@@ -42,7 +42,7 @@ public class ChargingSessionController {
     }
 
     @GetMapping("/{sessionId}")
-    @PreAuthorize("hasRole('DRIVER')")
+    @PreAuthorize("hasAnyRole('STAFF', 'DRIVER')")
     @Operation(
             summary = "[DRIVER] Lấy chi tiết phiên sạc theo ID",
             description = "Trả về chi tiết của một phiên sạc cụ thể theo sessionId. Driver chỉ có thể xem phiên sạc của chính mình"

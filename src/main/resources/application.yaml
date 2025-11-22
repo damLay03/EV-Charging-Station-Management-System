@@ -80,7 +80,7 @@ mail:
         connectiontimeout: 5000
         timeout: 5000
         writetimeout: 5000
-  from: ${MAIL_FROM:EV Charging System <khoahtd14@gmail.com>}
+  from: ${MAIL_FROM:T-Green Charging System <khoahtd14@gmail.com>}
 
 zalopay:
   app-id: "2554"  # Sandbox App ID

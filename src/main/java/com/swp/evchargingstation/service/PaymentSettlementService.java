@@ -25,6 +25,7 @@ public class PaymentSettlementService {
     private final PaymentRepository paymentRepository;
     private final BookingRepository bookingRepository;
     private final WalletService walletService;
+    private final EmailService emailService;
 
     /**
      * Settle payment for a COMPLETED charging session using wallet only.
@@ -130,6 +131,21 @@ public class PaymentSettlementService {
                 }
 
                 paymentRepository.flush(); // single flush
+
+                // Gửi email thông báo thanh toán thành công
+                try {
+                    if (session.getDriver() != null && session.getDriver().getUser() != null) {
+                        emailService.sendChargingPaymentSuccessEmail(
+                            session.getDriver().getUser(),
+                            session,
+                            cost
+                        );
+                    }
+                } catch (Exception emailEx) {
+                    log.warn("[Settlement] Failed to send payment email for session {}: {}",
+                            session.getSessionId(), emailEx.getMessage());
+                }
+
                 return; // success
             } catch (org.springframework.dao.PessimisticLockingFailureException | org.hibernate.PessimisticLockException ex) {
                 attempt++;

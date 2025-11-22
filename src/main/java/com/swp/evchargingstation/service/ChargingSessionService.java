@@ -149,7 +149,11 @@ public class ChargingSessionService {
                 .orElseThrow(() -> new AppException(ErrorCode.SESSION_NOT_FOUND));
 
         // Kiểm tra quyền truy cập
-        if (!session.getDriver().getUserId().equals(userId)) {
+        // STAFF có thể xem mọi phiên sạc, DRIVER chỉ xem phiên sạc của chính mình
+        boolean isStaff = authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_STAFF"));
+
+        if (!isStaff && !session.getDriver().getUserId().equals(userId)) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 

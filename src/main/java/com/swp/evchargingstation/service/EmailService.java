@@ -48,7 +48,7 @@ public class EmailService {
                 return;
             }
 
-            String subject = "⚡ Phiên sạc của bạn đã bắt đầu";
+            String subject = "Phiên sạc của bạn đã bắt đầu";
             String htmlContent = buildChargingStartEmailTemplate(session);
 
             sendHtmlEmail(user.getEmail(), subject, htmlContent);
@@ -67,7 +67,7 @@ public class EmailService {
                 return;
             }
 
-            String subject = "✅ Phiên sạc của bạn đã hoàn tất";
+            String subject = "Phiên sạc của bạn đã hoàn tất";
             String htmlContent = buildChargingCompleteEmailTemplate(session);
 
             sendHtmlEmail(user.getEmail(), subject, htmlContent);
@@ -86,7 +86,7 @@ public class EmailService {
                 return;
             }
 
-            String subject = "💳 Thanh toán thành công";
+            String subject = "Thanh toán thành công";
             String htmlContent = buildPaymentConfirmationEmailTemplate(payment);
 
             sendHtmlEmail(user.getEmail(), subject, htmlContent);
@@ -171,6 +171,9 @@ public class EmailService {
                 }
             }
 
+            // Sử dụng thời gian giả lập từ session (startTime và endTime)
+            String startTime = session.getStartTime() != null ? session.getStartTime().format(timeFormatter) : "N/A";
+            String endTime = session.getEndTime() != null ? session.getEndTime().format(timeFormatter) : "N/A";
             String duration = formatDuration(session.getDurationMin());
             String energy = String.format("%.1f", session.getEnergyKwh());
             int startSoc = session.getStartSocPercent();
@@ -179,11 +182,13 @@ public class EmailService {
 
             String bodyContent = String.format(
                 "<p>Phiên sạc của bạn tại trạm <strong>%s</strong> đã hoàn tất.</p>" +
-                "<ul><li><strong>Thời gian:</strong> %s</li>" +
+                "<ul><li><strong>Bắt đầu:</strong> %s</li>" +
+                "<li><strong>Kết thúc:</strong> %s</li>" +
+                "<li><strong>Thời gian sạc:</strong> %s</li>" +
                 "<li><strong>Năng lượng:</strong> %s kWh</li>" +
                 "<li><strong>Pin:</strong> %d%% → %d%%</li>" +
-                "<li style='font-size:18px'><strong>Tổng:</strong> %s VNĐ</li></ul>",
-                stationName, duration, energy, startSoc, endSoc, cost
+                "<li style='font-size:18px'><strong>Tổng chi phí:</strong> %s VNĐ</li></ul>",
+                stationName, startTime, endTime, duration, energy, startSoc, endSoc, cost
             );
 
             return buildBaseEmailTemplate(userName, bodyContent);
@@ -215,7 +220,7 @@ public class EmailService {
             "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>" +
             "<body style='font-family:Arial,sans-serif;background:#f9f9f9;margin:0;padding:20px'>" +
             "<div style='max-width:600px;margin:auto;background:#fff;border:1px solid #ddd;border-radius:8px'>" +
-            "<div style='background:#15919B;color:#fff;padding:20px;text-align:center'><h1>⚡ EV Charging</h1></div>" +
+            "<div style='background:#15919B;color:#fff;padding:20px;text-align:center'><h1>T-Green</h1></div>" +
             "<div style='padding:30px'><p>Chào %s,</p>%s<p>Cảm ơn bạn đã sử dụng dịch vụ.</p>" +
             "<p>Trân trọng,<br>Đội ngũ EV Charging</p></div>" +
             "<div style='background:#f4f4f4;color:#777;padding:20px;text-align:center;font-size:12px'>" +
@@ -252,7 +257,7 @@ public class EmailService {
                 return;
             }
 
-            String subject = "🎉 Đăng ký gói cước thành công";
+            String subject = "Đăng ký gói cước thành công";
             String htmlContent = buildPlanSubscriptionSuccessEmailTemplate(user, plan, fee);
 
             sendHtmlEmail(user.getEmail(), subject, htmlContent);
@@ -272,7 +277,7 @@ public class EmailService {
                 return;
             }
 
-            String subject = "✅ Gia hạn gói cước thành công";
+            String subject = "Gia hạn gói cước thành công";
             String htmlContent = buildPlanRenewalSuccessEmailTemplate(user, plan, fee);
 
             sendHtmlEmail(user.getEmail(), subject, htmlContent);
@@ -292,7 +297,7 @@ public class EmailService {
                 return;
             }
 
-            String subject = "⚠️ Gia hạn gói cước thất bại";
+            String subject = "Gia hạn gói cước thất bại";
             String htmlContent = buildPlanRenewalFailedEmailTemplate(user, oldPlan, newPlan, requiredFee);
 
             sendHtmlEmail(user.getEmail(), subject, htmlContent);
@@ -313,7 +318,7 @@ public class EmailService {
         String bodyContent = String.format(
             "<p>Chúc mừng bạn đã đăng ký gói cước <strong>%s</strong> thành công!</p>" +
             "<div style='background:#f0f8ff;padding:15px;border-left:4px solid #15919B;margin:20px 0'>" +
-            "<h3 style='margin-top:0;color:#15919B'>📋 Chi tiết gói cước</h3>" +
+            "<h3 style='margin-top:0;color:#15919B'>Chi tiết gói cước</h3>" +
             "<ul style='margin:10px 0'>" +
             "<li><strong>Gói:</strong> %s</li>" +
             "<li><strong>Phí hàng tháng:</strong> %s</li>" +
@@ -359,7 +364,7 @@ public class EmailService {
         String bodyContent = String.format(
             "<p>Rất tiếc, gia hạn gói cước <strong>%s</strong> của bạn đã thất bại do số dư ví không đủ.</p>" +
             "<div style='background:#fff3cd;padding:15px;border-left:4px solid #ffc107;margin:20px 0'>" +
-            "<h3 style='margin-top:0;color:#856404'>⚠️ Thông báo quan trọng</h3>" +
+            "<h3 style='margin-top:0;color:#856404'>Thông báo quan trọng</h3>" +
             "<ul style='margin:10px 0'>" +
             "<li><strong>Gói cũ:</strong> %s</li>" +
             "<li><strong>Phí yêu cầu:</strong> %s</li>" +
@@ -382,7 +387,7 @@ public class EmailService {
                 return;
             }
 
-            String subject = "🔔 Hủy gia hạn tự động thành công";
+            String subject = "Hủy gia hạn tự động thành công";
             String htmlContent = buildPlanCancellationEmailTemplate(user, plan, driver.getPlanSubscriptionDate());
 
             sendHtmlEmail(user.getEmail(), subject, htmlContent);
@@ -402,7 +407,7 @@ public class EmailService {
                 return;
             }
 
-            String subject = "✅ Kích hoạt lại gia hạn tự động";
+            String subject = "Kích hoạt lại gia hạn tự động";
             String htmlContent = buildPlanReactivationEmailTemplate(user, plan);
 
             sendHtmlEmail(user.getEmail(), subject, htmlContent);
@@ -422,7 +427,7 @@ public class EmailService {
                 return;
             }
 
-            String subject = "📢 Gói cước đã hết hạn";
+            String subject = "Gói cước đã hết hạn";
             String htmlContent = buildPlanDowngradedToFlexibleEmailTemplate(user, oldPlan, flexiblePlan);
 
             sendHtmlEmail(user.getEmail(), subject, htmlContent);
@@ -443,14 +448,14 @@ public class EmailService {
         String bodyContent = String.format(
             "<p>Bạn đã <strong>hủy gia hạn tự động</strong> cho gói cước <strong>%s</strong> thành công.</p>" +
             "<div style='background:#e8f4f8;padding:15px;border-left:4px solid #17a2b8;margin:20px 0'>" +
-            "<h3 style='margin-top:0;color:#17a2b8'>📋 Thông tin quan trọng</h3>" +
+            "<h3 style='margin-top:0;color:#17a2b8'>Thông tin quan trọng</h3>" +
             "<ul style='margin:10px 0'>" +
             "<li><strong>Gói hiện tại:</strong> %s</li>" +
             "<li><strong>Trạng thái:</strong> Vẫn hoạt động đến hết hạn</li>" +
             "<li><strong>Ngày hết hạn:</strong> %s</li>" +
             "<li><strong>Sau khi hết hạn:</strong> Tự động chuyển về gói <strong>Linh hoạt</strong></li>" +
             "</ul></div>" +
-            "<p>⚠️ Gói cước sẽ <strong>KHÔNG tự động gia hạn</strong> vào tháng sau.</p>" +
+            "<p>Gói cước sẽ <strong>KHÔNG tự động gia hạn</strong> vào tháng sau.</p>" +
             "<p>Bạn vẫn có thể kích hoạt lại gia hạn tự động bất kỳ lúc nào trước khi hết hạn.</p>",
             planName, planName, expiryDate
         );
@@ -466,7 +471,7 @@ public class EmailService {
         String bodyContent = String.format(
             "<p>Bạn đã <strong>kích hoạt lại gia hạn tự động</strong> cho gói cước <strong>%s</strong> thành công!</p>" +
             "<div style='background:#d4edda;padding:15px;border-left:4px solid #28a745;margin:20px 0'>" +
-            "<h3 style='margin-top:0;color:#155724'>✅ Xác nhận</h3>" +
+            "<h3 style='margin-top:0;color:#155724'>Xác nhận</h3>" +
             "<ul style='margin:10px 0'>" +
             "<li><strong>Gói:</strong> %s</li>" +
             "<li><strong>Phí hàng tháng:</strong> %s</li>" +
@@ -488,7 +493,7 @@ public class EmailService {
         String bodyContent = String.format(
             "<p>Gói cước <strong>%s</strong> của bạn đã hết hạn.</p>" +
             "<div style='background:#fff3cd;padding:15px;border-left:4px solid #ffc107;margin:20px 0'>" +
-            "<h3 style='margin-top:0;color:#856404'>🔄 Thay đổi gói cước</h3>" +
+            "<h3 style='margin-top:0;color:#856404'>Thay đổi gói cước</h3>" +
             "<ul style='margin:10px 0'>" +
             "<li><strong>Gói cũ:</strong> %s</li>" +
             "<li><strong>Gói mới:</strong> %s</li>" +
@@ -497,6 +502,110 @@ public class EmailService {
             "<p>Hệ thống đã tự động chuyển bạn sang gói <strong>%s</strong>.</p>" +
             "<p>Bạn có thể đăng ký lại gói cước cao cấp bất kỳ lúc nào!</p>",
             oldPlanName, oldPlanName, newPlanName, newPlanName
+        );
+
+        return buildBaseEmailTemplate(userName, bodyContent);
+    }
+
+    // ==================== WALLET TOP-UP EMAIL ====================
+
+    @Async
+    public void sendWalletTopUpSuccessEmail(User user, double amount, double newBalance) {
+        try {
+            if (user == null || user.getEmail() == null) {
+                log.warn("Cannot send email: User or email is null");
+                return;
+            }
+
+            String subject = "Nạp tiền thành công";
+            String htmlContent = buildWalletTopUpSuccessEmailTemplate(user, amount, newBalance);
+
+            sendHtmlEmail(user.getEmail(), subject, htmlContent);
+            log.info("Sent wallet top-up success email to {} - amount: {}", user.getEmail(), amount);
+        } catch (Exception e) {
+            log.error("Failed to send wallet top-up success email: {}", e.getMessage(), e);
+        }
+    }
+
+    private String buildWalletTopUpSuccessEmailTemplate(User user, double amount, double newBalance) {
+        String userName = user.getFullName();
+        String amountStr = currencyFormatter.format(amount) + " VNĐ";
+        String balanceStr = currencyFormatter.format(newBalance) + " VNĐ";
+        String time = LocalDateTime.now().format(timeFormatter);
+
+        String bodyContent = String.format(
+            "<p>Bạn đã nạp tiền vào ví thành công!</p>" +
+            "<div style='background:#d4edda;padding:20px;border-left:4px solid #28a745;margin:20px 0;border-radius:8px'>" +
+            "<h3 style='margin-top:0;color:#155724'>Chi tiết giao dịch</h3>" +
+            "<table style='width:100%%;border-collapse:collapse'>" +
+            "<tr><td style='padding:8px 0;color:#666'>Số tiền nạp:</td>" +
+            "<td style='padding:8px 0;font-weight:bold;font-size:18px;color:#28a745'>%s</td></tr>" +
+            "<tr><td style='padding:8px 0;color:#666'>Số dư mới:</td>" +
+            "<td style='padding:8px 0;font-weight:bold'>%s</td></tr>" +
+            "<tr><td style='padding:8px 0;color:#666'>Thời gian:</td>" +
+            "<td style='padding:8px 0'>%s</td></tr>" +
+            "</table></div>" +
+            "<p>Bạn có thể sử dụng số dư này để thanh toán phí sạc, đặt chỗ và đăng ký gói cước.</p>",
+            amountStr, balanceStr, time
+        );
+
+        return buildBaseEmailTemplate(userName, bodyContent);
+    }
+
+    // ==================== CHARGING PAYMENT EMAIL ====================
+
+    @Async
+    public void sendChargingPaymentSuccessEmail(User user, ChargingSession session, double amount) {
+        try {
+            if (user == null || user.getEmail() == null) {
+                log.warn("Cannot send email: User or email is null for payment");
+                return;
+            }
+
+            String subject = "Thanh toán phí sạc thành công";
+            String htmlContent = buildChargingPaymentSuccessEmailTemplate(user, session, amount);
+
+            sendHtmlEmail(user.getEmail(), subject, htmlContent);
+            log.info("Sent charging payment success email to {} for session {} - amount: {}",
+                    user.getEmail(), session.getSessionId(), amount);
+        } catch (Exception e) {
+            log.error("Failed to send charging payment success email: {}", e.getMessage(), e);
+        }
+    }
+
+    private String buildChargingPaymentSuccessEmailTemplate(User user, ChargingSession session, double amount) {
+        String userName = user.getFullName();
+        String sessionId = session.getSessionId().substring(0, 8).toUpperCase();
+        String amountStr = currencyFormatter.format(amount) + " VNĐ";
+        String time = LocalDateTime.now().format(timeFormatter);
+
+        String stationName = "Trạm sạc";
+        if (session.getChargingPoint() != null && session.getChargingPoint().getStation() != null) {
+            try {
+                stationName = session.getChargingPoint().getStation().getName();
+            } catch (Exception e) {
+                log.warn("Could not load station name: {}", e.getMessage());
+            }
+        }
+
+        String bodyContent = String.format(
+            "<p>Thanh toán phí sạc cho phiên sạc <strong>#%s</strong> đã thành công!</p>" +
+            "<div style='background:#d4edda;padding:20px;border-left:4px solid #28a745;margin:20px 0;border-radius:8px'>" +
+            "<h3 style='margin-top:0;color:#155724'>Chi tiết thanh toán</h3>" +
+            "<table style='width:100%%;border-collapse:collapse'>" +
+            "<tr><td style='padding:8px 0;color:#666'>Phiên sạc:</td>" +
+            "<td style='padding:8px 0;font-weight:bold'>#%s</td></tr>" +
+            "<tr><td style='padding:8px 0;color:#666'>Trạm sạc:</td>" +
+            "<td style='padding:8px 0'>%s</td></tr>" +
+            "<tr><td style='padding:8px 0;color:#666'>Số tiền:</td>" +
+            "<td style='padding:8px 0;font-weight:bold;font-size:18px;color:#28a745'>%s</td></tr>" +
+            "<tr><td style='padding:8px 0;color:#666'>Phương thức:</td>" +
+            "<td style='padding:8px 0'>Ví điện tử</td></tr>" +
+            "<tr><td style='padding:8px 0;color:#666'>Thời gian:</td>" +
+            "<td style='padding:8px 0'>%s</td></tr>" +
+            "</table></div>" +
+            "<p>Cảm ơn bạn đã sử dụng dịch vụ sạc xe của chúng tôi!</p>",
+            sessionId, sessionId, stationName, amountStr, time
         );
 
         return buildBaseEmailTemplate(userName, bodyContent);
@@ -512,7 +621,7 @@ public class EmailService {
                 return;
             }
 
-            String subject = "✅ Xe của bạn đã được phê duyệt";
+            String subject = "Xe của bạn đã được phê duyệt";
             String htmlContent = buildVehicleApprovedEmailTemplate(user, vehicle);
 
             sendHtmlEmail(user.getEmail(), subject, htmlContent);
@@ -530,7 +639,7 @@ public class EmailService {
                 return;
             }
 
-            String subject = "❌ Yêu cầu đăng ký xe bị từ chối";
+            String subject = "Yêu cầu đăng ký xe bị từ chối";
             String htmlContent = buildVehicleRejectedEmailTemplate(user, vehicle, rejectionReason);
 
             sendHtmlEmail(user.getEmail(), subject, htmlContent);
@@ -544,7 +653,7 @@ public class EmailService {
         String userName = (user.getFirstName() != null ? user.getFirstName() : "Bạn");
 
         String bodyContent = String.format("""
-            <h2 style="color: #10b981; margin-bottom: 20px;">🎉 Xe của bạn đã được phê duyệt!</h2>
+            <h2 style="color: #10b981; margin-bottom: 20px;">Xe của bạn đã được phê duyệt!</h2>
             
             <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #10b981; margin-bottom: 20px;">
                 <p style="margin: 0 0 10px 0;"><strong>Thông tin xe:</strong></p>
@@ -565,7 +674,7 @@ public class EmailService {
             </div>
             
             <div style="background-color: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <p style="margin: 0 0 10px 0; font-size: 14px;">✨ <strong>Bây giờ bạn có thể:</strong></p>
+                <p style="margin: 0 0 10px 0; font-size: 14px;"><strong>Bây giờ bạn có thể:</strong></p>
                 <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #666;">
                     <li style="margin-bottom: 5px;">Sử dụng xe này để đặt chỗ và sạc tại các trạm sạc</li>
                     <li style="margin-bottom: 5px;">Xem thông tin xe trong danh sách xe của bạn</li>
@@ -574,7 +683,7 @@ public class EmailService {
             </div>
             
             <p style="color: #666; font-size: 14px; margin-top: 20px;">
-                Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi! 🚗⚡
+                Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi! 
             </p>
             """,
             vehicle.getLicensePlate(),
@@ -590,7 +699,7 @@ public class EmailService {
         String userName = (user.getFirstName() != null ? user.getFirstName() : "Bạn");
 
         String bodyContent = String.format("""
-            <h2 style="color: #ef4444; margin-bottom: 20px;">❌ Yêu cầu đăng ký xe bị từ chối</h2>
+            <h2 style="color: #ef4444; margin-bottom: 20px;">Yêu cầu đăng ký xe bị từ chối</h2>
             
             <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444; margin-bottom: 20px;">
                 <p style="margin: 0 0 10px 0;"><strong>Thông tin xe:</strong></p>
@@ -607,12 +716,12 @@ public class EmailService {
             </div>
             
             <div style="background-color: #fff7ed; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
-                <p style="margin: 0 0 10px 0; font-weight: bold; color: #f59e0b;">📝 Lý do từ chối:</p>
+                <p style="margin: 0 0 10px 0; font-weight: bold; color: #f59e0b;">Lý do từ chối:</p>
                 <p style="margin: 0; color: #666; font-size: 14px; line-height: 1.6;">%s</p>
             </div>
             
             <div style="background-color: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <p style="margin: 0 0 10px 0; font-size: 14px;">💡 <strong>Bước tiếp theo:</strong></p>
+                <p style="margin: 0 0 10px 0; font-size: 14px;"><strong>Bước tiếp theo:</strong></p>
                 <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #666;">
                     <li style="margin-bottom: 5px;">Vui lòng kiểm tra và sửa lại giấy tờ xe theo yêu cầu</li>
                     <li style="margin-bottom: 5px;">Chụp lại ảnh giấy tờ xe rõ ràng, đầy đủ thông tin</li>

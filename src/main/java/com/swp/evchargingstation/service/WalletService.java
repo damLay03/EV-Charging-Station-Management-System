@@ -29,6 +29,7 @@ public class WalletService {
     private final WalletRepository walletRepository;
     private final WalletTransactionRepository transactionRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     /**
      * Get wallet by userId
@@ -124,6 +125,18 @@ public class WalletService {
 
         log.info("Credited {} to wallet of user {}. New balance: {}",
                 amount, userId, wallet.getBalance());
+
+        // Gửi email thông báo nạp tiền thành công (chỉ cho WALLET_TOP_UP)
+        if (type == TransactionType.TOPUP_CASH || type == TransactionType.TOPUP_ZALOPAY) {
+            try {
+                User user = userRepository.findById(userId).orElse(null);
+                if (user != null) {
+                    emailService.sendWalletTopUpSuccessEmail(user, amount, wallet.getBalance());
+                }
+            } catch (Exception emailEx) {
+                log.warn("Failed to send wallet top-up email for user {}: {}", userId, emailEx.getMessage());
+            }
+        }
 
         return transaction;
     }
