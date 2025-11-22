@@ -268,8 +268,27 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
 
     /**
      * Lấy danh sách phiên sạc đang hoạt động theo trạng thái
+     * Fetch EAGER để tránh lazy loading exception trong scheduler
      */
-    List<ChargingSession> findByStatus(ChargingSessionStatus status);
+    @Query("SELECT DISTINCT cs FROM ChargingSession cs " +
+            "LEFT JOIN FETCH cs.chargingPoint cp " +
+            "LEFT JOIN FETCH cs.vehicle v " +
+            "LEFT JOIN FETCH cs.driver d " +
+            "LEFT JOIN FETCH d.plan " +
+            "WHERE cs.status = :status")
+    List<ChargingSession> findByStatus(@Param("status") ChargingSessionStatus status);
+
+    /**
+     * Tìm session theo ID với tất cả relationships để tránh lazy loading exception
+     */
+    @Query("SELECT cs FROM ChargingSession cs " +
+            "LEFT JOIN FETCH cs.chargingPoint cp " +
+            "LEFT JOIN FETCH cp.station " +
+            "LEFT JOIN FETCH cs.vehicle v " +
+            "LEFT JOIN FETCH cs.driver d " +
+            "LEFT JOIN FETCH d.plan " +
+            "WHERE cs.sessionId = :sessionId")
+    java.util.Optional<ChargingSession> findByIdWithRelationships(@Param("sessionId") String sessionId);
 
     /**
      * Tìm session đang IN_PROGRESS của driver
