@@ -98,18 +98,41 @@ public class BookingService {
             }
         }
 
+        // Tính estimated end time cho booking mới
+        // Công suất thực tế = MIN(công suất trụ, công suất tối đa xe)
+        double stationPowerKw = chargingPoint.getChargingPower().getPowerKw();
+        double vehicleMaxPowerKw = vehicle.getMaxChargingPowerKw();
+        double actualChargingPowerKw = Math.min(stationPowerKw, vehicleMaxPowerKw);
+
+        // Năng lượng cần sạc từ current SOC -> 100%
+        int currentSoc = vehicle.getCurrentSocPercent();
+        double energyNeeded = ((100.0 - currentSoc) / 100.0) * vehicle.getBatteryCapacityKwh();
+
+        // Thời gian sạc (giờ)
+        double chargingTimeHours = energyNeeded / actualChargingPowerKw;
+
+        // Giới hạn thời gian booking tối đa là 12 giờ (để tránh block trụ quá lâu)
+        chargingTimeHours = Math.min(chargingTimeHours, 12.0);
+
+        LocalDateTime maxEstimatedEndTime = bookingTime.plusMinutes((long) (chargingTimeHours * 60));
+
         // Check if there's any conflicting booking at the requested time
         Optional<Booking> conflictingBooking = bookingRepository.findConflictingBooking(
                 chargingPoint.getPointId(),
                 bookingTime,
-                bookingTime.plusHours(1) // Reserve at least 1 hour slot
+                maxEstimatedEndTime
         );
 
         if (conflictingBooking.isPresent()) {
+            Booking conflict = conflictingBooking.get();
             return BookingAvailabilityDto.builder()
                     .available(false)
                     .maxChargePercentage(0.0)
-                    .message("Thời gian bạn chọn hiện không còn chỗ trống. Vui lòng chọn thời gian khác.")
+                    .message(String.format("Thời gian bạn chọn trùng với booking khác (%02d:%02d ngày %02d/%02d - %02d:%02d ngày %02d/%02d). Vui lòng chọn thời gian khác.",
+                            conflict.getBookingTime().getHour(), conflict.getBookingTime().getMinute(),
+                            conflict.getBookingTime().getDayOfMonth(), conflict.getBookingTime().getMonthValue(),
+                            conflict.getEstimatedEndTime().getHour(), conflict.getEstimatedEndTime().getMinute(),
+                            conflict.getEstimatedEndTime().getDayOfMonth(), conflict.getEstimatedEndTime().getMonthValue()))
                     .build();
         }
 
@@ -136,8 +159,18 @@ public class BookingService {
                         .build();
             }
 
-            double availableEnergy = (chargingPoint.getChargingPower().getPowerKw() / 1000.0) * (availableMinutes / 60.0);
-            maxChargePercentage = Math.min(100.0, (availableEnergy / vehicle.getBatteryCapacityKwh()) * 100);
+            // Tính công suất thực tế = MIN(trụ, xe)
+            double actualPowerKw = Math.min(
+                chargingPoint.getChargingPower().getPowerKw(),
+                vehicle.getMaxChargingPowerKw()
+            );
+
+            // Năng lượng có thể sạc trong thời gian available
+            double availableEnergy = actualPowerKw * (availableMinutes / 60.0);
+
+            // % pin có thể sạc (từ current SOC đã khai báo ở trên)
+            double maxSocIncrease = (availableEnergy / vehicle.getBatteryCapacityKwh()) * 100;
+            maxChargePercentage = Math.min(100.0, currentSoc + maxSocIncrease);
 
             if (maxChargePercentage < 100.0) {
                 message = String.format("Bạn có tối đa %d phút sạc (đến %.1f%%). Booking tiếp theo: %02d:%02d",
@@ -196,8 +229,19 @@ public class BookingService {
         }
 
         // Calculate estimated end time
-        double requiredEnergy = vehicle.getBatteryCapacityKwh() * (bookingRequest.getDesiredPercentage() / 100.0);
-        double chargingTimeHours = requiredEnergy / (chargingPoint.getChargingPower().getPowerKw() / 1000.0);
+        // Công suất thực tế = MIN(trụ, xe)
+        double actualPowerKw = Math.min(
+            chargingPoint.getChargingPower().getPowerKw(),
+            vehicle.getMaxChargingPowerKw()
+        );
+
+        // Năng lượng cần sạc từ current SOC -> desired SOC
+        int currentSoc = vehicle.getCurrentSocPercent();
+        double socIncrease = bookingRequest.getDesiredPercentage() - currentSoc;
+        double requiredEnergy = (socIncrease / 100.0) * vehicle.getBatteryCapacityKwh();
+
+        // Thời gian sạc
+        double chargingTimeHours = requiredEnergy / actualPowerKw;
         LocalDateTime estimatedEndTime = bookingRequest.getBookingTime().plusMinutes((long) (chargingTimeHours * 60));
 
         // Debit deposit from wallet
@@ -289,12 +333,10 @@ public class BookingService {
         booking.setBookingStatus(BookingStatus.CANCELLED_BY_USER);
         Booking savedBooking = bookingRepository.save(booking);
 
-        // Refund deposit
-        walletService.credit(user.getUserId(), DEPOSIT_AMOUNT, TransactionType.BOOKING_REFUND,
-                String.format("Refund for cancelled booking #%d", bookingId),
-                null, null, bookingId, null);
-
-        log.info("Booking cancelled - ID: {}, User: {}", bookingId, email);
+        // KHÔNG HOÀN TIỀN CỌC - User mất cọc khi hủy booking
+        // Tiền cọc sẽ bị tịch thu làm phí phạt
+        log.info("Booking cancelled by user - ID: {}, User: {} - Deposit FORFEITED (no refund)",
+                bookingId, email);
 
         return convertToDto(savedBooking);
     }
@@ -461,7 +503,7 @@ public class BookingService {
                 .depositAmount(booking.getDepositAmount())
                 .bookingStatus(booking.getBookingStatus())
                 .createdAt(booking.getCreatedAt())
-                // ✅ Fields để frontend auto-start session
+                // Fields để frontend auto-start session
                 .chargingPointId(booking.getChargingPoint().getPointId())
                 .vehicleId(booking.getVehicle().getVehicleId())
                 .currentSocPercent(booking.getVehicle().getCurrentSocPercent())
@@ -488,11 +530,16 @@ public class BookingService {
         Vehicle vehicle = session.getVehicle();
         ChargingPoint point = session.getChargingPoint();
 
+        // Công suất thực tế = MIN(trụ, xe)
+        double actualPowerKw = Math.min(
+            point.getChargingPower().getPowerKw(),
+            vehicle.getMaxChargingPowerKw()
+        );
+
         double requiredEnergy = (remainingPercent / 100.0) * vehicle.getBatteryCapacityKwh();
-        double chargingPowerKw = point.getChargingPower().getPowerKw() / 1000.0;
 
         // Tính thời gian lý thuyết
-        double hoursNeeded = requiredEnergy / chargingPowerKw;
+        double hoursNeeded = requiredEnergy / actualPowerKw;
 
         // Thêm 20% safety margin để tính đến charging curve (sạc chậm dần khi gần đầy)
         double safetyFactor = 1.2;

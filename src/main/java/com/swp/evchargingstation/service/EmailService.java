@@ -222,9 +222,9 @@ public class EmailService {
             "<div style='max-width:600px;margin:auto;background:#fff;border:1px solid #ddd;border-radius:8px'>" +
             "<div style='background:#15919B;color:#fff;padding:20px;text-align:center'><h1>T-Green</h1></div>" +
             "<div style='padding:30px'><p>Chào %s,</p>%s<p>Cảm ơn bạn đã sử dụng dịch vụ.</p>" +
-            "<p>Trân trọng,<br>Đội ngũ EV Charging</p></div>" +
+            "<p>Trân trọng,<br>Đội ngũ T-Green</p></div>" +
             "<div style='background:#f4f4f4;color:#777;padding:20px;text-align:center;font-size:12px'>" +
-            "<p>&copy; 2025 EV Charging</p></div></div></body></html>",
+            "<p>&copy; 2025 T-Green Charging System</p></div></div></body></html>",
             userName, bodyContent
         );
     }
@@ -606,6 +606,80 @@ public class EmailService {
             "</table></div>" +
             "<p>Cảm ơn bạn đã sử dụng dịch vụ sạc xe của chúng tôi!</p>",
             sessionId, sessionId, stationName, amountStr, time
+        );
+
+        return buildBaseEmailTemplate(userName, bodyContent);
+    }
+
+    // ==================== INSUFFICIENT FUNDS EMAIL ====================
+
+    @Async
+    public void sendInsufficientFundsEmail(User user, ChargingSession session, double currentCost, double walletBalance) {
+        try {
+            if (user == null || user.getEmail() == null) {
+                log.warn("Cannot send email: User or email is null");
+                return;
+            }
+
+            String subject = "Phiên sạc đã bị ngắt - Không đủ số dư";
+            String htmlContent = buildInsufficientFundsEmailTemplate(user, session, currentCost, walletBalance);
+
+            sendHtmlEmail(user.getEmail(), subject, htmlContent);
+            log.info("Sent insufficient funds email to {} for session {}", user.getEmail(), session.getSessionId());
+        } catch (Exception e) {
+            log.error("Failed to send insufficient funds email: {}", e.getMessage(), e);
+        }
+    }
+
+    private String buildInsufficientFundsEmailTemplate(User user, ChargingSession session, double currentCost, double walletBalance) {
+        String userName = user.getFullName();
+        String sessionId = session.getSessionId().substring(0, 8).toUpperCase();
+        String costStr = currencyFormatter.format(currentCost) + " VNĐ";
+        String balanceStr = currencyFormatter.format(walletBalance) + " VNĐ";
+        String time = LocalDateTime.now().format(timeFormatter);
+
+        String stationName = "Trạm sạc";
+        if (session.getChargingPoint() != null && session.getChargingPoint().getStation() != null) {
+            try {
+                stationName = session.getChargingPoint().getStation().getName();
+            } catch (Exception e) {
+                log.warn("Could not load station name: {}", e.getMessage());
+            }
+        }
+
+        int currentSoc = session.getEndSocPercent();
+        String energy = String.format("%.1f", session.getEnergyKwh());
+        String duration = formatDuration(session.getDurationMin());
+
+        String bodyContent = String.format(
+            "<div style='background:#fff3cd;padding:20px;border-left:4px solid #ffc107;margin:20px 0;border-radius:8px'>" +
+            "<h3 style='margin-top:0;color:#856404'>Phiên sạc đã bị ngắt tự động</h3>" +
+            "<p style='color:#856404'><strong>Lý do:</strong> Số dư ví không đủ để tiếp tục sạc.</p>" +
+            "</div>" +
+            "<p>Phiên sạc <strong>#%s</strong> tại trạm <strong>%s</strong> đã bị ngắt do không đủ tiền trong ví.</p>" +
+            "<h3>Thống kê phiên sạc:</h3>" +
+            "<table style='width:100%%;border-collapse:collapse;margin:20px 0'>" +
+            "<tr><td style='padding:8px 0;color:#666'>Pin hiện tại:</td>" +
+            "<td style='padding:8px 0;font-weight:bold'>%d%%</td></tr>" +
+            "<tr><td style='padding:8px 0;color:#666'>Năng lượng đã sạc:</td>" +
+            "<td style='padding:8px 0'>%s kWh</td></tr>" +
+            "<tr><td style='padding:8px 0;color:#666'>Thời gian:</td>" +
+            "<td style='padding:8px 0'>%s</td></tr>" +
+            "<tr><td style='padding:8px 0;color:#666'>Chi phí hiện tại:</td>" +
+            "<td style='padding:8px 0;font-weight:bold;font-size:18px;color:#dc3545'>%s</td></tr>" +
+            "<tr><td style='padding:8px 0;color:#666'>Số dư ví:</td>" +
+            "<td style='padding:8px 0;color:#dc3545'>%s</td></tr>" +
+            "</table>" +
+            "<div style='background:#d1ecf1;padding:20px;border-left:4px solid #0c5460;margin:20px 0;border-radius:8px'>" +
+            "<p style='margin:0;color:#0c5460'><strong>Cần làm gì tiếp theo?</strong></p>" +
+            "<ol style='color:#0c5460;margin:10px 0'>" +
+            "<li>Nạp tiền vào ví để thanh toán khoản nợ</li>" +
+            "<li>Kiểm tra lịch sử giao dịch trong ứng dụng</li>" +
+            "<li>Hoặc liên hệ hỗ trợ nếu cần giúp đỡ</li>" +
+            "</ol>" +
+            "</div>" +
+            "<p>Xin lỗi vì sự bất tiện này. Vui lòng nạp thêm tiền vào ví để tiếp tục sử dụng dịch vụ.</p>",
+            sessionId, stationName, currentSoc, energy, duration, costStr, balanceStr
         );
 
         return buildBaseEmailTemplate(userName, bodyContent);

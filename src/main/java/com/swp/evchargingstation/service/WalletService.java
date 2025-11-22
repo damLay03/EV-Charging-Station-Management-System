@@ -326,4 +326,16 @@ public class WalletService {
                 return true;
         }
     }
+
+    /**
+     * Send top-up email notification (public helper for external services)
+     */
+    public void sendTopUpEmail(User user, double amount, double newBalance) {
+        try {
+            emailService.sendWalletTopUpSuccessEmail(user, amount, newBalance);
+            log.info("Sent top-up email to {}", user.getEmail());
+        } catch (Exception e) {
+            log.warn("Failed to send top-up email to {}: {}", user.getEmail(), e.getMessage());
+        }
+    }
 }

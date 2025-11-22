@@ -286,7 +286,9 @@ public interface ChargingSessionRepository extends JpaRepository<ChargingSession
             "LEFT JOIN FETCH cp.station " +
             "LEFT JOIN FETCH cs.vehicle v " +
             "LEFT JOIN FETCH cs.driver d " +
+            "LEFT JOIN FETCH d.user " +
             "LEFT JOIN FETCH d.plan " +
+            "LEFT JOIN FETCH cs.booking " +
             "WHERE cs.sessionId = :sessionId")
     java.util.Optional<ChargingSession> findByIdWithRelationships(@Param("sessionId") String sessionId);
 

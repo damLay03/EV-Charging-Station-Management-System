@@ -72,20 +72,43 @@ public class PaymentSettlementService {
                     String userId = session.getDriver().getUserId();
 
                     double deposit = booking.getDepositAmount() != null ? booking.getDepositAmount() : 0.0;
+                    double currentBalance = walletService.getBalance(userId);
 
                     if (cost > deposit) {
                         double amountToDebit = cost - deposit;
-                        walletService.debit(
-                                userId,
-                                amountToDebit,
-                                TransactionType.CHARGING_PAYMENT,
-                                String.format("Auto-net debit for charging session %s (cost %.0f - deposit %.0f)",
-                                        session.getSessionId(), cost, deposit),
-                                booking.getId(),
-                                session.getSessionId()
-                        );
-                        log.info("[Settlement] Debited {} VND from wallet for session {} (deposit applied)", amountToDebit, session.getSessionId());
+
+                        // Check sufficient funds
+                        if (currentBalance >= amountToDebit) {
+                            try {
+                                walletService.debit(
+                                        userId,
+                                        amountToDebit,
+                                        TransactionType.CHARGING_PAYMENT,
+                                        String.format("Auto-net debit for charging session %s (cost %.0f - deposit %.0f)",
+                                                session.getSessionId(), cost, deposit),
+                                        booking.getId(),
+                                        session.getSessionId()
+                                );
+                                payment.setStatus(PaymentStatus.COMPLETED);
+                                payment.setPaidAt(LocalDateTime.now());
+                                log.info("[Settlement] Debited {} VND from wallet for session {} (deposit applied)", amountToDebit, session.getSessionId());
+                            } catch (Exception e) {
+                                // Insufficient funds → Mark as UNPAID (debt)
+                                payment.setStatus(PaymentStatus.UNPAID);
+                                log.warn("[Settlement] Insufficient funds for session {}. Balance: {}, Required: {}. Marked as UNPAID (debt)",
+                                        session.getSessionId(), currentBalance, amountToDebit);
+                            }
+                        } else {
+                            // Insufficient funds → Mark as UNPAID (debt)
+                            payment.setStatus(PaymentStatus.UNPAID);
+                            log.warn("[Settlement] Insufficient funds for session {}. Balance: {}, Required: {}. Marked as UNPAID (debt)",
+                                    session.getSessionId(), currentBalance, amountToDebit);
+                        }
                     } else {
+                        // Cost <= deposit → Always COMPLETED and refund if needed
+                        payment.setStatus(PaymentStatus.COMPLETED);
+                        payment.setPaidAt(LocalDateTime.now());
+
                         double refund = deposit - cost;
                         if (refund > 0) {
                             walletService.credit(
@@ -103,9 +126,7 @@ public class PaymentSettlementService {
                         }
                     }
 
-                    payment.setStatus(PaymentStatus.COMPLETED);
                     payment.setPaymentMethod(Payment.PaymentMethod.WALLET);
-                    payment.setPaidAt(LocalDateTime.now());
                     paymentRepository.save(payment);
 
                     booking.setBookingStatus(BookingStatus.COMPLETED);
@@ -113,36 +134,58 @@ public class PaymentSettlementService {
                 } else {
                     // No booking: full wallet debit
                     String userId = session.getDriver().getUserId();
-                    walletService.debit(
-                            userId,
-                            (double) cost,
-                            TransactionType.CHARGING_PAYMENT,
-                            String.format("Auto wallet payment for session %s", session.getSessionId()),
-                            null,
-                            session.getSessionId()
-                    );
+                    double currentBalance = walletService.getBalance(userId);
 
-                    payment.setStatus(PaymentStatus.COMPLETED);
+                    if (currentBalance >= cost) {
+                        try {
+                            walletService.debit(
+                                    userId,
+                                    (double) cost,
+                                    TransactionType.CHARGING_PAYMENT,
+                                    String.format("Auto wallet payment for session %s", session.getSessionId()),
+                                    null,
+                                    session.getSessionId()
+                            );
+                            payment.setStatus(PaymentStatus.COMPLETED);
+                            payment.setPaidAt(LocalDateTime.now());
+                            log.info("[Settlement] Auto-paid {} VND from wallet for session {} (no booking)", cost, session.getSessionId());
+                        } catch (Exception e) {
+                            // Insufficient funds → Mark as UNPAID
+                            payment.setStatus(PaymentStatus.UNPAID);
+                            log.warn("[Settlement] Insufficient funds for session {} (no booking). Balance: {}, Required: {}. Marked as UNPAID (debt)",
+                                    session.getSessionId(), currentBalance, cost);
+                        }
+                    } else {
+                        // Insufficient funds → Mark as UNPAID
+                        payment.setStatus(PaymentStatus.UNPAID);
+                        log.warn("[Settlement] Insufficient funds for session {} (no booking). Balance: {}, Required: {}. Marked as UNPAID (debt)",
+                                session.getSessionId(), currentBalance, cost);
+                    }
+
                     payment.setPaymentMethod(Payment.PaymentMethod.WALLET);
-                    payment.setPaidAt(LocalDateTime.now());
                     paymentRepository.save(payment);
-
-                    log.info("[Settlement] Auto-paid {} VND from wallet for session {} (no booking)", cost, session.getSessionId());
                 }
 
                 paymentRepository.flush(); // single flush
 
-                // Gửi email thông báo thanh toán thành công
+                // Gửi email thông báo
                 try {
                     if (session.getDriver() != null && session.getDriver().getUser() != null) {
-                        emailService.sendChargingPaymentSuccessEmail(
-                            session.getDriver().getUser(),
-                            session,
-                            cost
-                        );
+                        if (payment.getStatus() == PaymentStatus.COMPLETED) {
+                            // Payment thành công
+                            emailService.sendChargingPaymentSuccessEmail(
+                                session.getDriver().getUser(),
+                                session,
+                                cost
+                            );
+                        } else {
+                            // Payment UNPAID (insufficient funds) -
+                            log.info("[Settlement] Payment UNPAID for session {} - user needs to top-up wallet",
+                                    session.getSessionId());
+                        }
                     }
                 } catch (Exception emailEx) {
-                    log.warn("[Settlement] Failed to send payment email for session {}: {}",
+                    log.warn("[Settlement] Failed to send email for session {}: {}",
                             session.getSessionId(), emailEx.getMessage());
                 }
 
