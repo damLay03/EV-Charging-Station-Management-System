@@ -166,7 +166,28 @@ public class DashboardService {
             throw new AppException(ErrorCode.PLAN_NOT_FOUND);
         }
 
-        return planMapper.toPlanResponse(driver.getPlan());
+        PlanResponse response = planMapper.toPlanResponse(driver.getPlan());
+
+        // Thêm thông tin thời gian hết hạn
+        if (driver.getPlanSubscriptionDate() != null) {
+            LocalDateTime subscriptionDate = driver.getPlanSubscriptionDate();
+            LocalDateTime expiryDate = subscriptionDate.plusMonths(1); // Gói plan có hiệu lực 1 tháng
+
+            response.setPlanSubscriptionDate(subscriptionDate);
+            response.setPlanExpiryDate(expiryDate);
+
+            // Tính số ngày còn lại đến khi hết hạn
+            long daysUntilExpiry = java.time.temporal.ChronoUnit.DAYS.between(
+                LocalDateTime.now(),
+                expiryDate
+            );
+            response.setDaysUntilExpiry(daysUntilExpiry);
+        }
+
+        // Thêm trạng thái auto-renew
+        response.setAutoRenewEnabled(driver.getPlanAutoRenew());
+
+        return response;
     }
 
     // ========== HELPER METHODS ==========

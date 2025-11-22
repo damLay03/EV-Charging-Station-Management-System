@@ -265,7 +265,7 @@ public class PlanService {
             // Không throw exception, chỉ log warning
         }
 
-        return planMapper.toPlanResponse(newPlan);
+        return enrichPlanResponseWithExpiryInfo(planMapper.toPlanResponse(newPlan), savedDriver);
     }
 
     // NOTE: Auto renew plan cho driver (chạy scheduled job hàng ngày)
@@ -501,7 +501,7 @@ public class PlanService {
             log.error("Failed to send cancellation email to driver {}: {}", driverId, e.getMessage());
         }
 
-        return planMapper.toPlanResponse(currentPlan);
+        return enrichPlanResponseWithExpiryInfo(planMapper.toPlanResponse(currentPlan), driver);
     }
 
     // NOTE: Kích hoạt lại gia hạn tự động
@@ -543,6 +543,31 @@ public class PlanService {
             log.error("Failed to send reactivation email to driver {}: {}", driverId, e.getMessage());
         }
 
-        return planMapper.toPlanResponse(currentPlan);
+        return enrichPlanResponseWithExpiryInfo(planMapper.toPlanResponse(currentPlan), driver);
+    }
+
+    // ========== HELPER METHOD ==========
+
+    /**
+     * Enrich PlanResponse với thông tin expiry date từ Driver
+     */
+    private PlanResponse enrichPlanResponseWithExpiryInfo(PlanResponse response, Driver driver) {
+        if (driver.getPlanSubscriptionDate() != null) {
+            LocalDateTime subscriptionDate = driver.getPlanSubscriptionDate();
+            LocalDateTime expiryDate = subscriptionDate.plusMonths(1); // Plan có hiệu lực 1 tháng
+
+            response.setPlanSubscriptionDate(subscriptionDate);
+            response.setPlanExpiryDate(expiryDate);
+
+            // Tính số ngày còn lại
+            long daysUntilExpiry = java.time.temporal.ChronoUnit.DAYS.between(
+                LocalDateTime.now(),
+                expiryDate
+            );
+            response.setDaysUntilExpiry(daysUntilExpiry);
+        }
+
+        response.setAutoRenewEnabled(driver.getPlanAutoRenew());
+        return response;
     }
 }

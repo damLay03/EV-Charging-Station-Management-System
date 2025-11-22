@@ -155,7 +155,7 @@ public class PdfExportService {
                     .setItalic();
             document.add(footer);
 
-            Paragraph systemFooter = new Paragraph("© 2025 EV Charging Station Management System")
+            Paragraph systemFooter = new Paragraph("© 2025 T-Green Charging Station Management System")
                     .setFont(vietnameseFont)
                     .setFontSize(9)
                     .setTextAlignment(TextAlignment.CENTER)

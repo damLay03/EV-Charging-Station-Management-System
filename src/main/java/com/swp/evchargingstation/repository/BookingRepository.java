@@ -24,8 +24,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     @Query("SELECT b FROM Booking b WHERE b.chargingPoint.pointId = :chargingPointId " +
            "AND b.bookingStatus IN ('CONFIRMED', 'IN_PROGRESS') " +
-           "AND ((b.bookingTime BETWEEN :startTime AND :endTime) " +
-           "OR (b.estimatedEndTime BETWEEN :startTime AND :endTime))")
+           "AND (:startTime < b.estimatedEndTime AND :endTime > b.bookingTime)")
     Optional<Booking> findConflictingBooking(
             @Param("chargingPointId") String chargingPointId,
             @Param("startTime") LocalDateTime startTime,

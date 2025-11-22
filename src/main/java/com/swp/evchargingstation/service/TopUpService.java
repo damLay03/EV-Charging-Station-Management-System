@@ -213,27 +213,30 @@ public class TopUpService {
                         return new AppException(ErrorCode.WALLET_TRANSACTION_NOT_FOUND);
                     });
 
-            // Mark old transaction as COMPLETED
-            transaction.setStatus(TransactionStatus.COMPLETED);
-            transactionRepository.save(transaction);
-
-            // Use WalletService.credit() to update balance and send email
+            // Update wallet balance
             Wallet wallet = transaction.getWallet();
             String userId = wallet.getUser().getUserId();
 
-            walletService.credit(
-                userId,
-                (double) amount,
-                TransactionType.TOPUP_ZALOPAY,
-                String.format("ZaloPay top-up - Transaction: %s", appTransId),
-                appTransId,
-                null,
-                null,
-                null
-            );
+            wallet.setBalance(wallet.getBalance() + amount);
+            wallet.setUpdatedAt(LocalDateTime.now());
+            walletRepository.save(wallet);
 
-            log.info("Top-up completed successfully: {}. Amount: {}, User: {}",
-                    appTransId, amount, userId);
+            // Mark transaction as COMPLETED
+            transaction.setStatus(TransactionStatus.COMPLETED);
+            transactionRepository.save(transaction);
+
+            log.info("Top-up completed successfully: {}. Amount: {}, User: {}, New balance: {}",
+                    appTransId, amount, userId, wallet.getBalance());
+
+            // Gửi email thông báo nạp tiền thành công
+            try {
+                User user = userRepository.findById(userId).orElse(null);
+                if (user != null) {
+                    walletService.sendTopUpEmail(user, (double) amount, wallet.getBalance());
+                }
+            } catch (Exception emailEx) {
+                log.warn("Failed to send wallet top-up email for user {}: {}", userId, emailEx.getMessage());
+            }
 
             return createCallbackResponse(1, "Success");
 
