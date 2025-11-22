@@ -79,7 +79,7 @@ public class PaymentSettlementService {
                                 userId,
                                 amountToDebit,
                                 TransactionType.CHARGING_PAYMENT,
-                                String.format("Auto-net debit for charging session %s (cost %.0f - deposit %.0f)",
+                                String.format("Trừ tiền tự động cho phiên sạc %s (chi phí %.0f - đặt cọc %.0f)",
                                         session.getSessionId(), cost, deposit),
                                 booking.getId(),
                                 session.getSessionId()
@@ -92,7 +92,7 @@ public class PaymentSettlementService {
                                     userId,
                                     refund,
                                     TransactionType.BOOKING_DEPOSIT_REFUND,
-                                    String.format("Deposit refund %.0f for booking #%d (session %s)",
+                                    String.format("Hoàn tiền đặt cọc %.0f cho đơn đặt chỗ #%d (phiên sạc %s)",
                                             refund, booking.getId(), session.getSessionId()),
                                     null,
                                     null,
@@ -117,7 +117,7 @@ public class PaymentSettlementService {
                             userId,
                             (double) cost,
                             TransactionType.CHARGING_PAYMENT,
-                            String.format("Auto wallet payment for session %s", session.getSessionId()),
+                            String.format("Thanh toán tự động từ ví cho phiên sạc %s", session.getSessionId()),
                             null,
                             session.getSessionId()
                     );
