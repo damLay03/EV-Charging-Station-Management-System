@@ -12,6 +12,9 @@ import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
 import com.swp.evchargingstation.service.TopUpService;
 import com.swp.evchargingstation.service.WalletService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +29,7 @@ import java.util.List;
 @RequestMapping("/api/wallet")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Wallet Management", description = "RESTful API quản lý ví điện tử (Số dư, Lịch sử giao dịch, Nạp tiền ZaloPay/Cash, Dashboard) - Phân quyền theo role")
 public class WalletController {
 
     private final WalletService walletService;
@@ -47,6 +51,11 @@ public class WalletController {
      */
     @GetMapping("/balance")
     @PreAuthorize("hasRole('DRIVER')")
+    @Operation(
+            summary = "[DRIVER] Lấy số dư ví hiện tại",
+            description = "Lấy thông tin số dư ví điện tử của người dùng đang đăng nhập. " +
+                    "API này chỉ dành cho tài xế (DRIVER) để kiểm tra số tiền có sẵn trong ví."
+    )
     public ApiResponse<WalletBalanceResponse> getBalance(Authentication authentication) {
         String userId = getUserIdFromAuth(authentication);
         log.info("Getting wallet balance for user: {}", userId);
@@ -63,8 +72,14 @@ public class WalletController {
      */
     @GetMapping("/history")
     @PreAuthorize("hasRole('DRIVER')")
+    @Operation(
+            summary = "[DRIVER] Lấy lịch sử giao dịch ví",
+            description = "Lấy danh sách các giao dịch trong ví của người dùng với tùy chọn lọc theo loại giao dịch. " +
+                    "Có thể lọc theo: TOPUP (Nạp tiền), CHARGING (Thanh toán sạc xe), REFUND (Hoàn tiền), hoặc ALL để xem tất cả."
+    )
     public ApiResponse<List<WalletTransactionResponse>> getHistory(
             Authentication authentication,
+            @Parameter(description = "Loại giao dịch cần lọc: TOPUP, CHARGING, REFUND, hoặc ALL", example = "ALL")
             @RequestParam(required = false) String type) {
         String userId = getUserIdFromAuth(authentication);
         log.info("Getting wallet history for user: {}, filter: {}", userId, type);
@@ -87,6 +102,12 @@ public class WalletController {
      */
     @PostMapping("/topup/zalopay")
     @PreAuthorize("hasRole('DRIVER')")
+    @Operation(
+            summary = "[DRIVER] Tạo đơn nạp tiền qua ZaloPay",
+            description = "Tạo đơn hàng nạp tiền vào ví điện tử thông qua cổng thanh toán ZaloPay. " +
+                    "API sẽ trả về URL thanh toán và mã đơn hàng để người dùng thực hiện thanh toán. " +
+                    "Sau khi thanh toán thành công, số tiền sẽ được cộng vào ví tự động."
+    )
     public ApiResponse<TopUpZaloPayResponse> createZaloPayTopUp(
             Authentication authentication,
             @Valid @RequestBody TopUpZaloPayRequest request) {
@@ -104,6 +125,12 @@ public class WalletController {
      */
     @PostMapping("/topup/cash")
     @PreAuthorize("hasRole('STAFF')")
+    @Operation(
+            summary = "[STAFF] Xử lý nạp tiền mặt cho người dùng",
+            description = "Nhân viên (STAFF) sử dụng API này để xử lý việc nạp tiền mặt vào ví cho người dùng. " +
+                    "Có thể tìm người dùng bằng email, số điện thoại hoặc userId. " +
+                    "Giao dịch sẽ được ghi nhận với thông tin nhân viên xử lý và thời gian thực hiện."
+    )
     public ApiResponse<WalletTransactionResponse> processCashTopUp(
             Authentication authentication,
             @Valid @RequestBody TopUpCashRequest request) {
@@ -137,6 +164,12 @@ public class WalletController {
      */
     @GetMapping("/dashboard")
     @PreAuthorize("hasRole('DRIVER')")
+    @Operation(
+            summary = "[DRIVER] Lấy dashboard và thống kê ví",
+            description = "Lấy thông tin tổng quan về ví điện tử bao gồm số dư hiện tại, tổng số tiền đã nạp, " +
+                    "tổng chi tiêu cho sạc xe, các giao dịch gần đây và thống kê chi tiết. " +
+                    "API này cung cấp cái nhìn tổng quan về tình hình tài chính trong ví của người dùng."
+    )
     public ApiResponse<WalletDashboardResponse> getDashboard(Authentication authentication) {
         String userId = getUserIdFromAuth(authentication);
         log.info("Getting wallet dashboard for user: {}", userId);
