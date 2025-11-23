@@ -25,13 +25,10 @@ public class VehicleResponse {
     String ownerEmail;       // Email của driver
     String ownerPhone;       // Số điện thoại của driver
 
-    // Approval fields - 6 ảnh
+    // Approval fields - 3 ảnh bắt buộc
     String documentFrontImageUrl; // Ảnh mặt trước cà vẹt
     String documentBackImageUrl;  // Ảnh mặt sau cà vẹt
-    String frontImageUrl;         // Ảnh đầu xe
-    String sideLeftImageUrl;      // Ảnh thân xe - bên trái
-    String sideRightImageUrl;     // Ảnh thân xe - bên phải
-    String rearImageUrl;          // Ảnh đuôi xe
+    String frontImageUrl;         // Ảnh xe có biển số rõ ràng
     VehicleRegistrationStatus approvalStatus;
     String rejectionReason;
     LocalDateTime submittedAt;

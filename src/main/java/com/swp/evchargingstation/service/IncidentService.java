@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -148,7 +147,7 @@ public class IncidentService {
      * - Cả STAFF và ADMIN đều có thể cập nhật ảnh (thay thế ảnh cũ)
      */
     @Transactional
-    public ApiResponse<IncidentResponse> updateIncident(String incidentId, IncidentUpdateRequest request, MultipartFile image) {
+    public ApiResponse<IncidentResponse> updateIncident(String incidentId, IncidentUpdateRequest request) {
         String userId = getCurrentUserId();
         boolean isAdminUser = isAdmin();
 
@@ -159,9 +158,11 @@ public class IncidentService {
             // ADMIN: có thể cập nhật cả description và status
             if (request.getDescription() != null) {
                 incident.setDescription(request.getDescription());
+                log.info("Admin updating description: {}", request.getDescription());
             }
 
             if (request.getStatus() != null) {
+                log.info("Admin updating status from {} to {}", incident.getStatus(), request.getStatus());
                 incident.setStatus(request.getStatus());
 
                 // Nếu status là DONE thì set resolvedAt
@@ -170,20 +171,9 @@ public class IncidentService {
                 }
             }
 
-            // Update image if provided
-            if (image != null) {
-                // Delete old image
-                if (incident.getImageUrl() != null) {
-                    cloudinaryService.deleteImage(incident.getImageUrl());
-                }
-                // Upload new image
-                String newImageUrl = cloudinaryService.uploadIncidentImage(image);
-                incident.setImageUrl(newImageUrl);
-            }
+            incident = incidentRepository.saveAndFlush(incident);
 
-            incident = incidentRepository.save(incident);
-
-            log.info("Admin {} updated incident {}", userId, incidentId);
+            log.info("Admin {} updated incident {} - new status: {}", userId, incidentId, incident.getStatus());
 
             return ApiResponse.<IncidentResponse>builder()
                     .code(200)
@@ -210,18 +200,7 @@ public class IncidentService {
                 incident.setDescription(request.getDescription());
             }
 
-            // Update image if provided
-            if (image != null) {
-                // Delete old image
-                if (incident.getImageUrl() != null) {
-                    cloudinaryService.deleteImage(incident.getImageUrl());
-                }
-                // Upload new image
-                String newImageUrl = cloudinaryService.uploadIncidentImage(image);
-                incident.setImageUrl(newImageUrl);
-            }
-
-            incident = incidentRepository.save(incident);
+            incident = incidentRepository.saveAndFlush(incident);
 
             log.info("Staff {} updated incident {} description", userId, incidentId);
 

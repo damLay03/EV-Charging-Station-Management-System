@@ -40,24 +40,24 @@ public class Vehicle {
     @JoinColumn(name = "owner_id")
     Driver owner;
 
-    // Vehicle Registration Approval Fields - 6 ảnh bắt buộc
+    // Vehicle Registration Approval Fields - 3 ảnh bắt buộc
     @Column(name = "document_front_image_url", length = 500)
-    String documentFrontImageUrl; // Ảnh mặt trước giấy đăng ký xe (cà vẹt)
+    String documentFrontImageUrl; // Ảnh mặt trước giấy đăng ký xe (cà vẹt) - BẮT BUỘC
 
     @Column(name = "document_back_image_url", length = 500)
-    String documentBackImageUrl; // Ảnh mặt sau giấy đăng ký xe
+    String documentBackImageUrl; // Ảnh mặt sau giấy đăng ký xe (cà vẹt) - BẮT BUỘC
 
     @Column(name = "front_image_url", length = 500)
-    String frontImageUrl; // Ảnh đầu xe
+    String frontImageUrl; // Ảnh xe có biển số rõ ràng - BẮT BUỘC
 
     @Column(name = "side_left_image_url", length = 500)
-    String sideLeftImageUrl; // Ảnh thân xe - bên hông trái
+    String sideLeftImageUrl; // Ảnh thân xe - bên hông trái (KHÔNG SỬ DỤNG - để tương thích DB)
 
     @Column(name = "side_right_image_url", length = 500)
-    String sideRightImageUrl; // Ảnh thân xe - bên hông phải
+    String sideRightImageUrl; // Ảnh thân xe - bên hông phải (KHÔNG SỬ DỤNG - để tương thích DB)
 
     @Column(name = "rear_image_url", length = 500)
-    String rearImageUrl; // Ảnh đuôi xe
+    String rearImageUrl; // Ảnh đuôi xe (KHÔNG SỬ DỤNG - để tương thích DB)
 
     @Enumerated(EnumType.STRING)
     @Column(name = "approval_status")

@@ -90,10 +90,9 @@ public class VehicleController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(
-            summary = "[DRIVER] Tạo xe mới và upload 6 ảnh",
-            description = "Driver điền form thông tin xe và upload 6 ảnh bắt buộc: " +
-                    "1) Ảnh mặt trước cà vẹt, 2) Ảnh mặt sau cà vẹt, 3) Ảnh đầu xe, " +
-                    "4) Ảnh thân xe bên trái, 5) Ảnh thân xe bên phải, 6) Ảnh đuôi xe. " +
+            summary = "[DRIVER] Tạo xe mới và upload 3 ảnh",
+            description = "Driver điền form thông tin xe và upload 3 ảnh bắt buộc: " +
+                    "1) Ảnh mặt trước cà vẹt, 2) Ảnh mặt sau cà vẹt, 3) Ảnh xe có biển số rõ ràng. " +
                     "Backend sẽ tự động upload tất cả ảnh lên Cloudinary và tạo xe với status PENDING chờ admin phê duyệt."
     )
     public ApiResponse<VehicleResponse> createVehicle(
@@ -109,26 +108,16 @@ public class VehicleController {
             @Parameter(description = "Ảnh mặt sau giấy đăng ký xe - cà vẹt (jpg, jpeg, png, max 5MB)", required = true)
             @RequestParam("documentBackImage") org.springframework.web.multipart.MultipartFile documentBackImage,
 
-            @Parameter(description = "Ảnh đầu xe (jpg, jpeg, png, max 5MB)", required = true)
-            @RequestParam("frontImage") org.springframework.web.multipart.MultipartFile frontImage,
+            @Parameter(description = "Ảnh xe có biển số rõ ràng (jpg, jpeg, png, max 5MB)", required = true)
+            @RequestParam("vehicleWithPlateImage") org.springframework.web.multipart.MultipartFile vehicleWithPlateImage) {
 
-            @Parameter(description = "Ảnh thân xe - bên hông trái (jpg, jpeg, png, max 5MB)", required = true)
-            @RequestParam("sideLeftImage") org.springframework.web.multipart.MultipartFile sideLeftImage,
-
-            @Parameter(description = "Ảnh thân xe - bên hông phải (jpg, jpeg, png, max 5MB)", required = true)
-            @RequestParam("sideRightImage") org.springframework.web.multipart.MultipartFile sideRightImage,
-
-            @Parameter(description = "Ảnh đuôi xe (jpg, jpeg, png, max 5MB)", required = true)
-            @RequestParam("rearImage") org.springframework.web.multipart.MultipartFile rearImage) {
-
-        log.info("Driver creating vehicle with license plate: {}, model: {} (6 images)",
+        log.info("Driver creating vehicle with license plate: {}, model: {} (3 images)",
                 licensePlate, model);
 
         return ApiResponse.<VehicleResponse>builder()
                 .result(vehicleService.createVehicleWithDocument(model, licensePlate,
-                        documentFrontImage, documentBackImage, frontImage,
-                        sideLeftImage, sideRightImage, rearImage))
-                .message("Vehicle registration submitted successfully with 6 images. Please wait for admin approval.")
+                        documentFrontImage, documentBackImage, vehicleWithPlateImage))
+                .message("Vehicle registration submitted successfully with 3 images. Please wait for admin approval.")
                 .build();
     }
 
