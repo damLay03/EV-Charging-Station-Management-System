@@ -78,33 +78,20 @@ public class IncidentController {
                 .build();
     }
 
-    @PatchMapping(value = "/{incidentId}", consumes = "multipart/form-data")
+    @PatchMapping("/{incidentId}")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
     @Operation(
             summary = "[STAFF/ADMIN] Cập nhật sự cố",
             description = "Staff: chỉ có thể cập nhật description của sự cố tại trạm của họ. " +
                          "Admin: có thể cập nhật cả description và status (WAITING -> WORKING -> DONE). " +
-                         "Có thể upload 1 ảnh mới để thay thế ảnh cũ (optional)."
+                         "Gửi JSON body với các field: status (WAITING/WORKING/DONE), description"
     )
     public ApiResponse<IncidentResponse> updateIncident(
             @PathVariable String incidentId,
+            @RequestBody IncidentUpdateRequest request) {
+        log.info("Updating incident {} - status: {}, description: {}", incidentId, request.getStatus(), request.getDescription());
 
-            @Parameter(description = "Trạng thái mới của sự cố (WAITING, WORKING, DONE) - chỉ ADMIN", required = false, example = "WORKING")
-            @RequestParam(value = "status", required = false) String status,
-
-            @Parameter(description = "Cập nhật mô tả sự cố", required = false, example = "Đã kiểm tra, cần thay thế linh kiện")
-            @RequestParam(value = "description", required = false) String description,
-
-            @Parameter(description = "Ảnh mới thay thế ảnh cũ (jpg, jpeg, png, max 5MB) - optional")
-            @RequestPart(value = "image", required = false) MultipartFile image) {
-        log.info("Updating incident {}", incidentId);
-
-        IncidentUpdateRequest request = IncidentUpdateRequest.builder()
-                .status(status != null ? com.swp.evchargingstation.enums.IncidentStatus.valueOf(status) : null)
-                .description(description)
-                .build();
-
-        return incidentService.updateIncident(incidentId, request, image);
+        return incidentService.updateIncident(incidentId, request);
     }
 
     // ==================== ADMIN ENDPOINTS ====================

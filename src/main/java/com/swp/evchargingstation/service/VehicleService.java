@@ -40,16 +40,13 @@ public class VehicleService {
     CloudinaryService cloudinaryService;
     EmailService emailService;
 
-    // NOTE: Driver tạo xe mới và upload 4 ảnh trong 1 request
+    // NOTE: Driver tạo xe mới và upload 3 ảnh trong 1 request
     @PreAuthorize("hasRole('DRIVER')")
     @Transactional
     public VehicleResponse createVehicleWithDocument(String modelStr, String licensePlate,
                                                       org.springframework.web.multipart.MultipartFile documentFrontImage,
                                                       org.springframework.web.multipart.MultipartFile documentBackImage,
-                                                      org.springframework.web.multipart.MultipartFile frontImage,
-                                                      org.springframework.web.multipart.MultipartFile sideLeftImage,
-                                                      org.springframework.web.multipart.MultipartFile sideRightImage,
-                                                      org.springframework.web.multipart.MultipartFile rearImage) {
+                                                      org.springframework.web.multipart.MultipartFile vehicleWithPlateImage) {
         var context = SecurityContextHolder.getContext();
         String email = context.getAuthentication().getName();
 
@@ -73,31 +70,22 @@ public class VehicleService {
             throw new AppException(ErrorCode.INVALID_VEHICLE_MODEL_FOR_BRAND);
         }
 
-        log.info("Driver '{}' creating vehicle with license plate '{}', model '{}' (uploading 6 images)",
+        log.info("Driver '{}' creating vehicle with license plate '{}', model '{}' (uploading 3 images)",
                 user.getUserId(), licensePlate, model);
 
-        // Step 1: Upload 6 ảnh lên Cloudinary
-        log.info("Uploading 6 vehicle images for vehicle {}", licensePlate);
+        // Step 1: Upload 3 ảnh lên Cloudinary
+        log.info("Uploading 3 vehicle images for vehicle {}", licensePlate);
 
         String documentFrontImageUrl = cloudinaryService.uploadVehicleDocument(documentFrontImage);
-        log.info("1/6 - Document front image uploaded: {}", documentFrontImageUrl);
+        log.info("1/3 - Document front image uploaded: {}", documentFrontImageUrl);
 
         String documentBackImageUrl = cloudinaryService.uploadVehicleDocument(documentBackImage);
-        log.info("2/6 - Document back image uploaded: {}", documentBackImageUrl);
+        log.info("2/3 - Document back image uploaded: {}", documentBackImageUrl);
 
-        String frontImageUrl = cloudinaryService.uploadVehicleDocument(frontImage);
-        log.info("3/6 - Front image uploaded: {}", frontImageUrl);
+        String vehicleWithPlateImageUrl = cloudinaryService.uploadVehicleDocument(vehicleWithPlateImage);
+        log.info("3/3 - Vehicle with plate image uploaded: {}", vehicleWithPlateImageUrl);
 
-        String sideLeftImageUrl = cloudinaryService.uploadVehicleDocument(sideLeftImage);
-        log.info("4/6 - Side left image uploaded: {}", sideLeftImageUrl);
-
-        String sideRightImageUrl = cloudinaryService.uploadVehicleDocument(sideRightImage);
-        log.info("5/6 - Side right image uploaded: {}", sideRightImageUrl);
-
-        String rearImageUrl = cloudinaryService.uploadVehicleDocument(rearImage);
-        log.info("6/6 - Rear image uploaded: {}", rearImageUrl);
-
-        // Step 2: Tạo vehicle với 6 URL ảnh
+        // Step 2: Tạo vehicle với 3 URL ảnh
         int randomSoc = 20 + (int) (Math.random() * 61); // Random từ 20 đến 80
 
         Vehicle vehicle = Vehicle.builder()
@@ -111,19 +99,16 @@ public class VehicleService {
                 .brandValue(model.getBrand())
                 .maxChargingPowerValue(model.getMaxChargingPower())
                 .maxChargingPowerKwValue(model.getMaxChargingPowerKw())
-                // Approval fields - 6 ảnh
+                // Approval fields - 3 ảnh bắt buộc
                 .documentFrontImageUrl(documentFrontImageUrl)
                 .documentBackImageUrl(documentBackImageUrl)
-                .frontImageUrl(frontImageUrl)
-                .sideLeftImageUrl(sideLeftImageUrl)
-                .sideRightImageUrl(sideRightImageUrl)
-                .rearImageUrl(rearImageUrl)
+                .frontImageUrl(vehicleWithPlateImageUrl) // Sử dụng frontImage để lưu ảnh xe có biển số
                 .approvalStatus(com.swp.evchargingstation.enums.VehicleRegistrationStatus.PENDING)
                 .submittedAt(java.time.LocalDateTime.now())
                 .build();
 
         Vehicle saved = vehicleRepository.save(vehicle);
-        log.info("Vehicle '{}' submitted for approval, brand '{}', SOC {}%, status: PENDING, 6 images uploaded",
+        log.info("Vehicle '{}' submitted for approval, brand '{}', SOC {}%, status: PENDING, 3 images uploaded",
                 saved.getVehicleId(), saved.getBrand(), saved.getCurrentSocPercent());
 
         return vehicleMapper.toVehicleResponse(saved);
