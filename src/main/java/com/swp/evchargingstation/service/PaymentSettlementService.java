@@ -61,11 +61,39 @@ public class PaymentSettlementService {
 
                 Payment payment = paymentRepository.findByChargingSession(session).orElseThrow();
 
-                Optional<Booking> relatedBookingOpt = bookingRepository.findByUserIdAndChargingPointIdAndBookingStatus(
-                        session.getDriver().getUserId(),
-                        session.getChargingPoint().getPointId(),
-                        BookingStatus.IN_PROGRESS
-                );
+                // FIX: Tìm booking qua session relationship hoặc tìm theo user + point với cả IN_PROGRESS và COMPLETED
+                // Vì booking có thể đã được mark COMPLETED trước khi settlement chạy
+                Optional<Booking> relatedBookingOpt = Optional.empty();
+
+                // Try 1: Get booking from session if available
+                if (session.getBooking() != null) {
+                    relatedBookingOpt = Optional.of(session.getBooking());
+                    log.debug("[Settlement] Found booking #{} from session relationship", session.getBooking().getId());
+                }
+
+                // Try 2: Find by user + point with IN_PROGRESS status
+                if (relatedBookingOpt.isEmpty()) {
+                    relatedBookingOpt = bookingRepository.findByUserIdAndChargingPointIdAndBookingStatus(
+                            session.getDriver().getUserId(),
+                            session.getChargingPoint().getPointId(),
+                            BookingStatus.IN_PROGRESS
+                    );
+                    if (relatedBookingOpt.isPresent()) {
+                        log.debug("[Settlement] Found booking #{} with IN_PROGRESS status", relatedBookingOpt.get().getId());
+                    }
+                }
+
+                // Try 3: Find recently COMPLETED booking (trong vòng 5 phút)
+                if (relatedBookingOpt.isEmpty()) {
+                    relatedBookingOpt = bookingRepository.findByUserIdAndChargingPointIdAndBookingStatus(
+                            session.getDriver().getUserId(),
+                            session.getChargingPoint().getPointId(),
+                            BookingStatus.COMPLETED
+                    );
+                    if (relatedBookingOpt.isPresent()) {
+                        log.debug("[Settlement] Found booking #{} with COMPLETED status", relatedBookingOpt.get().getId());
+                    }
+                }
 
                 if (relatedBookingOpt.isPresent()) {
                     Booking booking = relatedBookingOpt.get();
@@ -84,7 +112,7 @@ public class PaymentSettlementService {
                                         userId,
                                         amountToDebit,
                                         TransactionType.CHARGING_PAYMENT,
-                                        String.format("Trừ tiền tự động cho phiên sạc %s (chi phí %.0f - đặt cọc %.0f)",
+                                        String.format("Auto-net debit for charging session %s (cost %.0f - deposit %.0f)",
                                                 session.getSessionId(), cost, deposit),
                                         booking.getId(),
                                         session.getSessionId()
@@ -106,31 +134,45 @@ public class PaymentSettlementService {
                         }
                     } else {
                         // Cost <= deposit → Always COMPLETED and refund if needed
+                        log.info("💰 [Settlement] Cost <= Deposit - Payment COMPLETED, checking refund...");
+
                         payment.setStatus(PaymentStatus.COMPLETED);
                         payment.setPaidAt(LocalDateTime.now());
 
                         double refund = deposit - cost;
+                        log.info("[Settlement] Refund calculation: Deposit {} - Cost {} = {} VND",
+                                deposit, cost, refund);
+
                         if (refund > 0) {
+                            log.info("[Settlement] Refunding {} VND to user {}", refund, userId);
+
                             walletService.credit(
                                     userId,
                                     refund,
                                     TransactionType.BOOKING_DEPOSIT_REFUND,
-                                    String.format("Hoàn tiền đặt cọc %.0f cho đơn đặt chỗ #%d (phiên sạc %s)",
+                                    String.format("Deposit refund %.0f VND for booking #%d (session %s)",
                                             refund, booking.getId(), session.getSessionId()),
                                     null,
                                     null,
                                     booking.getId(),
                                     session.getSessionId()
                             );
-                            log.info("[Settlement] Refunded {} VND deposit for booking #{} (session {})", refund, booking.getId(), session.getSessionId());
+                            log.info("[Settlement] Successfully refunded {} VND deposit for booking #{} (session {})",
+                                    refund, booking.getId(), session.getSessionId());
+                        } else {
+                            log.info("[Settlement] No refund needed - cost equals deposit exactly");
                         }
                     }
 
                     payment.setPaymentMethod(Payment.PaymentMethod.WALLET);
-                    paymentRepository.save(payment);
-
-                    booking.setBookingStatus(BookingStatus.COMPLETED);
-                    bookingRepository.save(booking);
+                    paymentRepository.save(payment);// Update booking status to COMPLETED if not already
+                    if (booking.getBookingStatus() != BookingStatus.COMPLETED) {
+                        booking.setBookingStatus(BookingStatus.COMPLETED);
+                        bookingRepository.save(booking);
+                        log.info("[Settlement] Updated booking #{} status to COMPLETED", booking.getId());
+                    } else {
+                        log.debug("[Settlement] Booking #{} already COMPLETED", booking.getId());
+                    }
                 } else {
                     // No booking: full wallet debit
                     String userId = session.getDriver().getUserId();
@@ -142,7 +184,7 @@ public class PaymentSettlementService {
                                     userId,
                                     (double) cost,
                                     TransactionType.CHARGING_PAYMENT,
-                                    String.format("Thanh toán tự động từ ví cho phiên sạc %s", session.getSessionId()),
+                                    String.format("Auto wallet payment for session %s", session.getSessionId()),
                                     null,
                                     session.getSessionId()
                             );

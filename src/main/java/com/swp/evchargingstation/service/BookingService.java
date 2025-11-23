@@ -7,11 +7,15 @@ import com.swp.evchargingstation.entity.*;
 import com.swp.evchargingstation.enums.BookingStatus;
 import com.swp.evchargingstation.enums.ChargingPointStatus;
 import com.swp.evchargingstation.enums.TransactionType;
+import com.swp.evchargingstation.event.booking.BookingCancelledEvent;
+import com.swp.evchargingstation.event.booking.BookingCheckedInEvent;
+import com.swp.evchargingstation.event.booking.BookingCreatedEvent;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
 import com.swp.evchargingstation.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +35,12 @@ public class BookingService {
     private final ChargingPointRepository chargingPointRepository;
     private final VehicleRepository vehicleRepository;
     private final UserRepository userRepository;
-    private final WalletService walletService;
+
+    // ✅ Spring Events: WalletService dependency moved to BookingEventListener
+    // WalletService walletService; // ← Will be removed after refactor complete
+    private final WalletService walletService; // ← Keep for now (other methods may use it)
+    private final ApplicationEventPublisher eventPublisher; // ← NEW
+
     private static final double DEPOSIT_AMOUNT = 50000;
     private static final int CHECK_IN_WINDOW_MINUTES = 15; // Người dùng phải check-in trong vòng 15 phút
     private static final int BOOKING_EXPIRY_MINUTES = 15; // Booking tự động expire sau 15 phút nếu không check-in
@@ -244,12 +253,7 @@ public class BookingService {
         double chargingTimeHours = requiredEnergy / actualPowerKw;
         LocalDateTime estimatedEndTime = bookingRequest.getBookingTime().plusMinutes((long) (chargingTimeHours * 60));
 
-        // Debit deposit from wallet
-        walletService.debit(user.getUserId(), DEPOSIT_AMOUNT, TransactionType.BOOKING_DEPOSIT,
-                String.format("Booking deposit for %s at %s",
-                        chargingPoint.getName(), chargingPoint.getStation().getName()),
-                null, null);
-
+        // ===== CORE BUSINESS LOGIC =====
         // Create booking
         Booking booking = new Booking();
         booking.setUser(user);
@@ -273,8 +277,26 @@ public class BookingService {
         //   (trong vòng 15-30 phút) thông qua ChargingPointStatusService
         // - Scheduled job sẽ tự động cập nhật trạng thái vật lý khi cần thiết
 
-        log.info("Booking created successfully - ID: {}, User: {}, Point: {}, Time: {}",
+        log.info("✅ Booking created - ID: {}, User: {}, Point: {}, Time: {}",
                 savedBooking.getId(), user.getEmail(), chargingPoint.getName(), bookingRequest.getBookingTime());
+
+        // ===== ✅ PUBLISH EVENT FOR SIDE EFFECTS =====
+        // Deposit debit và email confirmation được xử lý bởi BookingEventListener
+        try {
+            eventPublisher.publishEvent(
+                new BookingCreatedEvent(this, savedBooking)
+            );
+            log.info("📢 [Event] Published BookingCreatedEvent for booking #{}", savedBooking.getId());
+        } catch (Exception ex) {
+            log.error("❌ [Event] Failed to publish BookingCreatedEvent for booking #{}: {}",
+                    savedBooking.getId(), ex.getMessage(), ex);
+        }
+
+        // ❌ REMOVED: Direct wallet debit (old way)
+        // walletService.debit(user.getUserId(), DEPOSIT_AMOUNT, TransactionType.BOOKING_DEPOSIT,
+        //         String.format("Booking deposit for %s at %s",
+        //                 chargingPoint.getName(), chargingPoint.getStation().getName()),
+        //         null, null);
 
         return convertToDto(savedBooking);
     }
@@ -384,8 +406,19 @@ public class BookingService {
         booking.setCheckedInAt(LocalDateTime.now()); // Track check-in time
         Booking savedBooking = bookingRepository.save(booking);
 
-        log.info("Booking checked in - ID: {}, User: {}, Point: {}, Time: {}",
+        log.info("✅ Booking checked in - ID: {}, User: {}, Point: {}, Time: {}",
                 bookingId, userId, booking.getChargingPoint().getName(), LocalDateTime.now());
+
+        // ===== ✅ PUBLISH EVENT =====
+        try {
+            eventPublisher.publishEvent(
+                new BookingCheckedInEvent(this, savedBooking)
+            );
+            log.info("📢 [Event] Published BookingCheckedInEvent for booking #{}", bookingId);
+        } catch (Exception ex) {
+            log.error("❌ [Event] Failed to publish BookingCheckedInEvent for booking #{}: {}",
+                    bookingId, ex.getMessage(), ex);
+        }
 
         return convertToDto(savedBooking);
     }
