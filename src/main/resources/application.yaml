@@ -5,6 +5,13 @@ server:
     context-path: /evchargingstation
 
 spring:
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB        # Giới hạn mỗi file tối đa 10MB
+      max-request-size: 50MB     # Giới hạn tổng request (3 ảnh + metadata)
+      file-size-threshold: 2KB   # Ngưỡng để lưu file vào disk thay vì memory
+
   datasource:
 #     MySQL Configuration
     url: jdbc:mysql://localhost:3306/railway
