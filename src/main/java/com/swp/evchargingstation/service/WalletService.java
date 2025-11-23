@@ -6,6 +6,8 @@ import com.swp.evchargingstation.dto.response.WalletTransactionResponse;
 import com.swp.evchargingstation.entity.*;
 import com.swp.evchargingstation.enums.TransactionStatus;
 import com.swp.evchargingstation.enums.TransactionType;
+import com.swp.evchargingstation.event.wallet.WalletCreditedEvent;
+import com.swp.evchargingstation.event.wallet.WalletDebitedEvent;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
 import com.swp.evchargingstation.repository.UserRepository;
@@ -13,6 +15,7 @@ import com.swp.evchargingstation.repository.WalletRepository;
 import com.swp.evchargingstation.repository.WalletTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +32,13 @@ public class WalletService {
     private final WalletRepository walletRepository;
     private final WalletTransactionRepository transactionRepository;
     private final UserRepository userRepository;
+
+    // ⚠️ EmailService: Keep for backward compatibility but prefer events
+    // Email notifications should be sent via WalletEventListener (async)
     private final EmailService emailService;
+
+    // ✅ Spring Events: For wallet transaction notifications
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Get wallet by userId
@@ -89,7 +98,8 @@ public class WalletService {
     }
 
     /**
-     * Credit (add money) to wallet
+     * Credit (add money) to wallet.
+     * Publishes WalletCreditedEvent for side effects (email, analytics).
      */
     @Transactional
     public WalletTransaction credit(String userId, Double amount, TransactionType type,
@@ -102,6 +112,7 @@ public class WalletService {
 
         Wallet wallet = getWallet(userId);
 
+        // ===== CORE BUSINESS LOGIC =====
         // Update balance
         wallet.setBalance(wallet.getBalance() + amount);
         wallet.setUpdatedAt(LocalDateTime.now());
@@ -123,20 +134,33 @@ public class WalletService {
 
         transaction = transactionRepository.save(transaction);
 
-        log.info("Credited {} to wallet of user {}. New balance: {}",
+        log.info("✅ Credited {} to wallet of user {}. New balance: {}",
                 amount, userId, wallet.getBalance());
 
-        // Gửi email thông báo nạp tiền thành công (chỉ cho WALLET_TOP_UP)
-        if (type == TransactionType.TOPUP_CASH || type == TransactionType.TOPUP_ZALOPAY) {
-            try {
-                User user = userRepository.findById(userId).orElse(null);
-                if (user != null) {
-                    emailService.sendWalletTopUpSuccessEmail(user, amount, wallet.getBalance());
-                }
-            } catch (Exception emailEx) {
-                log.warn("Failed to send wallet top-up email for user {}: {}", userId, emailEx.getMessage());
-            }
+        // ===== ✅ PUBLISH EVENT FOR SIDE EFFECTS =====
+        // Email notification và analytics được xử lý bởi WalletEventListener
+        try {
+            eventPublisher.publishEvent(
+                new WalletCreditedEvent(this, wallet, amount, type, description)
+            );
+            log.info("📢 [Event] Published WalletCreditedEvent for user: {} - Amount: {}", userId, amount);
+        } catch (Exception ex) {
+            log.error("❌ [Event] Failed to publish WalletCreditedEvent for user {}: {}",
+                    userId, ex.getMessage(), ex);
         }
+
+        // ❌ REMOVED: Direct email call (old way)
+        // Email được gửi bởi WalletEventListener (async, non-blocking)
+        // if (type == TransactionType.TOPUP_CASH || type == TransactionType.TOPUP_ZALOPAY) {
+        //     try {
+        //         User user = userRepository.findById(userId).orElse(null);
+        //         if (user != null) {
+        //             emailService.sendWalletTopUpSuccessEmail(user, amount, wallet.getBalance());
+        //         }
+        //     } catch (Exception emailEx) {
+        //         log.warn("Failed to send wallet top-up email for user {}: {}", userId, emailEx.getMessage());
+        //     }
+        // }
 
         return transaction;
     }
@@ -147,7 +171,8 @@ public class WalletService {
 
 
     /**
-     * Debit (subtract money) from wallet
+     * Debit (subtract money) from wallet.
+     * Publishes WalletDebitedEvent for side effects (email, low balance warnings).
      */
     @Transactional
     public WalletTransaction debit(String userId, Double amount, TransactionType type,
@@ -161,11 +186,12 @@ public class WalletService {
 
         // Check sufficient funds
         if (wallet.getBalance() < amount) {
-            log.warn("Insufficient funds for user {}. Balance: {}, Required: {}",
+            log.warn("❌ Insufficient funds for user {}. Balance: {}, Required: {}",
                     userId, wallet.getBalance(), amount);
             throw new AppException(ErrorCode.INSUFFICIENT_FUNDS);
         }
 
+        // ===== CORE BUSINESS LOGIC =====
         // Update balance
         wallet.setBalance(wallet.getBalance() - amount);
         wallet.setUpdatedAt(LocalDateTime.now());
@@ -185,8 +211,20 @@ public class WalletService {
 
         transaction = transactionRepository.save(transaction);
 
-        log.info("Debited {} from wallet of user {}. New balance: {}",
+        log.info("✅ Debited {} from wallet of user {}. New balance: {}",
                 amount, userId, wallet.getBalance());
+
+        // ===== ✅ PUBLISH EVENT FOR SIDE EFFECTS =====
+        // Email notification và low balance warnings được xử lý bởi WalletEventListener
+        try {
+            eventPublisher.publishEvent(
+                new WalletDebitedEvent(this, wallet, amount, type, description)
+            );
+            log.info("📢 [Event] Published WalletDebitedEvent for user: {} - Amount: {}", userId, amount);
+        } catch (Exception ex) {
+            log.error("❌ [Event] Failed to publish WalletDebitedEvent for user {}: {}",
+                    userId, ex.getMessage(), ex);
+        }
 
         return transaction;
     }

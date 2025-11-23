@@ -6,6 +6,7 @@ import com.swp.evchargingstation.dto.response.DriverDashboardResponse;
 import com.swp.evchargingstation.dto.response.MonthlyAnalyticsResponse;
 import com.swp.evchargingstation.entity.*;
 import com.swp.evchargingstation.enums.*;
+import com.swp.evchargingstation.event.session.ChargingSessionStartedEvent;
 import com.swp.evchargingstation.exception.AppException;
 import com.swp.evchargingstation.exception.ErrorCode;
 import com.swp.evchargingstation.repository.*;
@@ -13,6 +14,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -43,8 +45,11 @@ public class ChargingSessionService {
     WalletService walletService;
     EmailService emailService;
     PaymentSettlementService paymentSettlementService;
-    private final ChargingPointStatusService chargingPointStatusService;
-    private final ChargingSimulatorService chargingSimulatorService;
+    ChargingPointStatusService chargingPointStatusService;
+    ChargingSimulatorService chargingSimulatorService;
+
+    // ✅ Spring Events
+    ApplicationEventPublisher eventPublisher;
 
     /**
      * Lấy dashboard overview của driver đang đăng nhập
@@ -551,21 +556,23 @@ public class ChargingSessionService {
         chargingPoint.setCurrentSession(newSession);
         chargingPointRepository.save(chargingPoint);
 
-        // Eager load entities before async email call to avoid LazyInitializationException
-        // Force Hibernate to load the lazy entities within the transaction
-        User driverUser = driver.getUser();
-        if (driverUser != null) {
-            driverUser.getEmail(); // Force load
+        log.info("✅ Started charging session {} for driver {} at point {}",
+                newSession.getSessionId(), driverId, chargingPoint.getPointId());
+
+        // ===== ✅ PUBLISH EVENT FOR SIDE EFFECTS =====
+        // Gửi email thông báo bắt đầu sạc (via event listener - async)
+        try {
+            eventPublisher.publishEvent(
+                new ChargingSessionStartedEvent(this, newSession)
+            );
+            log.info("📢 [Event] Published ChargingSessionStartedEvent for session {}", newSession.getSessionId());
+        } catch (Exception ex) {
+            log.error("❌ [Event] Failed to publish ChargingSessionStartedEvent: {}", ex.getMessage(), ex);
         }
-        if (chargingPoint.getStation() != null) {
-            chargingPoint.getStation().getName(); // Force load
-        }
 
-        // Gửi email thông báo bắt đầu sạc
-        emailService.sendChargingStartEmail(newSession);
+        // ❌ REMOVED: Direct email call (old way)
+        // emailService.sendChargingStartEmail(newSession);
 
-
-        log.info("Started charging session {} for driver {} at point {}", newSession.getSessionId(), driverId, chargingPoint.getPointId());
         return convertToResponse(newSession);
     }
 
